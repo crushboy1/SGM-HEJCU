@@ -1,5 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SisMortuorio.Data.Entities;
+using SisMortuorio.Data.Entities.Enums;
+using System.Reflection.Metadata.Ecma335;
 
 namespace SisMortuorio.Data.Repositories
 {
@@ -40,6 +42,7 @@ namespace SisMortuorio.Data.Repositories
         {
             return await _context.Expedientes
                 .Include(e => e.UsuarioCreador)
+                .Include(e => e.Pertenencias)
                 .Where(e => !e.Eliminado)
                 .OrderByDescending(e => e.FechaCreacion)
                 .ToListAsync();
@@ -51,18 +54,19 @@ namespace SisMortuorio.Data.Repositories
             string? servicio,
             DateTime? fechaDesde,
             DateTime? fechaHasta,
-            string? estado)
+            EstadoExpediente? estado)
         {
             var query = _context.Expedientes
                 .Include(e => e.UsuarioCreador)
+                .Include(e => e.Pertenencias)
                 .Where(e => !e.Eliminado)
                 .AsQueryable();
 
             if (!string.IsNullOrEmpty(hc))
-                query = query.Where(e => e.HC.Contains(hc));
+                query = query.Where(e => e.HC == hc);
 
             if (!string.IsNullOrEmpty(dni))
-                query = query.Where(e => e.NumeroDocumento.Contains(dni));
+                query = query.Where(e => e.NumeroDocumento == dni);
 
             if (!string.IsNullOrEmpty(servicio))
                 query = query.Where(e => e.ServicioFallecimiento.Contains(servicio));
@@ -73,8 +77,8 @@ namespace SisMortuorio.Data.Repositories
             if (fechaHasta.HasValue)
                 query = query.Where(e => e.FechaHoraFallecimiento <= fechaHasta.Value);
 
-            if (!string.IsNullOrEmpty(estado))
-                query = query.Where(e => e.EstadoActual == estado);
+            if (estado.HasValue)
+                query = query.Where(e => e.EstadoActual == estado.Value);
 
             return await query
                 .OrderByDescending(e => e.FechaCreacion)
@@ -118,6 +122,23 @@ namespace SisMortuorio.Data.Repositories
         {
             return await _context.Expedientes
                 .CountAsync(e => e.ServicioFallecimiento == servicio && !e.Eliminado);
+        }
+        public async Task<Expediente?> GetUltimoExpedienteDelAñoAsync(int año)
+        {
+            var añoStr = año.ToString();
+            var prefijo = $"SGM-{añoStr}-";
+
+            return await _context.Expedientes
+                .Where(e => !e.Eliminado && e.CodigoExpediente.StartsWith(prefijo))
+                .OrderByDescending(e => e.ExpedienteID) // Usar ID en lugar de código
+                .FirstOrDefaultAsync();
+        }
+        public async Task<Expediente?> GetByCodigoQRAsync(string codigoQR)
+        {
+            return await _context.Expedientes
+                .Include(e => e.UsuarioCreador)
+                .Include(e => e.Pertenencias)
+                .FirstOrDefaultAsync(e => e.CodigoQR == codigoQR && !e.Eliminado);
         }
     }
 }

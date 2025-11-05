@@ -24,7 +24,7 @@
         public string MedicoCMP { get; set; } = string.Empty;
         public string? MedicoRNE { get; set; }
         public string? NumeroCertificadoSINADEF { get; set; }
-        public string? CausaMuerte { get; set; }
+        public string? DiagnosticoFinal { get; set; }
 
         // Estado y QR
         public string EstadoActual { get; set; } = string.Empty;

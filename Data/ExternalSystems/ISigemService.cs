@@ -2,6 +2,6 @@
 {
     public interface ISigemService
     {
-        Task<DiagnosticoSigem?> GetDiagnosticoByHCAsync(string hc);
+        Task<EpisodioSigem?> GetUltimoEpisodioByHCAsync(string hc);
     }
 }

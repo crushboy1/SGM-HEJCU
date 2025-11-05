@@ -7,7 +7,7 @@ namespace SisMortuorio.Business.DTOs
         public string? NumeroCama { get; set; }
 
         [StringLength(500)]
-        public string? CausaMuerte { get; set; }
+        public string? DiagnosticoFinal { get; set; }
 
         public string? MedicoRNE { get; set; }
 

@@ -64,7 +64,7 @@ namespace SisMortuorio.Business.DTOs
 
         [Required]
         [StringLength(500)]
-        public string CausaMuerte { get; set; } = string.Empty;
+        public string? DiagnosticoFinal { get; set; }
 
         // Pertenencias (opcional al crear)
         public List<CreatePertenenciaDTO>? Pertenencias { get; set; }

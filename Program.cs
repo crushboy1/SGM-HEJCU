@@ -9,7 +9,6 @@ using SisMortuorio.Data.Entities;
 using SisMortuorio.Data.ExternalSystems;
 using SisMortuorio.Data.Repositories;
 using SisMortuorio.Data.Seeders;
-using SisMortuorio.Services;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -69,14 +68,21 @@ builder.Services.AddAuthentication(options =>
 // 4. Registrar servicios de negocio
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IExpedienteService, ExpedienteService>();
-
+builder.Services.AddScoped<IQRService, QRService>();
+builder.Services.AddScoped<IBrazaleteService, BrazaleteService>();
+builder.Services.AddScoped<ICustodiaService, CustodiaService>();
 // Repositorios
 builder.Services.AddScoped<IExpedienteRepository, ExpedienteRepository>();
-
+builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+builder.Services.AddScoped<ICustodiaRepository, CustodiaRepository>();
 // Servicios de sistemas externos
 builder.Services.AddScoped<IGalenhosService, GalenhosService>();
 builder.Services.AddScoped<ISigemService, SigemService>();
-
+builder.Services.AddScoped<IIntegracionService, IntegracionService>();
+// Servicio de máquina de estados
+builder.Services.AddScoped<IStateMachineService, StateMachineService>();
+// Se registra el nuevo servicio de Mapeo
+builder.Services.AddScoped<IExpedienteMapperService, ExpedienteMapperService>();
 // 5. Configurar Controllers
 builder.Services.AddControllers();
 
@@ -143,16 +149,14 @@ if (app.Environment.IsDevelopment())
             var context = services.GetRequiredService<ApplicationDbContext>();
             var userManager = services.GetRequiredService<UserManager<Usuario>>();
             var roleManager = services.GetRequiredService<RoleManager<Rol>>();
-            var logger = services.GetRequiredService<ILogger<Program>>();
+            var environment = services.GetRequiredService<IWebHostEnvironment>();
 
-            logger.LogInformation("🌱 Iniciando Seeder de datos...");
-            await DataSeeder.SeedAsync(context, userManager, roleManager);
-            logger.LogInformation("✅ Seeder completado exitosamente");
+            await DataSeeder.SeedAsync(context, userManager, roleManager, environment);
         }
         catch (Exception ex)
         {
             var logger = services.GetRequiredService<ILogger<Program>>();
-            logger.LogError(ex, "❌ Error al ejecutar el seeder de datos");
+            logger.LogError(ex, "Error al ejecutar seeding de datos");
         }
     }
 }
@@ -167,6 +171,7 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+app.UseStaticFiles();
 app.UseHttpsRedirection();
 app.UseCors("AllowAll");
 

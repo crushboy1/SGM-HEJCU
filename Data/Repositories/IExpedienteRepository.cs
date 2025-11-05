@@ -1,4 +1,5 @@
 ﻿using SisMortuorio.Data.Entities;
+using SisMortuorio.Data.Entities.Enums;
 
 namespace SisMortuorio.Data.Repositories
 {
@@ -8,7 +9,9 @@ namespace SisMortuorio.Data.Repositories
         Task<Expediente?> GetByCodigoAsync(string codigoExpediente);
         Task<Expediente?> GetByHCAsync(string hc);
         Task<List<Expediente>> GetAllAsync();
-        Task<List<Expediente>> GetByFiltrosAsync(string? hc, string? dni, string? servicio, DateTime? fechaDesde, DateTime? fechaHasta, string? estado);
+        Task<List<Expediente>> GetByFiltrosAsync(string? hc, string? dni, string? servicio, DateTime? fechaDesde, DateTime? fechaHasta, EstadoExpediente? estado);
+        Task<Expediente?> GetUltimoExpedienteDelAñoAsync(int año);
+        Task<Expediente?> GetByCodigoQRAsync(string codigoQR);
         Task<Expediente> CreateAsync(Expediente expediente);
         Task UpdateAsync(Expediente expediente);
         Task<bool> ExistsHCAsync(string hc);

@@ -56,3 +56,11 @@ secrets.json
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Archivos generados dinámicamente
+wwwroot/qr/*.png
+wwwroot/temp/*.pdf
+
+# Mantener las carpetas pero ignorar su contenido
+!wwwroot/qr/.gitkeep
+!wwwroot/temp/.gitkeep

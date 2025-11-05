@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using SisMortuorio.Data.Entities;
-
+using SisMortuorio.Data.Entities.Enums;
 namespace SisMortuorio.Data
 {
     public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, int>
@@ -79,9 +79,9 @@ namespace SisMortuorio.Data
                 entity.Property(e => e.MedicoCMP).HasMaxLength(10).IsRequired();
                 entity.Property(e => e.MedicoRNE).HasMaxLength(20);
                 entity.Property(e => e.NumeroCertificadoSINADEF).HasMaxLength(50);
-                entity.Property(e => e.CausaMuerte).HasMaxLength(500);
+                entity.Property(e => e.DiagnosticoFinal).HasMaxLength(500);
 
-                entity.Property(e => e.EstadoActual).HasMaxLength(50).IsRequired();
+                entity.Property(e => e.EstadoActual).HasConversion<string>().HasMaxLength(50).IsRequired();
                 entity.Property(e => e.CodigoQR).HasMaxLength(100);
 
                 entity.Property(e => e.MotivoEliminacion).HasMaxLength(500);

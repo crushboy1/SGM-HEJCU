@@ -1,6 +1,6 @@
 ﻿using SisMortuorio.Models.Auth;
 
-namespace SisMortuorio.Services
+namespace SisMortuorio.Business.Services
 {
     public interface IAuthService
     {

@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SisMortuorio.Models.Auth;
-using SisMortuorio.Services;
+using SisMortuorio.Business.Services;
 
 namespace SisMortuorio.Controllers
 {

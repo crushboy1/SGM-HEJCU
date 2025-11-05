@@ -8,7 +8,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
-namespace SisMortuorio.Services
+namespace SisMortuorio.Business.Services
 {
     public class AuthService : IAuthService
     {

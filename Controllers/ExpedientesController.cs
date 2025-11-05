@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SisMortuorio.Business.DTOs;
 using SisMortuorio.Business.Services;
+using SisMortuorio.Data.Entities.Enums;
 using System.Security.Claims;
 
 namespace SisMortuorio.Controllers
@@ -76,7 +77,7 @@ namespace SisMortuorio.Controllers
             [FromQuery] string? servicio,
             [FromQuery] DateTime? fechaDesde,
             [FromQuery] DateTime? fechaHasta,
-            [FromQuery] string? estado)
+            [FromQuery] EstadoExpediente? estado)
         {
             try
             {

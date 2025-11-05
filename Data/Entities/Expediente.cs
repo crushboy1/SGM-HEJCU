@@ -1,4 +1,5 @@
-﻿namespace SisMortuorio.Data.Entities
+﻿using SisMortuorio.Data.Entities.Enums;
+namespace SisMortuorio.Data.Entities
 {
     public class Expediente
     {
@@ -13,9 +14,16 @@
         public string ApellidoPaterno { get; set; } = string.Empty;
         public string ApellidoMaterno { get; set; } = string.Empty;
         public string Nombres { get; set; } = string.Empty;
-        public string NombreCompleto { get; set; } = string.Empty; // Denormalizado
+        public string NombreCompleto { get; set; } = string.Empty;
         public DateTime FechaNacimiento { get; set; }
         public string Sexo { get; set; } = string.Empty; // M, F
+        /// <summary>
+        /// Tipo de seguro del paciente
+        /// TODO REFACTORING: Renombrar a "FuenteFinanciamiento" para alinearse 
+        ///                   con nomenclatura de Galenhos (Fase de Refactorización)
+        /// Fuente: Campo "FuenteFinanciamiento" de Galenhos
+        /// Valores: SIS, EsSalud, Particular, SOAT, etc.
+        /// </summary>
         public string TipoSeguro { get; set; } = string.Empty; // SIS, PARTICULAR
 
         // Datos del Fallecimiento
@@ -26,10 +34,10 @@
         public string MedicoCMP { get; set; } = string.Empty;
         public string? MedicoRNE { get; set; }
         public string? NumeroCertificadoSINADEF { get; set; }
-        public string? CausaMuerte { get; set; }
+        public string? DiagnosticoFinal { get; set; }
 
         // Estado y QR
-        public string EstadoActual { get; set; } = string.Empty; // En Piso, Pendiente de Recojo, etc.
+        public EstadoExpediente EstadoActual { get; set; } = EstadoExpediente.EnPiso;
         public string? CodigoQR { get; set; }
         public DateTime? FechaGeneracionQR { get; set; }
 
