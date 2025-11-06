@@ -25,7 +25,7 @@ namespace SisMortuorio.Data.Seeders
             // ═══════════════════════════════════════════════════════════
             // CORE: Siempre se ejecuta (Development y Production)
             // ═══════════════════════════════════════════════════════════
-            await SeedCoreDataAsync(userManager, roleManager);
+            await SeedCoreDataAsync(context, userManager, roleManager);
 
             // ═══════════════════════════════════════════════════════════
             // DEVELOPMENT: Solo en desarrollo (datos de prueba)
@@ -40,7 +40,7 @@ namespace SisMortuorio.Data.Seeders
             // ═══════════════════════════════════════════════════════════
             if (environment.IsProduction())
             {
-                await SeedProductionDataAsync(context);  // ✅ Ya no es async, pero sigue siendo Task
+                await SeedProductionDataAsync(context);  // Ya no es async, pero sigue siendo Task
             }
 
             Console.WriteLine("════════════════════════════════════════════════════");
@@ -49,15 +49,17 @@ namespace SisMortuorio.Data.Seeders
         }
 
         private static async Task SeedCoreDataAsync(
+            ApplicationDbContext context,
             UserManager<Usuario> userManager,
             RoleManager<Rol> roleManager)
         {
             Console.WriteLine();
-            Console.WriteLine("📋 SEEDING: Roles y Usuarios (Core)...");
+            Console.WriteLine("📋 SEEDING: Roles , Usuarios y Bandejas (Core)...");
             Console.WriteLine("────────────────────────────────────────────────────");
 
             await RolSeeder.SeedAsync(roleManager);
             await UsuarioSeeder.SeedAsync(userManager, roleManager);
+            await BandejaSeeder.SeedAsync(context);
 
             Console.WriteLine("────────────────────────────────────────────────────");
             Console.WriteLine("✅ Core data completado");
@@ -75,20 +77,19 @@ namespace SisMortuorio.Data.Seeders
             Console.WriteLine("✅ Development data completado");
         }
 
-        private static Task SeedProductionDataAsync(ApplicationDbContext context)  // ✅ Sin "async"
+        private static Task SeedProductionDataAsync(ApplicationDbContext context)  //  Sin "async"
         {
             Console.WriteLine();
             Console.WriteLine("🏭 SEEDING: Configuración de producción...");
             Console.WriteLine("────────────────────────────────────────────────────");
 
             // TODO: Aquí irían seeders de producción
-            // Ejemplo: Configuración de bandejas reales del hospital (A-01 a A-08)
             // Ejemplo: Parámetros del sistema
 
             Console.WriteLine("⏭️  No hay seeders de producción por ahora");
             Console.WriteLine("────────────────────────────────────────────────────");
 
-            return Task.CompletedTask;  // ✅ AGREGADO
+            return Task.CompletedTask;
         }
     }
 }
