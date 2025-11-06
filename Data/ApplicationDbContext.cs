@@ -23,11 +23,15 @@ namespace SisMortuorio.Data
         public DbSet<AutoridadExterna> AutoridadesExternas { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }
 
+        public DbSet<Bandeja> Bandejas { get; set; }
+        public DbSet<VerificacionMortuorio> VerificacionesMortuorio { get; set; }
+        public DbSet<SalidaMortuorio> SalidasMortuorio { get; set; }
+        public DbSet<SolicitudCorreccionExpediente> SolicitudesCorreccion { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // CRÍTICO: Deshabilitar cascadas en Identity para evitar ciclos
+            //  Deshabilitar cascadas en Identity para evitar ciclos
             foreach (var relationship in modelBuilder.Model.GetEntityTypes()
                 .SelectMany(e => e.GetForeignKeys()))
             {
@@ -191,8 +195,25 @@ namespace SisMortuorio.Data
             {
                 entity.HasKey(o => o.OcupacionID);
 
-                entity.Property(o => o.BandejaID).HasMaxLength(10).IsRequired();
+                // BandejaID ahora es int (FK a Bandeja)
+                entity.Property(o => o.BandejaID).IsRequired();
+
+                // Conversión del enum AccionBandeja a string
+                entity.Property(o => o.Accion)
+                    .HasConversion<string>()
+                    .HasMaxLength(30)
+                    .IsRequired();
+
+                entity.Property(o => o.Observaciones).HasMaxLength(1000);
+
+                // Índice compuesto
                 entity.HasIndex(o => new { o.BandejaID, o.FechaHoraSalida });
+
+                //  Relación con Bandeja
+                entity.HasOne(o => o.Bandeja)
+                    .WithMany()
+                    .HasForeignKey(o => o.BandejaID)
+                    .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasOne(o => o.Expediente)
                     .WithMany()
@@ -202,6 +223,12 @@ namespace SisMortuorio.Data
                 entity.HasOne(o => o.UsuarioAsignador)
                     .WithMany()
                     .HasForeignKey(o => o.UsuarioAsignadorID)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // Relación con UsuarioLibera
+                entity.HasOne(o => o.UsuarioLibera)
+                    .WithMany()
+                    .HasForeignKey(o => o.UsuarioLiberaID)
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
@@ -266,6 +293,155 @@ namespace SisMortuorio.Data
                 entity.HasOne(a => a.Usuario)
                     .WithMany()
                     .HasForeignKey(a => a.UsuarioID)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+            // Configuración Bandeja
+            modelBuilder.Entity<Bandeja>(entity =>
+            {
+                entity.HasKey(b => b.BandejaID);
+
+                entity.Property(b => b.Codigo).HasMaxLength(10).IsRequired();
+                entity.HasIndex(b => b.Codigo).IsUnique();
+
+                // Conversión del enum EstadoBandeja a string
+                entity.Property(b => b.Estado)
+                    .HasConversion<string>()
+                    .HasMaxLength(30)
+                    .IsRequired();
+
+                entity.Property(b => b.Observaciones).HasMaxLength(500);
+                entity.Property(b => b.MotivoEliminacion).HasMaxLength(500);
+
+                // Relación con Expediente (nullable)
+                entity.HasOne(b => b.Expediente)
+                    .WithMany()
+                    .HasForeignKey(b => b.ExpedienteID)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // Relación con UsuarioAsigna (nullable)
+                entity.HasOne(b => b.UsuarioAsigna)
+                    .WithMany()
+                    .HasForeignKey(b => b.UsuarioAsignaID)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // Relación con UsuarioLibera (nullable)
+                entity.HasOne(b => b.UsuarioLibera)
+                    .WithMany()
+                    .HasForeignKey(b => b.UsuarioLiberaID)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Configuración VerificacionMortuorio
+            modelBuilder.Entity<VerificacionMortuorio>(entity =>
+            {
+                entity.HasKey(v => v.VerificacionID);
+
+                entity.Property(v => v.HCBrazalete).HasMaxLength(20).IsRequired();
+                entity.Property(v => v.DNIBrazalete).HasMaxLength(20).IsRequired();
+                entity.Property(v => v.NombreCompletoBrazalete).HasMaxLength(300).IsRequired();
+                entity.Property(v => v.ServicioBrazalete).HasMaxLength(100).IsRequired();
+                entity.Property(v => v.CodigoExpedienteBrazalete).HasMaxLength(50).IsRequired();
+                entity.Property(v => v.MotivoRechazo).HasMaxLength(500);
+                entity.Property(v => v.Observaciones).HasMaxLength(1000);
+
+                // Índices para búsquedas
+                entity.HasIndex(v => v.ExpedienteID);
+                entity.HasIndex(v => v.FechaHoraVerificacion);
+                entity.HasIndex(v => new { v.ExpedienteID, v.Aprobada });
+
+                // Relaciones
+                entity.HasOne(v => v.Expediente)
+                    .WithMany()
+                    .HasForeignKey(v => v.ExpedienteID)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(v => v.Vigilante)
+                    .WithMany()
+                    .HasForeignKey(v => v.VigilanteID)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(v => v.TecnicoAmbulancia)
+                    .WithMany()
+                    .HasForeignKey(v => v.TecnicoAmbulanciaID)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Configuración SalidaMortuorio
+            modelBuilder.Entity<SalidaMortuorio>(entity =>
+            {
+                entity.HasKey(s => s.SalidaID);
+
+                // Conversión del enum TipoSalida a string
+                entity.Property(s => s.TipoSalida)
+                    .HasConversion<string>()
+                    .HasMaxLength(30)
+                    .IsRequired();
+
+                entity.Property(s => s.ResponsableNombre).HasMaxLength(200).IsRequired();
+                entity.Property(s => s.ResponsableTipoDocumento).HasMaxLength(20).IsRequired();
+                entity.Property(s => s.ResponsableNumeroDocumento).HasMaxLength(20).IsRequired();
+                entity.Property(s => s.ResponsableParentesco).HasMaxLength(50);
+                entity.Property(s => s.ResponsableTelefono).HasMaxLength(20);
+                entity.Property(s => s.NumeroAutorizacion).HasMaxLength(100);
+                entity.Property(s => s.EntidadAutorizante).HasMaxLength(200);
+                entity.Property(s => s.NumeroRecibo).HasMaxLength(50);
+                entity.Property(s => s.NombreFuneraria).HasMaxLength(200);
+                entity.Property(s => s.ConductorFuneraria).HasMaxLength(200);
+                entity.Property(s => s.DNIConductor).HasMaxLength(20);
+                entity.Property(s => s.PlacaVehiculo).HasMaxLength(20);
+                entity.Property(s => s.Destino).HasMaxLength(200);
+                entity.Property(s => s.Observaciones).HasMaxLength(1000);
+                entity.Property(s => s.DetalleIncidente).HasMaxLength(1000);
+
+                // Índices
+                entity.HasIndex(s => s.ExpedienteID).IsUnique(); // Un expediente solo puede tener una salida
+                entity.HasIndex(s => s.FechaHoraSalida);
+                entity.HasIndex(s => s.TipoSalida);
+                entity.HasIndex(s => s.ResponsableNumeroDocumento);
+
+                // Relaciones
+                entity.HasOne(s => s.Expediente)
+                    .WithMany()
+                    .HasForeignKey(s => s.ExpedienteID)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(s => s.Vigilante)
+                    .WithMany()
+                    .HasForeignKey(s => s.VigilanteID)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Configuración SolicitudCorreccionExpediente
+            modelBuilder.Entity<SolicitudCorreccionExpediente>(entity =>
+            {
+                entity.HasKey(sc => sc.SolicitudID);
+
+                entity.Property(sc => sc.DatosIncorrectos).HasMaxLength(2000).IsRequired();
+                entity.Property(sc => sc.DescripcionProblema).HasMaxLength(1000).IsRequired();
+                entity.Property(sc => sc.ObservacionesSolicitud).HasMaxLength(1000);
+                entity.Property(sc => sc.DescripcionResolucion).HasMaxLength(1000);
+                entity.Property(sc => sc.ObservacionesResolucion).HasMaxLength(1000);
+
+                // Índices para reportes y búsquedas
+                entity.HasIndex(sc => sc.ExpedienteID);
+                entity.HasIndex(sc => sc.Resuelta);
+                entity.HasIndex(sc => sc.FechaHoraSolicitud);
+                entity.HasIndex(sc => new { sc.Resuelta, sc.FechaHoraSolicitud });
+
+                // Relaciones
+                entity.HasOne(sc => sc.Expediente)
+                    .WithMany()
+                    .HasForeignKey(sc => sc.ExpedienteID)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(sc => sc.UsuarioSolicita)
+                    .WithMany()
+                    .HasForeignKey(sc => sc.UsuarioSolicitaID)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(sc => sc.UsuarioResponsable)
+                    .WithMany()
+                    .HasForeignKey(sc => sc.UsuarioResponsableID)
                     .OnDelete(DeleteBehavior.Restrict);
             });
         }
