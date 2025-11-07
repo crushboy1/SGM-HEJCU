@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using SisMortuorio.Business.Hubs;
 using SisMortuorio.Business.Services;
+using SisMortuorio.Business.Workers;
 using SisMortuorio.Data;
 using SisMortuorio.Data.Entities;
 using SisMortuorio.Data.ExternalSystems;
@@ -75,6 +77,17 @@ builder.Services.AddScoped<ICustodiaService, CustodiaService>();
 builder.Services.AddScoped<IExpedienteRepository, ExpedienteRepository>();
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<ICustodiaRepository, CustodiaRepository>();
+// Repositorios Entrada-Salida Mortuorio-SolicitudDeCorrecion
+builder.Services.AddScoped<IBandejaRepository, BandejaRepository>();
+builder.Services.AddScoped<IOcupacionBandejaRepository, OcupacionBandejaRepository>();
+builder.Services.AddScoped<IVerificacionMortuorioRepository, VerificacionMortuorioRepository>();
+builder.Services.AddScoped<ISalidaMortuorioRepository, SalidaMortuorioRepository>();
+builder.Services.AddScoped<ISolicitudCorreccionRepository, SolicitudCorreccionRepository>();
+// Servicios FASE 4.5
+builder.Services.AddScoped<IVerificacionService, VerificacionService>();
+builder.Services.AddScoped<IBandejaService, BandejaService>();
+builder.Services.AddScoped<ISalidaMortuorioService, SalidaMortuorioService>();
+builder.Services.AddScoped<ISolicitudCorreccionService, SolicitudCorreccionService>();
 // Servicios de sistemas externos
 builder.Services.AddScoped<IGalenhosService, GalenhosService>();
 builder.Services.AddScoped<ISigemService, SigemService>();
@@ -85,8 +98,12 @@ builder.Services.AddScoped<IStateMachineService, StateMachineService>();
 builder.Services.AddScoped<IExpedienteMapperService, ExpedienteMapperService>();
 // 5. Configurar Controllers
 builder.Services.AddControllers();
-
-// 6. Configurar Swagger con JWT
+// Configurar SignalR (FASE 4.8)
+builder.Services.AddSignalR();
+// Registrar Workers (FASE 4.8)
+builder.Services.AddHostedService<PermanenciaAlertWorker>();
+builder.Services.AddHostedService<SolicitudAlertWorker>();
+// 6.Configurar Swagger con JWT
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -135,7 +152,7 @@ builder.Services.AddCors(options =>
                    .AllowAnyHeader();
         });
 });
-
+// TODO: Configurar política CORS más restrictiva para Angular y SignalR en Producción
 var app = builder.Build();
 
 // 8. Ejecutar Seeder en desarrollo (ANTES de configurar pipeline)
@@ -180,5 +197,5 @@ app.UseAuthentication();  // ← Primero autenticación
 app.UseAuthorization();   // ← Luego autorización
 
 app.MapControllers();
-
+app.MapHub<SgmHub>("/sgmhub");// <- (Endpoint de SignalR)
 app.Run();  // ← ESTO SIEMPRE AL FINAL
