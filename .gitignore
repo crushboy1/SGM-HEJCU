@@ -64,3 +64,13 @@ wwwroot/temp/*.pdf
 # Mantener las carpetas pero ignorar su contenido
 !wwwroot/qr/.gitkeep
 !wwwroot/temp/.gitkeep
+
+# ==========================
+# FRONTEND / ANGULAR IGNORES
+# ==========================
+node_modules/
+dist/
+.angular/
+.vscode/
+.ide/
+*.log
