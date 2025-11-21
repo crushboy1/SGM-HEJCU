@@ -1,0 +1,79 @@
+<div class="min-h-screen bg-hospital-bg p-6">
+  <div class="max-w-7xl mx-auto space-y-6">
+
+    <div class="flex justify-between items-center">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-800">Gestión de Expedientes</h1>
+        <p class="text-gray-500 text-sm">Historial completo y auditoría</p>
+      </div>
+      <button (click)="cargarDatos()" class="btn-secondary flex items-center gap-2">
+        <app-icon name="refresh-cw" [size]="18"></app-icon> Actualizar
+      </button>
+    </div>
+
+    <div class="card p-4">
+      <div class="flex gap-4">
+        <div class="flex-1 relative">
+          <app-icon name="search" [size]="20" className="absolute left-3 top-3 text-gray-400"></app-icon>
+          <input type="text" [(ngModel)]="searchTerm" (input)="aplicarFiltros()"
+                 placeholder="Buscar por HC, Nombre, Código..."
+                 class="w-full pl-10 pr-4 py-2 border rounded-lg">
+        </div>
+        <select [(ngModel)]="filtroEstado" (change)="aplicarFiltros()" class="p-2 border rounded-lg">
+          <option value="">Todos los estados</option>
+          <option value="EnPiso">En Piso</option>
+          <option value="PendienteDeRecojo">Pendiente Recojo</option>
+          <option value="EnMortuorio">En Mortuorio</option>
+          <option value="Retirado">Retirado</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="card overflow-hidden">
+      <table class="w-full text-sm text-left">
+        <thead class="bg-gray-50 text-gray-600 font-bold uppercase text-xs border-b">
+          <tr>
+            <th class="px-6 py-3">Código</th>
+            <th class="px-6 py-3">Paciente</th>
+            <th class="px-6 py-3">HC</th>
+            <th class="px-6 py-3">Fecha</th>
+            <th class="px-6 py-3">Estado</th>
+            <th class="px-6 py-3 text-right">Acciones</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <tr *ngFor="let item of expedientesPaginados" class="hover:bg-blue-50 transition">
+            <td class="px-6 py-3 font-mono font-bold text-hospital-cyan">{{ item.codigoExpediente }}</td>
+            <td class="px-6 py-3 font-semibold">{{ item.nombreCompleto }}</td>
+            <td class="px-6 py-3">{{ item.hc }}</td>
+            <td class="px-6 py-3">{{ item.fechaHoraFallecimiento | date:'dd/MM/yyyy HH:mm' }}</td>
+            <td class="px-6 py-3">
+              <ng-container *ngIf="getBadgeInfo(item.estadoActual) as badge">
+                <span [class]="badge.classes">
+                  <app-icon [name]="badge.icon" [size]="14"></app-icon> {{ badge.label }}
+                </span>
+              </ng-container>
+            </td>
+            <td class="px-6 py-3 flex justify-end gap-2">
+              <button (click)="reimprimir(item.expedienteID)" title="Reimprimir" class="text-gray-400 hover:text-purple-600">
+                <app-icon name="printer" [size]="18"></app-icon>
+              </button>
+              <button (click)="verDetalle(item.expedienteID)" title="Ver" class="text-gray-400 hover:text-hospital-cyan">
+                <app-icon name="eye" [size]="18"></app-icon>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="p-4 border-t border-gray-100 flex justify-between items-center">
+        <span class="text-sm text-gray-500">Página {{ paginaActual }} de {{ totalPaginas }}</span>
+        <div class="flex gap-2">
+          <button (click)="paginaAnterior()" [disabled]="paginaActual === 1" class="p-1 border rounded disabled:opacity-50"><app-icon name="chevron-left"></app-icon></button>
+          <button (click)="paginaSiguiente()" [disabled]="paginaActual === totalPaginas" class="p-1 border rounded disabled:opacity-50"><app-icon name="chevron-right"></app-icon></button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

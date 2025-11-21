@@ -157,5 +157,11 @@ namespace SisMortuorio.Data.ExternalSystems
                 "Trauma Shock"
             };
         }
+        public async Task<List<PacienteGalenhos>> GetPacientesByFiltroSimulado()
+        {
+            _logger.LogInformation("Simulando consulta de todos los pacientes en Galenhos");
+            await Task.Delay(50);
+            return _pacientesSimulados;
+        }
     }
 }

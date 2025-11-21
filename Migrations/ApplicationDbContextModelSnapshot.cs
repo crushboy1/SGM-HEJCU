@@ -1055,12 +1055,7 @@ namespace SisMortuorio.Migrations
                     b.Property<bool>("CodigoExpedienteCoincide")
                         .HasColumnType("bit");
 
-                    b.Property<string>("DNIBrazalete")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<bool>("DNICoincide")
+                    b.Property<bool>("DocumentoCoincide")
                         .HasColumnType("bit");
 
                     b.Property<int>("ExpedienteID")
@@ -1089,6 +1084,11 @@ namespace SisMortuorio.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
 
+                    b.Property<string>("NumeroDocumentoBrazalete")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<string>("Observaciones")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
@@ -1103,6 +1103,11 @@ namespace SisMortuorio.Migrations
 
                     b.Property<int>("TecnicoAmbulanciaID")
                         .HasColumnType("int");
+
+                    b.Property<string>("TipoDocumentoBrazalete")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<int>("VigilanteID")
                         .HasColumnType("int");

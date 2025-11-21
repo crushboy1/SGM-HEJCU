@@ -1,4 +1,6 @@
 ﻿using SisMortuorio.Business.DTOs.Bandeja;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace SisMortuorio.Business.Services
 {
@@ -15,6 +17,12 @@ namespace SisMortuorio.Business.Services
         Task<List<BandejaDTO>> GetOcupacionDashboardAsync();
 
         /// <summary>
+        /// Obtiene una bandeja específica por su ID.
+        /// (Necesario para la pantalla de asignación).
+        /// </summary>
+        Task<BandejaDTO?> GetByIdAsync(int id);
+
+        /// <summary>
         /// Obtiene una lista simplificada de bandejas disponibles.
         /// (Usado para el dropdown de asignación).
         /// </summary>
@@ -24,17 +32,12 @@ namespace SisMortuorio.Business.Services
         /// Asigna un expediente a una bandeja disponible.
         /// Transición: PendienteAsignacionBandeja -> EnBandeja
         /// </summary>
-        /// <param name="dto">Datos de la asignación (BandejaID, ExpedienteID)</param>
-        /// <param name="usuarioAsignaId">ID del Técnico de Ambulancia (del Token)</param>
-        /// <returns>El DTO de la bandeja actualizada</returns>
         Task<BandejaDTO> AsignarBandejaAsync(AsignarBandejaDTO dto, int usuarioAsignaId);
 
         /// <summary>
         /// Libera una bandeja que estaba ocupada por un expediente.
         /// (Llamado por ISalidaMortuorioService).
         /// </summary>
-        /// <param name="expedienteId">ID del expediente que sale</param>
-        /// <param name="usuarioLiberaId">ID del Vigilante (del Token)</param>
         Task LiberarBandejaAsync(int expedienteId, int usuarioLiberaId);
 
         /// <summary>

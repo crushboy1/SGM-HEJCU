@@ -91,7 +91,7 @@ namespace SisMortuorio.Business.Services
                 MedicoCertificaNombre = dto.MedicoCertificaNombre,
                 MedicoCMP = dto.MedicoCMP,
                 MedicoRNE = dto.MedicoRNE,
-                NumeroCertificadoSINADEF = dto.NumeroCertificadoSINADEF,
+                NumeroCertificadoSINADEF = string.IsNullOrEmpty(dto.NumeroCertificadoSINADEF) ? null : dto.NumeroCertificadoSINADEF,
                 DiagnosticoFinal = dto.DiagnosticoFinal,
                 EstadoActual = EstadoExpediente.EnPiso, // Estado inicial del enum
                 UsuarioCreadorID = usuarioCreadorId,

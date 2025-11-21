@@ -39,10 +39,14 @@ namespace SisMortuorio.Business.Services
         public async Task<List<BandejaDTO>> GetOcupacionDashboardAsync()
         {
             var bandejas = await _bandejaRepo.GetAllAsync();
-
             var dtos = bandejas.Select(b => MapToBandejaDTO(b)).ToList();
-
             return dtos;
+        }
+        public async Task<BandejaDTO?> GetByIdAsync(int id)
+        {
+            var bandeja = await _bandejaRepo.GetByIdAsync(id);
+            if (bandeja == null) return null;
+            return MapToBandejaDTO(bandeja);
         }
 
         public async Task<List<BandejaDisponibleDTO>> GetDisponiblesAsync()
@@ -128,7 +132,6 @@ namespace SisMortuorio.Business.Services
             {
                 _logger.LogError("INCONSISTENCIA DE DATOS: La bandeja {CodigoBandeja} figura ocupada por Exp {ExpedienteID} pero no existe registro de ocupación activa.",
                     bandeja.Codigo, expedienteId);
-                // Forzar liberación de la bandeja de todas formas
             }
 
             // 3. Ejecutar Transacción
@@ -195,7 +198,6 @@ namespace SisMortuorio.Business.Services
             return MapToBandejaDTO(bandeja);
         }
 
-
         // --- Métodos Privados de Mapeo y Alertas ---
 
         private BandejaDTO MapToBandejaDTO(Bandeja bandeja)
@@ -227,11 +229,7 @@ namespace SisMortuorio.Business.Services
             return dto;
         }
 
-        /// <summary>
-        /// Comprueba las estadísticas de ocupación y envía una alerta
-        /// a través de SignalR si supera el 70%.
-        /// </summary>
-        private async Task CheckOcupacionAlertAsync() // <-- 6. NUEVO MÉTODO PRIVADO
+        private async Task CheckOcupacionAlertAsync()
         {
             try
             {
@@ -248,8 +246,6 @@ namespace SisMortuorio.Business.Services
             }
             catch (Exception ex)
             {
-                // Importante: No relanzar la excepción.
-                // Un fallo en SignalR NO debe detener la transacción principal.
                 _logger.LogError(ex, "Error al intentar enviar alerta de ocupación por SignalR");
             }
         }

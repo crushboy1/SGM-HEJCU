@@ -1,0 +1,427 @@
+<div class="min-h-screen bg-hospital-bg">
+
+  <!-- ===================================================================
+       HEADER / NAVBAR
+       =================================================================== -->
+  <div class="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-10 shadow-sm">
+    <div class="flex items-center justify-between max-w-7xl mx-auto">
+      <div class="flex items-center gap-3">
+        <div class="h-10 w-10 bg-hospital-cyan rounded-lg flex items-center justify-center shadow-md">
+          <span class="text-white font-bold text-sm">SGM</span>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold text-gray-800">
+            {{ modoManual ? 'Registro Manual' : 'Nuevo Expediente' }}
+          </h1>
+          <p class="text-xs text-gray-500">Sistema de Gestión Mortuoria</p>
+        </div>
+      </div>
+
+      <!-- Botón Volver -->
+      <button (click)="cancelar()"
+              class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+        <div class="flex items-center gap-2">
+          <app-icon name="chevron-left" [size]="20"></app-icon>
+          <span class="hidden md:inline text-sm font-medium">Volver</span>
+        </div>
+      </button>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       CONTENIDO PRINCIPAL
+       =================================================================== -->
+  <div class="p-4 md:p-8 max-w-7xl mx-auto">
+
+    <!-- Banner superior -->
+    <div class="bg-gradient-to-r from-hospital-cyan to-blue-600 text-white rounded-xl shadow-lg p-6 mb-8">
+      <div class="flex items-start gap-4">
+        <div class="p-3 bg-white/20 rounded-lg">
+          <app-icon name="file-plus" [size]="32"></app-icon>
+        </div>
+        <div>
+          <h2 class="text-3xl font-bold mb-2">
+            {{ modoManual ? 'Registro Manual de Fallecido' : 'Nuevo Registro de Fallecido' }}
+          </h2>
+          <p class="text-blue-100">
+            {{
+ modoManual
+              ? 'Complete todos los campos del formulario manualmente.'
+              : 'Complete los datos faltantes para generar el expediente.'
+            }}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================================================================
+         FORMULARIO
+         =================================================================== -->
+    <form [formGroup]="expedienteForm" (ngSubmit)="onSubmit()" class="space-y-8">
+
+      <!-- =================================================================
+           SECCIÓN 1: DATOS DEL PACIENTE
+           ================================================================= -->
+      <div class="card">
+        <div class="p-6">
+          <div class="flex items-center gap-3 border-b border-gray-200 pb-4 mb-6">
+            <div class="p-2 bg-blue-100 rounded-lg text-hospital-blue">
+              <app-icon name="file-text" [size]="24"></app-icon>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800">Datos del Paciente</h3>
+          </div>
+
+          <!-- Loading state -->
+          <div *ngIf="isLoading && !pacienteData && !modoManual" class="text-center py-12">
+            <div class="flex flex-col items-center gap-3">
+              <div class="animate-spin text-hospital-cyan">
+                <app-icon name="refresh-cw" [size]="40"></app-icon>
+              </div>
+              <span class="text-gray-500">Cargando datos del paciente...</span>
+            </div>
+          </div>
+
+          <!-- Formulario visible -->
+          <div *ngIf="!isLoading || modoManual" class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">
+
+            <!-- HC -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Historia Clínica*</label>
+              <input type="text"
+                     formControlName="hc"
+                     [readonly]="!modoManual"
+                     [class]="modoManual
+                       ? 'w-full p-2 border border-gray-300 rounded-md bg-white'
+                       : 'w-full p-2 border-none rounded-md bg-gray-100 text-gray-800 font-semibold'">
+            </div>
+
+            <!-- Tipo Documento -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Tipo Documento*</label>
+              <input *ngIf="!modoManual"
+                     type="text"
+                     [value]="getTipoDocumentoNombre(expedienteForm.get('tipoDocumento')?.value)"
+                     readonly
+                     class="w-full p-2 border-none rounded-md bg-gray-100 text-gray-800 font-semibold">
+              <select *ngIf="modoManual"
+                      formControlName="tipoDocumento"
+                      class="w-full p-2 border border-gray-300 rounded-md bg-white">
+                <option [value]="1">DNI</option>
+                <option [value]="2">Pasaporte</option>
+                <option [value]="3">Carnet de Extranjería</option>
+                <option [value]="4">Sin Documento</option>
+                <option [value]="5">NN</option>
+              </select>
+            </div>
+
+            <!-- Número Documento -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Nro Documento*</label>
+              <input type="text"
+                     formControlName="numeroDocumento"
+                     [readonly]="!modoManual"
+                     [class]="modoManual
+                       ? 'w-full p-2 border border-gray-300 rounded-md bg-white'
+                       : 'w-full p-2 border-none rounded-md bg-gray-100 text-gray-800 font-semibold'">
+            </div>
+
+            <!-- Apellido Paterno -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Apellido Paterno*</label>
+              <input type="text"
+                     formControlName="apellidoPaterno"
+                     [readonly]="!modoManual"
+                     [class]="modoManual
+                       ? 'w-full p-2 border border-gray-300 rounded-md bg-white'
+                       : 'w-full p-2 border-none rounded-md bg-gray-100 text-gray-800 font-semibold'">
+            </div>
+
+            <!-- Apellido Materno -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Apellido Materno*</label>
+              <input type="text"
+                     formControlName="apellidoMaterno"
+                     [readonly]="!modoManual"
+                     [class]="modoManual
+                       ? 'w-full p-2 border border-gray-300 rounded-md bg-white'
+                       : 'w-full p-2 border-none rounded-md bg-gray-100 text-gray-800 font-semibold'">
+            </div>
+
+            <!-- Nombres -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Nombres*</label>
+              <input type="text"
+                     formControlName="nombres"
+                     [readonly]="!modoManual"
+                     [class]="modoManual
+                       ? 'w-full p-2 border border-gray-300 rounded-md bg-white'
+                       : 'w-full p-2 border-none rounded-md bg-gray-100 text-gray-800 font-semibold'">
+            </div>
+
+            <!-- Fecha Nacimiento -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Nacimiento*</label>
+              <input type="date"
+                     formControlName="fechaNacimiento"
+                     [readonly]="!modoManual"
+                     [class]="modoManual
+                       ? 'w-full p-2 border border-gray-300 rounded-md bg-white'
+                       : 'w-full p-2 border-none rounded-md bg-gray-100 text-gray-800 font-semibold'">
+            </div>
+
+            <!-- Sexo -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Sexo*</label>
+              <select *ngIf="modoManual"
+                      formControlName="sexo"
+                      class="w-full p-2 border border-gray-300 rounded-md bg-white">
+                <option value="">Seleccione...</option>
+                <option value="M">Masculino</option>
+                <option value="F">Femenino</option>
+              </select>
+              <input *ngIf="!modoManual"
+                     type="text"
+                     formControlName="sexo"
+                     readonly
+                     class="w-full p-2 border-none rounded-md bg-gray-100 text-gray-800 font-semibold">
+            </div>
+
+            <!-- Tipo Seguro -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Seguro / Fuente*</label>
+              <input type="text"
+                     formControlName="tipoSeguro"
+                     [readonly]="!modoManual"
+                     [class]="modoManual
+                       ? 'w-full p-2 border border-gray-300 rounded-md bg-white'
+                       : 'w-full p-2 border-none rounded-md bg-gray-100 text-gray-800 font-semibold'">
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- =================================================================
+           SECCIÓN 2: DATOS DEL FALLECIMIENTO
+           ================================================================= -->
+      <div class="card">
+        <div class="p-6">
+          <div class="flex items-center gap-3 border-b border-gray-200 pb-4 mb-6">
+            <div class="p-2 bg-red-100 rounded-lg text-red-600">
+              <app-icon name="alert-triangle" [size]="24"></app-icon>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800">Datos del Fallecimiento</h3>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+
+            <!-- Tipo de Expediente -->
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Expediente*</label>
+              <div class="flex gap-6">
+                <label class="flex items-center cursor-pointer">
+                  <input type="radio"
+                         formControlName="tipoExpediente"
+                         value="Interno"
+                         class="mr-2 w-4 h-4 text-hospital-blue">
+                  <span class="text-gray-700">Interno</span>
+                </label>
+                <label class="flex items-center cursor-pointer">
+                  <input type="radio"
+                         formControlName="tipoExpediente"
+                         value="Externo"
+                         class="mr-2 w-4 h-4 text-hospital-blue">
+                  <span class="text-gray-700">Externo</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Servicio donde Falleció -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Servicio donde Falleció*</label>
+              <select formControlName="servicioFallecimiento"
+                      class="w-full p-2 border border-gray-300 rounded-md bg-white">
+                <option value="">Seleccione...</option>
+                <option *ngFor="let srv of servicios" [value]="srv">{{ srv }}</option>
+              </select>
+            </div>
+
+            <!-- Número de Cama -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Número de Cama</label>
+              <input type="text"
+                     formControlName="numeroCama"
+                     class="w-full p-2 border border-gray-300 rounded-md bg-white"
+                     placeholder="Opcional">
+            </div>
+
+            <!-- Fecha y Hora de Fallecimiento -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Fecha y Hora de Fallecimiento*</label>
+              <input type="datetime-local"
+                     formControlName="fechaHoraFallecimiento"
+                     class="w-full p-2 border border-gray-300 rounded-md bg-white">
+            </div>
+
+            <!-- Diagnóstico Final -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Diagnóstico Final (CIE-10)*</label>
+              <input type="text"
+                     formControlName="diagnosticoFinal"
+                     class="w-full p-2 border border-gray-300 rounded-md bg-white"
+                     placeholder="Ej: I21.9 - Infarto agudo de miocardio">
+            </div>
+
+            <!-- Médico que Certifica -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Médico que Certifica*</label>
+              <input type="text"
+                     formControlName="medicoCertificaNombre"
+                     class="w-full p-2 border border-gray-300 rounded-md bg-white"
+                     placeholder="Nombre completo del médico">
+            </div>
+
+            <!-- CMP -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">CMP*</label>
+              <input type="text"
+                     formControlName="medicoCMP"
+                     class="w-full p-2 border border-gray-300 rounded-md bg-white"
+                     placeholder="Nro de Colegiatura">
+            </div>
+
+            <!-- RNE -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">RNE</label>
+              <input type="text"
+                     formControlName="medicoRNE"
+                     class="w-full p-2 border border-gray-300 rounded-md bg-white"
+                     placeholder="Registro de Especialidad (opcional)">
+            </div>
+
+            <!-- Certificado SINADEF -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Certificado SINADEF</label>
+              <input type="text"
+                     formControlName="numeroCertificadoSINADEF"
+                     class="w-full p-2 border border-gray-300 rounded-md bg-white"
+                     placeholder="Se llenará posteriormente (opcional)">
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- =================================================================
+           SECCIÓN 3: PERTENENCIAS
+           ================================================================= -->
+      <div class="card">
+        <div class="p-6">
+          <div class="flex justify-between items-center border-b border-gray-200 pb-4 mb-6">
+            <div class="flex items-center gap-3">
+              <div class="p-2 bg-purple-100 rounded-lg text-purple-600">
+                <app-icon name="archive" [size]="24"></app-icon>
+              </div>
+              <h3 class="text-xl font-bold text-gray-800">Registro de Pertenencias</h3>
+            </div>
+            <button type="button"
+                    (click)="agregarPertenencia()"
+                    class="flex items-center gap-2 bg-blue-50 text-hospital-blue font-medium px-4 py-2 rounded-md text-sm hover:bg-blue-100 transition-colors">
+              <app-icon name="circle-check" [size]="18"></app-icon>
+              <span>Agregar Pertenencia</span>
+            </button>
+          </div>
+
+          <div formArrayName="pertenencias" class="space-y-4">
+            <div *ngFor="let pertenencia of pertenencias.controls; let i = index"
+                 [formGroupName]="i"
+                 class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center bg-gray-50 p-4 rounded-md border border-gray-200">
+
+              <!-- Descripción -->
+              <div class="md:col-span-5">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Descripción*</label>
+                <input type="text"
+                       formControlName="descripcion"
+                       class="w-full p-2 border border-gray-300 rounded-md"
+                       placeholder="Ej: Reloj Casio">
+              </div>
+
+              <!-- Observaciones -->
+              <div class="md:col-span-6">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
+                <input type="text"
+                       formControlName="observaciones"
+                       class="w-full p-2 border border-gray-300 rounded-md"
+                       placeholder="Detalles adicionales (opcional)">
+              </div>
+
+              <!-- Botón Eliminar -->
+              <div class="md:col-span-1 flex justify-end pt-5">
+                <button type="button"
+                        (click)="eliminarPertenencia(i)"
+                        class="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-100 transition-colors"
+                        title="Eliminar">
+                  <app-icon name="circle-x" [size]="20"></app-icon>
+                </button>
+              </div>
+
+            </div>
+
+            <!-- Mensaje cuando no hay pertenencias -->
+            <div *ngIf="pertenencias.length === 0"
+                 class="text-center text-gray-500 py-8 bg-gray-50 rounded-md border border-dashed border-gray-300">
+              <div class="flex flex-col items-center gap-3">
+                <div class="text-gray-400">
+                  <app-icon name="inbox" [size]="40"></app-icon>
+                </div>
+                <p>No se han agregado pertenencias</p>
+                <p class="text-sm">Haga clic en "Agregar Pertenencia" para registrar</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- =================================================================
+           FOOTER: MENSAJES DE ERROR Y BOTONES
+           ================================================================= -->
+      <div class="flex flex-col md:flex-row justify-between items-center gap-4 p-6 bg-gray-50 rounded-lg shadow-inner">
+
+        <!-- Mensaje de error -->
+        <div class="w-full md:w-auto">
+          <span *ngIf="errorMessage" class="text-red-600 font-medium text-sm flex items-center gap-2">
+            <span class="text-red-600 flex items-center">
+              <app-icon name="alert-circle" [size]="20"></app-icon>
+            </span>
+            {{ errorMessage }}
+          </span>
+        </div>
+
+        <!-- Botones -->
+        <div class="flex gap-4 w-full md:w-auto">
+          <button type="button"
+                  (click)="cancelar()"
+                  class="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white text-gray-700 font-bold py-3 px-6 rounded-lg border border-gray-300 hover:bg-gray-100 transition-colors">
+            <app-icon name="x" [size]="18"></app-icon>
+            <span>Cancelar</span>
+          </button>
+          <button type="submit"
+                  [disabled]="isLoading"
+                  class="flex-1 md:flex-none bg-hospital-blue text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-blue-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+            <div *ngIf="isLoading" class="animate-spin">
+              <app-icon name="refresh-cw" [size]="18"></app-icon>
+            </div>
+            <div *ngIf="!isLoading">
+              <app-icon name="circle-check" [size]="18"></app-icon>
+            </div>
+            <span>{{ isLoading ? 'GENERANDO...' : 'GENERAR EXPEDIENTE' }}</span>
+          </button>
+        </div>
+
+      </div>
+
+    </form>
+
+  </div>
+
+</div>

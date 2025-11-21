@@ -46,6 +46,7 @@ namespace SisMortuorio.Business.Services
             }
 
             _logger.LogInformation("Iniciando verificación para Expediente {CodigoExpediente}", expediente.CodigoExpediente);
+
             // 2. OBTENER ID DEL TÉCNICO DE AMBULANCIA
             var ultimaCustodia = await _custodiaRepo.GetUltimaTransferenciaAsync(expediente.ExpedienteID);
             if (ultimaCustodia == null || ultimaCustodia.UsuarioDestino.Rol.Name != "Ambulancia")
@@ -53,31 +54,41 @@ namespace SisMortuorio.Business.Services
                 _logger.LogWarning("Verificación Rechazada: No se encontró la custodia previa de 'Ambulancia' para el Exp {ExpedienteID}", expediente.ExpedienteID);
                 throw new InvalidOperationException($"No se puede verificar el ingreso. El expediente no registra la custodia de un Téc. de Ambulancia (Estado: {expediente.EstadoActual})");
             }
-            // Obtenemos el ID del técnico (ej. 9) desde la última custodia
+
             int tecnicoAmbulanciaId = ultimaCustodia.UsuarioDestinoID;
-            // 3. Comparar datos del DTO (Brazalete) vs. Entidad (BD)
+
+            // 3. Lógica de Comparación: Tipo Y Número de Documento
+            bool documentoCoincide =
+                expediente.NumeroDocumento == dto.NumeroDocumentoBrazalete &&
+                expediente.TipoDocumento.ToString().Equals(dto.TipoDocumentoBrazalete, StringComparison.OrdinalIgnoreCase);
+
+            // 4. Crear Entidad VerificacionMortuorio
             var verificacion = new VerificacionMortuorio
             {
                 ExpedienteID = expediente.ExpedienteID,
                 VigilanteID = vigilanteId,
                 TecnicoAmbulanciaID = tecnicoAmbulanciaId,
                 FechaHoraVerificacion = DateTime.Now,
+
                 // Datos del Brazalete (leídos por el Vigilante)
                 CodigoExpedienteBrazalete = dto.CodigoExpedienteBrazalete,
                 HCBrazalete = dto.HCBrazalete,
-                DNIBrazalete = dto.DNIBrazalete,
+                TipoDocumentoBrazalete = dto.TipoDocumentoBrazalete,     
+                NumeroDocumentoBrazalete = dto.NumeroDocumentoBrazalete, 
                 NombreCompletoBrazalete = dto.NombreCompletoBrazalete,
                 ServicioBrazalete = dto.ServicioBrazalete,
+
                 // Comparaciones
                 CodigoExpedienteCoincide = expediente.CodigoExpediente == dto.CodigoExpedienteBrazalete,
                 HCCoincide = expediente.HC == dto.HCBrazalete,
-                DNICoincide = expediente.NumeroDocumento == dto.DNIBrazalete,
+                DocumentoCoincide = documentoCoincide, 
                 NombreCoincide = expediente.NombreCompleto.Equals(dto.NombreCompletoBrazalete, StringComparison.OrdinalIgnoreCase),
                 ServicioCoincide = expediente.ServicioFallecimiento == dto.ServicioBrazalete,
+
                 Observaciones = dto.Observaciones
             };
 
-            // 4. Determinar Happy Path o Sad Path
+            // 5. Determinar Happy Path o Sad Path
             if (verificacion.TodosLosCamposCoinciden())
             {
                 return await HandleHappyPath(expediente, verificacion);
@@ -156,10 +167,17 @@ namespace SisMortuorio.Business.Services
             await _expedienteRepo.UpdateAsync(expediente);
 
             // 3. Crear Solicitud de Corrección (el "ticket")
-            var datosIncorrectosJson = JsonSerializer.Serialize(new
+            var datosJson = JsonSerializer.Serialize(new
             {
                 HC = new { DB = expediente.HC, Brazalete = verificacion.HCBrazalete },
-                DNI = new { DB = expediente.NumeroDocumento, Brazalete = verificacion.DNIBrazalete },
+                // Actualizado para reflejar nuevos campos
+                Documento = new
+                {
+                    DB_Tipo = expediente.TipoDocumento.ToString(),
+                    DB_Num = expediente.NumeroDocumento,
+                    Brazalete_Tipo = verificacion.TipoDocumentoBrazalete,
+                    Brazalete_Num = verificacion.NumeroDocumentoBrazalete
+                },
                 Nombre = new { DB = expediente.NombreCompleto, Brazalete = verificacion.NombreCompletoBrazalete },
                 Servicio = new { DB = expediente.ServicioFallecimiento, Brazalete = verificacion.ServicioBrazalete }
             });
@@ -168,8 +186,8 @@ namespace SisMortuorio.Business.Services
             {
                 ExpedienteID = expediente.ExpedienteID,
                 UsuarioSolicitaID = verificacion.VigilanteID,
-                UsuarioResponsableID = expediente.UsuarioCreadorID, // Asignado a quien creó el expediente
-                DatosIncorrectos = datosIncorrectosJson,
+                UsuarioResponsableID = expediente.UsuarioCreadorID,
+                DatosIncorrectos = datosJson,
                 DescripcionProblema = motivoRechazo,
                 ObservacionesSolicitud = verificacion.Observaciones,
                 Resuelta = false
@@ -188,7 +206,7 @@ namespace SisMortuorio.Business.Services
                 MensajeResultado = "Verificación Rechazada. Se generó una solicitud de corrección a Enfermería.",
                 EstadoExpedienteNuevo = expediente.EstadoActual.ToString(),
                 HCCoincide = verificacion.HCCoincide,
-                DNICoincide = verificacion.DNICoincide,
+                DNICoincide = verificacion.DocumentoCoincide,
                 NombreCoincide = verificacion.NombreCoincide,
                 ServicioCoincide = verificacion.ServicioCoincide,
                 CodigoExpedienteCoincide = verificacion.CodigoExpedienteCoincide,
@@ -216,7 +234,6 @@ namespace SisMortuorio.Business.Services
         {
             var stats = await _verificacionRepo.GetEstadisticasAsync(fechaInicio, fechaFin);
 
-            // Mapeo directo
             return new EstadisticasVerificacionDTO
             {
                 TotalVerificaciones = stats.TotalVerificaciones,
@@ -224,7 +241,7 @@ namespace SisMortuorio.Business.Services
                 Rechazadas = stats.Rechazadas,
                 PorcentajeAprobacion = stats.PorcentajeAprobacion,
                 ConDiscrepanciaHC = stats.ConDiscrepanciaHC,
-                ConDiscrepanciaDNI = stats.ConDiscrepanciaDNI,
+                ConDiscrepanciaDocumento = stats.ConDiscrepanciaDocumento, 
                 ConDiscrepanciaNombre = stats.ConDiscrepanciaNombre
             };
         }
