@@ -59,7 +59,7 @@ namespace SisMortuorio.Data.Repositories
         public int Rechazadas { get; set; }
         public double PorcentajeAprobacion { get; set; }
         public int ConDiscrepanciaHC { get; set; }
-        public int ConDiscrepanciaDNI { get; set; }
+        public int ConDiscrepanciaDocumento { get; set; }
         public int ConDiscrepanciaNombre { get; set; }
     }
 }

@@ -1,0 +1,105 @@
+<div class="min-h-screen bg-hospital-bg pb-20">
+
+  <div class="bg-hospital-blue text-white p-6 rounded-b-3xl shadow-lg mb-6">
+    <div class="flex justify-between items-center mb-4">
+      <div>
+        <h1 class="text-2xl font-bold">Hola, {{ userName.split(' ')[0] }}</h1>
+        <p class="text-blue-100 text-sm">Técnico de Ambulancia</p>
+      </div>
+      <div class="bg-white/20 p-2 rounded-full">
+        <app-icon name="truck" [size]="24" className="text-white"></app-icon>
+      </div>
+    </div>
+
+    <div class="flex bg-black/20 p-1 rounded-xl">
+      <button (click)="activeTab = 'pendientes'"
+              class="flex-1 py-2 rounded-lg text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2"
+              [class]="activeTab === 'pendientes' ? 'bg-white text-hospital-blue shadow-sm' : 'text-blue-100 hover:bg-white/10'">
+        <span>Pendientes</span>
+        <span *ngIf="pendientesRecojo.length > 0" class="bg-red-500 text-white text-xs px-1.5 rounded-full">
+          {{ pendientesRecojo.length }}
+        </span>
+      </button>
+      <button (click)="activeTab = 'custodia'"
+              class="flex-1 py-2 rounded-lg text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2"
+              [class]="activeTab === 'custodia' ? 'bg-white text-hospital-blue shadow-sm' : 'text-blue-100 hover:bg-white/10'">
+        <span>En Custodia</span>
+        <span *ngIf="enCustodia.length > 0" class="bg-green-500 text-white text-xs px-1.5 rounded-full">
+          {{ enCustodia.length }}
+        </span>
+      </button>
+    </div>
+  </div>
+
+  <div class="px-4 max-w-lg mx-auto space-y-4">
+
+    <div *ngIf="activeTab === 'pendientes'" class="space-y-4 animate-fade-in-up">
+
+      <div *ngIf="pendientesRecojo.length === 0" class="text-center py-10 text-gray-400">
+        <app-icon name="check-circle" [size]="48" className="mx-auto mb-3 opacity-50"></app-icon>
+        <p>No hay recojos pendientes</p>
+      </div>
+
+      <div *ngFor="let item of pendientesRecojo" class="card p-5 border-l-4 border-yellow-400">
+        <div class="flex justify-between items-start mb-3">
+          <span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-1 rounded uppercase">
+            Pendiente Recojo
+          </span>
+          <span class="text-xs text-gray-500">{{ item.fechaHoraFallecimiento | date:'HH:mm' }}</span>
+        </div>
+
+        <h3 class="font-bold text-lg text-gray-800 mb-1">{{ item.nombreCompleto }}</h3>
+        <p class="text-sm text-gray-600 flex items-center gap-2 mb-4">
+          <app-icon name="map-pin" [size]="16"></app-icon>
+          {{ item.servicioFallecimiento }} <span *ngIf="item.numeroCama">• Cama {{ item.numeroCama }}</span>
+        </p>
+
+        <button (click)="escanearQR()"
+                class="w-full py-3 bg-hospital-blue text-white rounded-xl font-bold shadow-md active:scale-95 transition-transform flex items-center justify-center gap-2">
+          <app-icon name="qr-code" [size]="20"></app-icon>
+          ESCANEAR Y RECOGER
+        </button>
+      </div>
+    </div>
+
+    <div *ngIf="activeTab === 'custodia'" class="space-y-4 animate-fade-in-up">
+
+      <div *ngIf="enCustodia.length === 0" class="text-center py-10 text-gray-400">
+        <app-icon name="truck" [size]="48" className="mx-auto mb-3 opacity-50"></app-icon>
+        <p>No tienes cuerpos en tránsito</p>
+      </div>
+
+      <div *ngFor="let item of enCustodia" class="card p-5 border-l-4 border-blue-500">
+        <div class="flex justify-between items-start mb-3">
+          <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded uppercase flex items-center gap-1">
+            <span class="animate-pulse w-2 h-2 bg-blue-600 rounded-full"></span>
+            En Tránsito
+          </span>
+          <span class="text-xs text-gray-500 font-mono">{{ item.codigoExpediente }}</span>
+        </div>
+
+        <h3 class="font-bold text-lg text-gray-800 mb-1">{{ item.nombreCompleto }}</h3>
+        <p class="text-xs text-gray-500 mb-4">Recogido de: {{ item.servicioFallecimiento }}</p>
+
+        <div *ngIf="item.estadoActual === 'EnTrasladoMortuorio'" class="bg-gray-100 p-3 rounded-lg text-xs text-gray-600 text-center mb-2">
+          Diríjase a la puerta del mortuorio para validación.
+        </div>
+
+        <button *ngIf="item.estadoActual === 'PendienteAsignacionBandeja'"
+                (click)="irAMapa()"
+                class="w-full py-3 bg-green-600 text-white rounded-xl font-bold shadow-md active:scale-95 transition-transform flex items-center justify-center gap-2">
+          <app-icon name="archive" [size]="20"></app-icon>
+          ASIGNAR UBICACIÓN
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <button *ngIf="activeTab === 'pendientes'"
+          (click)="escanearQR()"
+          class="fixed bottom-6 right-6 w-16 h-16 bg-hospital-blue text-white rounded-full shadow-xl flex items-center justify-center hover:scale-110 transition-transform z-50">
+    <app-icon name="qr-code" [size]="32"></app-icon>
+  </button>
+
+</div>

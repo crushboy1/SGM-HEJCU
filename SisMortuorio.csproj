@@ -21,4 +21,9 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="sgm-frontend\src\app\NewFolder1\" />
+    <Folder Include="sgm-frontend\src\app\NewFolder\" />
+  </ItemGroup>
+
 </Project>

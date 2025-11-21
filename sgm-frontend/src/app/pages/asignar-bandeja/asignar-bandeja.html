@@ -1,0 +1,58 @@
+<div class="min-h-screen bg-hospital-bg p-6 flex items-center justify-center">
+  <div class="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden">
+
+    <div class="bg-hospital-blue p-6 text-white flex justify-between items-center">
+      <div>
+        <h2 class="text-2xl font-bold">Asignar Ubicación</h2>
+        <p class="text-blue-100 text-sm">Ingreso a Mortuorio</p>
+      </div>
+      <app-icon name="archive" [size]="32" className="opacity-80"></app-icon>
+    </div>
+
+    <div class="p-8">
+      <div *ngIf="isLoading" class="text-center py-8">Cargando...</div>
+
+      <div *ngIf="!isLoading && bandeja" class="mb-8 text-center">
+        <span class="text-gray-500 uppercase text-xs font-bold tracking-wider">Estás asignando a la</span>
+        <h1 class="text-5xl font-bold text-gray-800 my-2">{{ bandeja.codigo }}</h1>
+        <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">Disponible</span>
+      </div>
+
+      <div class="space-y-5">
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-2">ID del Expediente</label>
+          <div class="relative">
+            <input type="number" [(ngModel)]="codigoExpediente"
+                   placeholder="Ej: 10"
+                   class="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-hospital-blue focus:ring-0 outline-none transition-colors font-mono text-lg">
+            <div class="absolute left-3 top-3.5 text-gray-400">
+              <app-icon name="file-text" [size]="20"></app-icon>
+            </div>
+          </div>
+          <p class="text-xs text-gray-400 mt-1 ml-1">Ingrese el ID numérico del expediente.</p>
+        </div>
+
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-2">Observaciones</label>
+          <textarea [(ngModel)]="observaciones" rows="3"
+                    class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-hospital-blue focus:ring-0 outline-none transition-colors"
+                    placeholder="Condición del cuerpo, notas..."></textarea>
+        </div>
+      </div>
+
+      <div class="flex gap-4 mt-8">
+        <button (click)="cancelar()"
+                class="flex-1 py-3 text-gray-500 font-bold hover:bg-gray-50 rounded-xl transition-colors">
+          Cancelar
+        </button>
+        <button (click)="asignar()"
+                [disabled]="isSaving"
+                class="flex-1 py-3 bg-hospital-blue text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 transition-transform active:scale-95 disabled:opacity-50 flex justify-center items-center gap-2">
+          <span *ngIf="isSaving" class="animate-spin"><app-icon name="refresh-cw" [size]="20"></app-icon></span>
+          <span>{{ isSaving ? 'Guardando...' : 'Confirmar' }}</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>

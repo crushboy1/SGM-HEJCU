@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SisMortuorio.Business.Services;
+using SisMortuorio.Data.ExternalSystems;
 
 namespace SisMortuorio.Controllers
 {
@@ -67,6 +68,26 @@ namespace SisMortuorio.Controllers
                     mensaje = "Error al consultar datos del paciente",
                     detalle = ex.Message
                 });
+            }
+        }
+        /// <summary>
+        /// Obtiene la lista de pacientes fallecidos pendientes de generar expediente
+        /// (Simula la bandeja de entrada de Enfermería)
+        /// </summary>
+        [HttpGet("pendientes")]
+        [Authorize(Roles = "EnfermeriaTecnica,EnfermeriaLicenciada,SupervisoraEnfermeria,Administrador")]
+        [ProducesResponseType(typeof(List<PacienteGalenhos>), 200)]
+        public async Task<IActionResult> GetPendientes()
+        {
+            try
+            {
+                var pendientes = await _integracionService.GetPacientesPendientesAsync();
+                return Ok(pendientes);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener pacientes pendientes");
+                return StatusCode(500, new { message = "Error interno del servidor" });
             }
         }
     }

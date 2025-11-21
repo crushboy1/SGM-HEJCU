@@ -19,9 +19,13 @@ namespace SisMortuorio.Business.DTOs.Verificacion
         [StringLength(20)]
         public string HCBrazalete { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "El DNI/Documento del brazalete es obligatorio")]
+        [Required(ErrorMessage = "El tipo de documento es obligatorio")]
         [StringLength(20)]
-        public string DNIBrazalete { get; set; } = string.Empty;
+        public string TipoDocumentoBrazalete { get; set; } = string.Empty; // Ej: "DNI", "CE", "Pasaporte", "NN"
+
+        [Required(ErrorMessage = "El número de documento es obligatorio")]
+        [StringLength(20)]
+        public string NumeroDocumentoBrazalete { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "El Nombre del brazalete es obligatorio")]
         [StringLength(300)]

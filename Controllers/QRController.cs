@@ -31,7 +31,7 @@ namespace SisMortuorio.Controllers
         /// Solo puede usarse una vez por expediente
         /// </summary>
         [HttpPost("{expedienteId}/generar")]
-        [Authorize(Roles = "EnfermeriaTecnica,EnfermeriaLicenciada,SupervisoraEnfermeria")]
+        [Authorize(Roles = "EnfermeriaTecnica,EnfermeriaLicenciada,SupervisoraEnfermeria,Administrador")]
         [ProducesResponseType(typeof(QRGeneradoDTO), 201)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
@@ -78,7 +78,7 @@ namespace SisMortuorio.Controllers
         /// NO regenera el QR ni cambia estado
         /// </summary>
         [HttpGet("{expedienteId}/obtener")]
-        [Authorize(Roles = "EnfermeriaTecnica,EnfermeriaLicenciada,SupervisoraEnfermeria")]
+        [Authorize(Roles = "EnfermeriaTecnica,EnfermeriaLicenciada,SupervisoraEnfermeria,Administrador")]
         [ProducesResponseType(typeof(QRGeneradoDTO), 200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
@@ -146,7 +146,7 @@ namespace SisMortuorio.Controllers
         /// Imprime brazalete por primera vez (después de generar QR)
         /// </summary>
         [HttpPost("{expedienteId}/imprimir-brazalete")]
-        [Authorize(Roles = "EnfermeriaTecnica,EnfermeriaLicenciada,SupervisoraEnfermeria")]
+        [Authorize(Roles = "EnfermeriaTecnica,EnfermeriaLicenciada,SupervisoraEnfermeria,Administrador")]
         [ProducesResponseType(typeof(FileResult), 200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
@@ -192,7 +192,7 @@ namespace SisMortuorio.Controllers
         /// NO cambia estado ni regenera QR
         /// </summary>
         [HttpGet("{expedienteId}/reimprimir-brazalete")]
-        [Authorize(Roles = "EnfermeriaTecnica,EnfermeriaLicenciada,SupervisoraEnfermeria")]
+        [Authorize(Roles = "EnfermeriaTecnica,EnfermeriaLicenciada,SupervisoraEnfermeria,Administrador")]
         [ProducesResponseType(typeof(FileResult), 200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]

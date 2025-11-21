@@ -42,6 +42,30 @@ namespace SisMortuorio.Controllers
         }
 
         /// <summary>
+        /// Obtiene los detalles de una bandeja específica por ID.
+        /// (Necesario para la pantalla de asignación)
+        /// </summary>
+        [HttpGet("{id}")]
+        [ProducesResponseType(typeof(BandejaDTO), 200)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> GetById(int id)
+        {
+            try
+            {
+                var bandeja = await _bandejaService.GetByIdAsync(id);
+                if (bandeja == null)
+                    return NotFound(new { message = $"Bandeja con ID {id} no encontrada" });
+
+                return Ok(bandeja);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener bandeja {Id}", id);
+                return StatusCode(500, new { message = "Error interno del servidor" });
+            }
+        }
+
+        /// <summary>
         /// Obtiene una lista de bandejas disponibles (para dropdown).
         /// </summary>
         [HttpGet("disponibles")]
@@ -65,7 +89,7 @@ namespace SisMortuorio.Controllers
         /// Obtiene estadísticas de ocupación del mortuorio.
         /// </summary>
         [HttpGet("estadisticas")]
-        [Authorize(Roles = "Administrador, JefeGuardia, VigilanteSupervisor")]
+        [Authorize(Roles = "Administrador, JefeGuardia, VigilanteSupervisor, EnfermeriaTecnica, EnfermeriaLicenciada")]
         [ProducesResponseType(typeof(EstadisticasBandejaDTO), 200)]
         public async Task<IActionResult> GetEstadisticas()
         {
@@ -85,7 +109,7 @@ namespace SisMortuorio.Controllers
         /// Asigna un expediente a una bandeja (Técnico de Ambulancia).
         /// </summary>
         [HttpPost("asignar")]
-        [Authorize(Roles = "Ambulancia")]
+        [Authorize(Roles = "Ambulancia, Administrador")]
         [ProducesResponseType(typeof(BandejaDTO), 200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
@@ -96,11 +120,11 @@ namespace SisMortuorio.Controllers
 
             try
             {
-                var usuarioId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-                var resultado = await _bandejaService.AsignarBandejaAsync(dto, usuarioId);
+                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+                var resultado = await _bandejaService.AsignarBandejaAsync(dto, userId);
 
                 _logger.LogInformation("Usuario {UsuarioID} asignó Expediente {ExpedienteID} a Bandeja {BandejaID}",
-                    usuarioId, dto.ExpedienteID, dto.BandejaID);
+                    userId, dto.ExpedienteID, dto.BandejaID);
 
                 return Ok(resultado);
             }

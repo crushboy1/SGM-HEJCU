@@ -72,11 +72,18 @@ namespace SisMortuorio.Data.Entities
         public string HCBrazalete { get; set; } = string.Empty;
 
         /// <summary>
-        /// Número de DNI escaneado del brazalete
+        /// Tipo de documento leído del brazalete (DNI, Pasaporte, NN, etc.)
         /// </summary>
         [Required]
         [MaxLength(20)]
-        public string DNIBrazalete { get; set; } = string.Empty;
+        public string TipoDocumentoBrazalete { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Número de documento leído del brazalete
+        /// </summary>
+        [Required]
+        [MaxLength(20)]
+        public string NumeroDocumentoBrazalete { get; set; } = string.Empty;
 
         /// <summary>
         /// Nombre completo escaneado del brazalete
@@ -111,7 +118,7 @@ namespace SisMortuorio.Data.Entities
         /// <summary>
         /// Indica si el DNI coincide
         /// </summary>
-        public bool DNICoincide { get; set; }
+        public bool DocumentoCoincide { get; set; }
 
         /// <summary>
         /// Indica si el nombre completo coincide
@@ -150,7 +157,7 @@ namespace SisMortuorio.Data.Entities
         /// </summary>
         public bool TodosLosCamposCoinciden()
         {
-            return HCCoincide && DNICoincide && NombreCoincide &&
+            return HCCoincide && DocumentoCoincide && NombreCoincide &&
                    ServicioCoincide && CodigoExpedienteCoincide;
         }
 
@@ -162,7 +169,7 @@ namespace SisMortuorio.Data.Entities
             int discrepancias = 0;
 
             if (!HCCoincide) discrepancias++;
-            if (!DNICoincide) discrepancias++;
+            if (!DocumentoCoincide) discrepancias++;
             if (!NombreCoincide) discrepancias++;
             if (!ServicioCoincide) discrepancias++;
             if (!CodigoExpedienteCoincide) discrepancias++;
@@ -181,7 +188,7 @@ namespace SisMortuorio.Data.Entities
             var discrepancias = new System.Collections.Generic.List<string>();
 
             if (!HCCoincide) discrepancias.Add("HC");
-            if (!DNICoincide) discrepancias.Add("DNI");
+            if (!DocumentoCoincide) discrepancias.Add("Documento de Identidad");
             if (!NombreCoincide) discrepancias.Add("Nombre");
             if (!ServicioCoincide) discrepancias.Add("Servicio");
             if (!CodigoExpedienteCoincide) discrepancias.Add("Código Expediente");

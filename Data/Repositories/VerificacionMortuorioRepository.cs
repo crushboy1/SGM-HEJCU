@@ -117,7 +117,7 @@ namespace SisMortuorio.Data.Repositories
 
             // Contar discrepancias específicas (solo en rechazadas)
             var conDiscrepanciaHC = await query.CountAsync(v => !v.Aprobada && !v.HCCoincide);
-            var conDiscrepanciaDNI = await query.CountAsync(v => !v.Aprobada && !v.DNICoincide);
+            var conDiscrepanciaDocumento = await query.CountAsync(v => !v.Aprobada && !v.DocumentoCoincide);
             var conDiscrepanciaNombre = await query.CountAsync(v => !v.Aprobada && !v.NombreCoincide);
 
             return new VerificacionEstadisticas
@@ -127,7 +127,7 @@ namespace SisMortuorio.Data.Repositories
                 Rechazadas = rechazadas,
                 PorcentajeAprobacion = total > 0 ? (aprobadas * 100.0 / total) : 0,
                 ConDiscrepanciaHC = conDiscrepanciaHC,
-                ConDiscrepanciaDNI = conDiscrepanciaDNI,
+                ConDiscrepanciaDocumento = conDiscrepanciaDocumento,
                 ConDiscrepanciaNombre = conDiscrepanciaNombre
             };
         }

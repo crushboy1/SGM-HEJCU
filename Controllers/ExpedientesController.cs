@@ -102,7 +102,7 @@ namespace SisMortuorio.Controllers
         /// Crear nuevo expediente (solo Enfermería)
         /// </summary>
         [HttpPost]
-        [Authorize(Roles = "EnfermeriaTecnica,EnfermeriaLicenciada,SupervisoraEnfermeria")]
+        [Authorize(Roles = "EnfermeriaTecnica,EnfermeriaLicenciada,SupervisoraEnfermeria,Administrador")]
         [ProducesResponseType(typeof(ExpedienteDTO), 201)]
         [ProducesResponseType(400)]
         public async Task<IActionResult> Create([FromBody] CreateExpedienteDTO dto)

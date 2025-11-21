@@ -92,7 +92,7 @@ namespace SisMortuorio.Data
 
                 entity.HasIndex(e => e.HC);
                 entity.HasIndex(e => e.NumeroDocumento);
-                entity.HasIndex(e => e.NumeroCertificadoSINADEF).IsUnique();
+                entity.HasIndex(e => e.NumeroCertificadoSINADEF).IsUnique().HasFilter("[NumeroCertificadoSINADEF] IS NOT NULL");
                 entity.HasIndex(e => e.CodigoQR).IsUnique();
 
                 entity.HasOne(e => e.UsuarioCreador)
@@ -337,7 +337,8 @@ namespace SisMortuorio.Data
                 entity.HasKey(v => v.VerificacionID);
 
                 entity.Property(v => v.HCBrazalete).HasMaxLength(20).IsRequired();
-                entity.Property(v => v.DNIBrazalete).HasMaxLength(20).IsRequired();
+                entity.Property(v => v.TipoDocumentoBrazalete).HasMaxLength(20).IsRequired();
+                entity.Property(v => v.NumeroDocumentoBrazalete).HasMaxLength(20).IsRequired();
                 entity.Property(v => v.NombreCompletoBrazalete).HasMaxLength(300).IsRequired();
                 entity.Property(v => v.ServicioBrazalete).HasMaxLength(100).IsRequired();
                 entity.Property(v => v.CodigoExpedienteBrazalete).HasMaxLength(50).IsRequired();
