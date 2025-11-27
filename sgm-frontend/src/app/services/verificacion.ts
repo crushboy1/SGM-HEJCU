@@ -22,6 +22,12 @@ export interface VerificacionResultado {
   motivoRechazo?: string;
   solicitudCorreccionID?: number;
 }
+//// Campos de validación (para mostrar qué falló si es necesario)
+//hcCoincide ?: boolean;
+//dniCoincide ?: boolean;
+//nombreCoincide ?: boolean;
+//servicioCoincide ?: boolean;
+//codigoExpedienteCoincide ?: boolean;
 
 @Injectable({
   providedIn: 'root'

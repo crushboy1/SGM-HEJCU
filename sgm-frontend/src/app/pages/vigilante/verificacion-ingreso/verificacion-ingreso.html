@@ -2,6 +2,7 @@
 
   <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden">
 
+    <!-- Header -->
     <div class="bg-hospital-blue p-6 text-white flex items-center justify-between">
       <div class="flex items-center gap-3">
         <div class="bg-white/20 p-2 rounded-lg">
@@ -17,6 +18,7 @@
       </div>
     </div>
 
+    <!-- Paso 1: Escanear -->
     <div *ngIf="paso === 'escanear'" class="p-8">
       <div class="text-center py-10">
         <div class="inline-block p-6 bg-gray-100 rounded-full mb-4 animate-pulse">
@@ -28,8 +30,10 @@
         <div class="max-w-md mx-auto">
           <div class="relative">
             <input type="text" [(ngModel)]="codigoQRInput"
+                   id="qr-input-verification"
                    class="w-full pl-12 pr-4 py-4 border-2 border-gray-300 rounded-xl text-lg focus:border-hospital-blue focus:ring-0 transition-colors"
-                   placeholder="Código QR (Simulado)">
+                   placeholder="Código QR (Simulado)"
+                   (keyup.enter)="buscarQR()">
             <div class="absolute left-4 top-5 text-gray-400">
               <app-icon name="search" [size]="24"></app-icon>
             </div>
@@ -37,14 +41,16 @@
 
           <button (click)="buscarQR()"
                   [disabled]="isLoading"
-                  class="w-full mt-4 bg-hospital-blue text-white font-bold py-4 rounded-xl shadow-lg hover:bg-blue-600 transition-transform active:scale-95 disabled:opacity-50">
+                  class="w-full mt-4 bg-hospital-blue text-white font-bold py-4 rounded-xl shadow-lg hover:bg-blue-600 transition-transform active:scale-95 disabled:opacity-50 flex justify-center items-center gap-2">
+            <app-icon *ngIf="isLoading" name="refresh-cw" [size]="20" className="animate-spin"></app-icon>
             {{ isLoading ? 'BUSCANDO...' : 'VERIFICAR DATOS' }}
           </button>
         </div>
       </div>
     </div>
 
-    <div *ngIf="paso === 'validar'" class="p-0">
+    <!-- Paso 2: Validar -->
+    <div *ngIf="paso === 'validar'" class="p-0 animate-fade-in">
 
       <div class="p-6 bg-blue-50 border-b border-blue-100">
         <div class="flex justify-between items-start mb-4">
@@ -73,7 +79,10 @@
           </div>
           <div>
             <span class="text-gray-500 block">Estado Actual</span>
-            <span class="font-bold text-orange-600">{{ datosExpediente?.estadoActual }}</span>
+            <!-- CORRECCIÓN: Uso de Badge unificado -->
+            <span [class]="getBadgeClasses(datosExpediente?.estadoActual)">
+              {{ datosExpediente?.estadoActual }}
+            </span>
           </div>
         </div>
       </div>
@@ -118,14 +127,15 @@
           </button>
           <button (click)="confirmarIngreso()"
                   [disabled]="isLoading"
-                  class="py-4 bg-green-600 text-white rounded-xl font-bold shadow-lg hover:bg-green-700 transition-transform active:scale-95 flex flex-col items-center justify-center">
-            <app-icon name="circle-check" [size]="24" className="mb-1"></app-icon>
-            <span>AUTORIZAR INGRESO</span>
+                  class="py-4 bg-green-600 text-white rounded-xl font-bold shadow-lg hover:bg-green-700 transition-transform active:scale-95 flex flex-col items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+            <app-icon *ngIf="!isLoading" name="circle-check" [size]="24" className="mb-1"></app-icon>
+            <app-icon *ngIf="isLoading" name="refresh-cw" [size]="24" className="mb-1 animate-spin"></app-icon>
+            <span>{{ isLoading ? 'PROCESANDO...' : 'AUTORIZAR INGRESO' }}</span>
           </button>
         </div>
 
         <div class="text-center mt-4">
-          <button (click)="cancelar()" class="text-sm text-gray-400 underline">Cancelar revisión</button>
+          <button (click)="cancelar()" class="text-sm text-gray-400 underline hover:text-white transition-colors">Cancelar revisión</button>
         </div>
       </div>
     </div>

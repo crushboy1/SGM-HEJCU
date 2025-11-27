@@ -28,7 +28,7 @@ namespace SisMortuorio.Controllers
         /// Cambia estado a 'Retirado' y libera la bandeja.
         /// </summary>
         [HttpPost("registrar")]
-        [Authorize(Roles = "VigilanteSupervisor,VigilanciaMortuorio")]
+        [Authorize(Roles = "VigilanteSupervisor,VigilanciaMortuorio,Administrador")]
         [ProducesResponseType(typeof(SalidaDTO), 200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]

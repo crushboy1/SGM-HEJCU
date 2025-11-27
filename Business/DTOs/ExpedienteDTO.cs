@@ -38,6 +38,15 @@
 
         // Pertenencias (opcional)
         public List<PertenenciaDTO>? Pertenencias { get; set; }
+        /// <summary>
+        /// Código de la bandeja donde está ubicado el cuerpo actualmente.
+        /// Se llena dinámicamente en QRService.ConsultarPorQRAsync.
+        /// </summary>
+        public string? CodigoBandeja { get; set; }
+        /// <summary>
+        /// ID de la bandeja ocupada.
+        /// </summary>
+        public int? BandejaID { get; set; }
     }
 
     public class PertenenciaDTO

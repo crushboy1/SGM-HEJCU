@@ -1,76 +1,324 @@
-<div class="min-h-screen bg-hospital-bg p-6">
+<div class="min-h-screen bg-hospital-bg p-4 md:p-6">
   <div class="max-w-7xl mx-auto space-y-6">
 
-    <div class="flex justify-between items-center">
-      <div>
-        <h1 class="text-2xl font-bold text-gray-800">Gestión de Expedientes</h1>
-        <p class="text-gray-500 text-sm">Historial completo y auditoría</p>
+    <!-- ===================================================================
+         HEADER
+         =================================================================== -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div class="flex items-center gap-3">
+   
+        <div class="p-2.5 bg-gradient-to-br from-hospital-cyan to-cyan-600 rounded-xl shadow-md text-white">
+          <app-icon name="file-text" [size]="26"></app-icon>
+        </div>
+        <div>
+          <h1 class="text-2xl font-bold text-gray-800">Gestión de Expedientes</h1>
+          <p class="text-gray-500 text-sm mt-0.5">Historial completo y auditoría de registros</p>
+        </div>
       </div>
-      <button (click)="cargarDatos()" class="btn-secondary flex items-center gap-2">
-        <app-icon name="refresh-cw" [size]="18"></app-icon> Actualizar
+
+      <button (click)="cargarDatos()"
+              [disabled]="isLoading"
+              class="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 rounded-lg
+                     hover:bg-gray-50 hover:border-hospital-cyan transition-all shadow-sm
+                     disabled:opacity-50 disabled:cursor-not-allowed">
+        <app-icon name="refresh-cw" [size]="18" [className]="isLoading ? 'animate-spin text-hospital-cyan' : 'text-gray-600'"></app-icon>
+        <span class="font-medium text-gray-700">Actualizar</span>
       </button>
     </div>
 
-    <div class="card p-4">
-      <div class="flex gap-4">
-        <div class="flex-1 relative">
-          <app-icon name="search" [size]="20" className="absolute left-3 top-3 text-gray-400"></app-icon>
-          <input type="text" [(ngModel)]="searchTerm" (input)="aplicarFiltros()"
-                 placeholder="Buscar por HC, Nombre, Código..."
-                 class="w-full pl-10 pr-4 py-2 border rounded-lg">
+    <!-- ===================================================================
+         FILTROS 
+         =================================================================== -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-bold text-gray-700 flex items-center gap-2">
+          <app-icon name="filter" [size]="18" className="text-hospital-cyan"></app-icon>
+          <span>Filtros de Búsqueda</span>
+        </h3>
+        <button (click)="limpiarFiltros()"
+                class="text-xs text-hospital-cyan hover:text-cyan-700 font-medium flex items-center gap-1
+                       px-3 py-1.5 rounded-lg hover:bg-cyan-50 transition-colors">
+          <app-icon name="x" [size]="14"></app-icon>
+          <span>Limpiar</span>
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+
+        <!-- Filtro HC -->
+        <div>
+          <label class="text-xs font-bold text-gray-500 uppercase mb-1.5 block">Historia Clínica</label>
+          <div class="relative">
+            <div class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+              <app-icon name="hash" [size]="16"></app-icon>
+            </div>
+            <input type="text"
+                   [(ngModel)]="filtros.hc"
+                   (input)="aplicarFiltros()"
+                   placeholder="Ej: 123456"
+                   class="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm
+                          focus:ring-2 focus:ring-hospital-cyan focus:border-transparent
+                          outline-none transition-all">
+          </div>
         </div>
-        <select [(ngModel)]="filtroEstado" (change)="aplicarFiltros()" class="p-2 border rounded-lg">
-          <option value="">Todos los estados</option>
-          <option value="EnPiso">En Piso</option>
-          <option value="PendienteDeRecojo">Pendiente Recojo</option>
-          <option value="EnMortuorio">En Mortuorio</option>
-          <option value="Retirado">Retirado</option>
-        </select>
+
+        <!-- Filtro Nombre -->
+        <div>
+          <label class="text-xs font-bold text-gray-500 uppercase mb-1.5 block">Paciente</label>
+          <div class="relative">
+            <div class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+              <app-icon name="user" [size]="16"></app-icon>
+            </div>
+            <input type="text"
+                   [(ngModel)]="filtros.nombre"
+                   (input)="aplicarFiltros()"
+                   placeholder="Buscar por nombre..."
+                   class="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm
+                          focus:ring-2 focus:ring-hospital-cyan focus:border-transparent
+                          outline-none transition-all">
+          </div>
+        </div>
+
+        <!-- Filtro Documento -->
+        <div>
+          <label class="text-xs font-bold text-gray-500 uppercase mb-1.5 block">Documento</label>
+          <div class="relative">
+            <div class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+              <app-icon name="credit-card" [size]="16"></app-icon>
+            </div>
+            <input type="text"
+                   [(ngModel)]="filtros.documento"
+                   (input)="aplicarFiltros()"
+                   placeholder="DNI, CE, Pasaporte..."
+                   class="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm
+                          focus:ring-2 focus:ring-hospital-cyan focus:border-transparent
+                          outline-none transition-all">
+          </div>
+        </div>
+
+        <!-- Filtro Estado -->
+        <div>
+          <label class="text-xs font-bold text-gray-500 uppercase mb-1.5 block">Estado</label>
+          <div class="relative">
+            <div class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10">
+              <app-icon name="info" [size]="16"></app-icon>
+            </div>
+            <select [(ngModel)]="filtros.estado"
+                    (change)="aplicarFiltros()"
+                    class="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg text-sm
+                           focus:ring-2 focus:ring-hospital-cyan focus:border-transparent
+                           outline-none bg-white appearance-none cursor-pointer transition-all">
+              <option value="">Todos los estados</option>
+              <option value="EnPiso">En Piso</option>
+              <option value="PendienteDeRecojo">Pendiente Recojo</option>
+              <option value="EnTrasladoMortuorio">En Traslado</option>
+              <option value="EnBandeja">En Mortuorio</option>
+              <option value="PendienteRetiro">Por Retirar</option>
+              <option value="Retirado">Retirado</option>
+            </select>
+            <div class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+              <app-icon name="chevron-down" [size]="14"></app-icon>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filtro Fechas -->
+        <div class="lg:col-span-2 flex gap-3">
+          <div class="flex-1">
+            <label class="text-xs font-bold text-gray-500 uppercase mb-1.5 block">Desde</label>
+            <input type="date"
+                   [(ngModel)]="filtros.fechaInicio"
+                   (change)="aplicarFiltros()"
+                   class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm
+                          focus:ring-2 focus:ring-hospital-cyan focus:border-transparent
+                          outline-none transition-all">
+          </div>
+          <div class="flex-1">
+            <label class="text-xs font-bold text-gray-500 uppercase mb-1.5 block">Hasta</label>
+            <input type="date"
+                   [(ngModel)]="filtros.fechaFin"
+                   (change)="aplicarFiltros()"
+                   class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm
+                          focus:ring-2 focus:ring-hospital-cyan focus:border-transparent
+                          outline-none transition-all">
+          </div>
+        </div>
       </div>
     </div>
 
-    <div class="card overflow-hidden">
-      <table class="w-full text-sm text-left">
-        <thead class="bg-gray-50 text-gray-600 font-bold uppercase text-xs border-b">
-          <tr>
-            <th class="px-6 py-3">Código</th>
-            <th class="px-6 py-3">Paciente</th>
-            <th class="px-6 py-3">HC</th>
-            <th class="px-6 py-3">Fecha</th>
-            <th class="px-6 py-3">Estado</th>
-            <th class="px-6 py-3 text-right">Acciones</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-100">
-          <tr *ngFor="let item of expedientesPaginados" class="hover:bg-blue-50 transition">
-            <td class="px-6 py-3 font-mono font-bold text-hospital-cyan">{{ item.codigoExpediente }}</td>
-            <td class="px-6 py-3 font-semibold">{{ item.nombreCompleto }}</td>
-            <td class="px-6 py-3">{{ item.hc }}</td>
-            <td class="px-6 py-3">{{ item.fechaHoraFallecimiento | date:'dd/MM/yyyy HH:mm' }}</td>
-            <td class="px-6 py-3">
-              <ng-container *ngIf="getBadgeInfo(item.estadoActual) as badge">
-                <span [class]="badge.classes">
-                  <app-icon [name]="badge.icon" [size]="14"></app-icon> {{ badge.label }}
-                </span>
-              </ng-container>
-            </td>
-            <td class="px-6 py-3 flex justify-end gap-2">
-              <button (click)="reimprimir(item.expedienteID)" title="Reimprimir" class="text-gray-400 hover:text-purple-600">
-                <app-icon name="printer" [size]="18"></app-icon>
-              </button>
-              <button (click)="verDetalle(item.expedienteID)" title="Ver" class="text-gray-400 hover:text-hospital-cyan">
-                <app-icon name="eye" [size]="18"></app-icon>
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <!-- ===================================================================
+         TABLA DE RESULTADOS
+         =================================================================== -->
+    <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
 
-      <div class="p-4 border-t border-gray-100 flex justify-between items-center">
-        <span class="text-sm text-gray-500">Página {{ paginaActual }} de {{ totalPaginas }}</span>
-        <div class="flex gap-2">
-          <button (click)="paginaAnterior()" [disabled]="paginaActual === 1" class="p-1 border rounded disabled:opacity-50"><app-icon name="chevron-left"></app-icon></button>
-          <button (click)="paginaSiguiente()" [disabled]="paginaActual === totalPaginas" class="p-1 border rounded disabled:opacity-50"><app-icon name="chevron-right"></app-icon></button>
+      <!-- Loading Overlay -->
+      <div *ngIf="isLoading"
+           class="p-16 flex flex-col items-center justify-center text-gray-400">
+        <app-icon name="refresh-cw" [size]="48" className="animate-spin mb-4 text-hospital-cyan"></app-icon>
+        <p class="font-medium">Cargando expedientes...</p>
+      </div>
+
+      <!-- Empty State -->
+      <div *ngIf="!isLoading && expedientesFiltrados.length === 0"
+           class="p-16 flex flex-col items-center justify-center text-gray-400">
+        <app-icon name="search" [size]="56" className="mb-4 opacity-40"></app-icon>
+        <p class="font-semibold text-lg text-gray-600">No se encontraron resultados</p>
+        <p class="text-sm mt-1">Intenta ajustar los filtros de búsqueda</p>
+      </div>
+
+      <!-- Tabla -->
+      <div *ngIf="!isLoading && expedientesFiltrados.length > 0" class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-gradient-to-r from-gray-50 to-gray-100 text-gray-700 font-bold uppercase text-xs border-b-2 border-gray-200">
+            <tr>
+              <!-- Código Expediente -->
+              <th class="px-4 py-3.5 text-center cursor-pointer hover:bg-gray-200 transition-colors w-[160px]"
+                  (click)="ordenarPor('hc')">
+                <div class="flex items-center justify-center gap-1.5">
+                  <span>Código Expediente</span>
+                  <app-icon name="chevron-down"
+                            [size]="14"
+                            [className]="ordenColumna === 'hc' ? 'text-hospital-cyan' : 'text-gray-400'"
+                            *ngIf="ordenColumna === 'hc'"></app-icon>
+                </div>
+              </th>
+
+              <!-- Paciente -->
+              <th class="px-4 py-3.5 text-center cursor-pointer hover:bg-gray-200 transition-colors w-[260px]"
+                  (click)="ordenarPor('nombre')">
+                <div class="flex items-center justify-center gap-1.5">
+                  <span>Paciente</span>
+                  <app-icon name="chevron-down"
+                            [size]="14"
+                            [className]="ordenColumna === 'nombre' ? 'text-hospital-cyan' : 'text-gray-400'"
+                            *ngIf="ordenColumna === 'nombre'"></app-icon>
+                </div>
+              </th>
+
+              <!-- HC -->
+              <th class="px-4 py-3.5 text-center w-[100px]">HC</th>
+
+              <!-- Fecha -->
+              <th class="px-4 py-3.5 text-center cursor-pointer hover:bg-gray-200 transition-colors w-[140px]"
+                  (click)="ordenarPor('fecha')">
+                <div class="flex items-center justify-center gap-1.5">
+                  <span>Fecha</span>
+                  <app-icon name="chevron-down"
+                            [size]="14"
+                            [className]="ordenColumna === 'fecha' ? 'text-hospital-cyan' : 'text-gray-400'"
+                            *ngIf="ordenColumna === 'fecha'"></app-icon>
+                </div>
+              </th>
+
+              <!-- Estado -->
+              <th class="px-4 py-3.5 text-center cursor-pointer hover:bg-gray-200 transition-colors w-[180px]"
+                  (click)="ordenarPor('estado')">
+                <div class="flex items-center justify-center gap-1.5">
+                  <span>Estado</span>
+                  <app-icon name="chevron-down"
+                            [size]="14"
+                            [className]="ordenColumna === 'estado' ? 'text-hospital-cyan' : 'text-gray-400'"
+                            *ngIf="ordenColumna === 'estado'"></app-icon>
+                </div>
+              </th>
+
+              <!-- Acciones -->
+              <th class="px-4 py-3.5 text-center w-[120px]">Acciones</th>
+            </tr>
+          </thead>
+
+          <tbody class="divide-y divide-gray-100">
+            <tr *ngFor="let item of paginatedItems"
+                class="hover:bg-blue-50 transition-colors">
+
+              <!-- Código Expediente -->
+              <td class="px-4 py-3.5 text-center">
+                <span class="font-mono font-bold text-hospital-cyan text-xs bg-cyan-50 px-2.5 py-1 rounded-md border border-cyan-200">
+                  {{ item.codigoExpediente }}
+                </span>
+              </td>
+
+              <!-- Paciente -->
+              <td class="px-4 py-3.5 text-center" >
+                <div class="font-semibold text-gray-800">{{ item.nombreCompleto }}</div>
+                <div class="text-xs text-gray-500 flex items-center justify-center gap-1 mt-0.5">
+                  <app-icon name="credit-card" [size]="12"></app-icon>
+                  <span>{{ item.tipoDocumento }} {{ item.numeroDocumento }}</span>
+                </div>
+              </td>
+
+              <!-- HC -->
+              <td class="px-4 py-3.5 text-center font-mono text-gray-700 font-medium">
+                {{ item.hc }}
+              </td>
+
+              <!-- Fecha -->
+              <td class="px-4 py-3.5 text-center">
+                <div class="text-gray-800 font-medium">{{ item.fechaHoraFallecimiento | date:'dd/MM/yyyy' }}</div>
+                <div class="text-xs text-gray-400">{{ item.fechaHoraFallecimiento | date:'HH:mm' }}</div>
+              </td>
+
+              <!-- Estado -->
+              <td class="px-4 py-3.5 text-center">
+                <ng-container *ngIf="getBadgeInfo(item.estadoActual) as badge">
+                  <span [class]="badge.classes + ' whitespace-nowrap shadow-sm'">
+                    <app-icon [name]="badge.icon" [size]="14"></app-icon>
+                    <span>{{ badge.label }}</span>
+                  </span>
+                </ng-container>
+              </td>
+
+              <!-- Acciones -->
+              <td class="px-4 py-3.5 text-center">
+                <div class="flex justify-center gap-2">
+                  <button (click)="reimprimir(item.expedienteID)"
+                          class="p-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50
+                                 rounded-lg transition-colors"
+                          title="Reimprimir Brazalete">
+                    <app-icon name="printer" [size]="18"></app-icon>
+                  </button>
+                  <button (click)="verDetalle(item.expedienteID)"
+                          class="p-2 text-hospital-cyan hover:text-cyan-700 hover:bg-cyan-50
+                                 rounded-lg transition-colors"
+                          title="Ver Detalle">
+                    <app-icon name="eye" [size]="18"></app-icon>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Footer Paginación -->
+      <div *ngIf="!isLoading && expedientesFiltrados.length > 0"
+           class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-3">
+
+        <span class="text-xs text-gray-600">
+          Mostrando <span class="font-bold text-gray-800">{{ paginatedItems.length }}</span>
+          de <span class="font-bold text-gray-800">{{ totalItems }}</span> registros
+        </span>
+
+        <div class="flex items-center gap-2">
+          <button (click)="paginaAnterior()"
+                  [disabled]="paginaActual === 1"
+                  class="p-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-100
+                         hover:border-hospital-cyan disabled:opacity-40 disabled:cursor-not-allowed
+                         transition-all shadow-sm">
+            <app-icon name="chevron-left" [size]="16"></app-icon>
+          </button>
+
+          <span class="text-sm font-semibold text-gray-700 px-3 py-1.5 bg-white border border-gray-200 rounded-lg min-w-[100px] text-center">
+            Página {{ paginaActual }} / {{ totalPaginas }}
+          </span>
+
+          <button (click)="paginaSiguiente()"
+                  [disabled]="paginaActual === totalPaginas"
+                  class="p-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-100
+                         hover:border-hospital-cyan disabled:opacity-40 disabled:cursor-not-allowed
+                         transition-all shadow-sm">
+            <app-icon name="chevron-right" [size]="16"></app-icon>
+          </button>
         </div>
       </div>
     </div>

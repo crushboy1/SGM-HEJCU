@@ -1,12 +1,15 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Microsoft.AspNetCore.SignalR; // ⭐ SignalR
+using Microsoft.Extensions.Logging;
 using SisMortuorio.Business.DTOs;
+using SisMortuorio.Business.DTOs.Notificacion; // ⭐ DTO Notificación
+using SisMortuorio.Business.Hubs; // ⭐ Hubs
 using SisMortuorio.Data.Entities;
 using SisMortuorio.Data.Entities.Enums;
 using SisMortuorio.Data.Repositories;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using System;
 
 namespace SisMortuorio.Business.Services
 {
@@ -20,22 +23,25 @@ namespace SisMortuorio.Business.Services
         private readonly IUsuarioRepository _usuarioRepository;
         private readonly IStateMachineService _stateMachineService; // Inyectar la máquina de estados
         private readonly ILogger<CustodiaService> _logger;
+        private readonly IHubContext<SgmHub, ISgmClient> _hubContext;
 
         /// <summary>
         /// Constructor para inyectar todas las dependencias necesarias.
         /// </summary>
         public CustodiaService(
-            IExpedienteRepository expedienteRepository,
-            ICustodiaRepository custodiaRepository,
-            IUsuarioRepository usuarioRepository,
-            IStateMachineService stateMachineService, // Recibir la interfaz inyectada
-            ILogger<CustodiaService> logger)
+             IExpedienteRepository expedienteRepository,
+             ICustodiaRepository custodiaRepository,
+             IUsuarioRepository usuarioRepository,
+             IStateMachineService stateMachineService,
+             ILogger<CustodiaService> logger,
+             IHubContext<SgmHub, ISgmClient> hubContext) // ⭐ 2. Recibir en constructor
         {
             _expedienteRepository = expedienteRepository;
             _custodiaRepository = custodiaRepository;
             _usuarioRepository = usuarioRepository;
-            _stateMachineService = stateMachineService; // Asignar el servicio
+            _stateMachineService = stateMachineService;
             _logger = logger;
+            _hubContext = hubContext;
         }
 
         /// <summary>
@@ -126,7 +132,50 @@ namespace SisMortuorio.Business.Services
                 usuarioDestino.Rol?.Name ?? "Sin rol",
                 estadoAnterior,
                 expediente.EstadoActual);
+            // ============================================================
+            // ⭐ 7. NOTIFICACIONES SIGNALR (El aviso a todos)
+            // ============================================================
+            try
+            {
+                // A. Notificar a VIGILANCIA MORTUORIO (¡Prepárense!)
+                var alertaVigilancia = new NotificacionDTO
+                {
+                    Titulo = "Cuerpo en Camino",
+                    Mensaje = $"El técnico {usuarioDestino.NombreCompleto} está trasladando a {expediente.NombreCompleto} al mortuorio.",
+                    Tipo = "warning", // Amarillo para llamar la atención
+                    CodigoExpediente = expediente.CodigoExpediente,
+                    ExpedienteId = expediente.ExpedienteID,
+                    RolesDestino = "VigilanciaMortuorio,VigilanteSupervisor,Administrador",
+                    RequiereAccion = true,
+                    AccionSugerida = "Verificar Ingreso",
+                    UrlNavegacion = "/verificacion-ingreso" // Lleva directo a la pantalla de escaneo
+                };
 
+                // B. Notificar a ENFERMERÍA (Confirmación de recojo)
+                var confirmacionEnfermeria = new NotificacionDTO
+                {
+                    Titulo = "Cuerpo Recogido",
+                    Mensaje = $"La ambulancia ha retirado el cuerpo de {expediente.NombreCompleto}. Cama liberada.",
+                    Tipo = "success",
+                    CodigoExpediente = expediente.CodigoExpediente,
+                    RolesDestino = "EnfermeriaTecnica,EnfermeriaLicenciada",
+                    RequiereAccion = false
+                };
+
+                // Enviar ambos mensajes en paralelo
+                await Task.WhenAll(
+                    _hubContext.Clients.Groups(["VigilanciaMortuorio", "VigilanteSupervisor", "Administrador"])
+                        .RecibirNotificacion(alertaVigilancia),
+
+                    _hubContext.Clients.Groups(["EnfermeriaTecnica", "EnfermeriaLicenciada"])
+                        .RecibirNotificacion(confirmacionEnfermeria)
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error enviando notificaciones SignalR en CustodiaService");
+            }
+            // ============================================================
             // 8. Mapear a DTO de respuesta
             return new TraspasoRealizadoDTO
             {

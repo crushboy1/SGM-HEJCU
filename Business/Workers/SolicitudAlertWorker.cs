@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.SignalR;
+using SisMortuorio.Business.DTOs.Notificacion;
 using SisMortuorio.Business.DTOs.Solicitud;
 using SisMortuorio.Business.Hubs;
 using SisMortuorio.Data.Entities;
@@ -7,82 +8,178 @@ using SisMortuorio.Data.Repositories;
 namespace SisMortuorio.Business.Workers
 {
     /// <summary>
-    /// Servicio en segundo plano (Worker) que monitorea el tiempo de respuesta
-    /// de las Solicitudes de Corrección.
-    /// Si una solicitud supera las 2 horas sin resolverse, envía una alerta.
+    /// Worker que monitorea el tiempo de respuesta de Solicitudes de Corrección de Expedientes.
+    /// 
+    /// Responsabilidades:
+    /// 1. Verificar cada 15 minutos si hay solicitudes con >2h sin resolver
+    /// 2. Enviar alerta específica (RecibirAlertaSolicitudesVencidas) con lista de solicitudes
+    /// 3. Enviar notificación genérica (RecibirNotificacion) al Administrador
+    /// 
+    /// Contexto de negocio:
+    /// Cuando Enfermería detecta un error en un expediente (datos incorrectos, pertenencias faltantes),
+    /// crea una Solicitud de Corrección. El Administrador debe revisar y resolver estas solicitudes.
+    /// Si una solicitud supera 2 horas sin respuesta, se considera "vencida" y requiere atención urgente.
+    /// 
+    /// Destinatarios:
+    /// - Administrador (responsable de aprobar correcciones)
+    /// 
+    /// Configuración:
+    /// - Intervalo: 15 minutos
+    /// - Umbral de alerta: 2 horas
     /// </summary>
-    public class SolicitudAlertWorker : BackgroundService
+    public class SolicitudAlertWorker(
+        ILogger<SolicitudAlertWorker> logger,
+        IServiceScopeFactory scopeFactory,
+        IHubContext<SgmHub, ISgmClient> hubContext) : BackgroundService
     {
-        private readonly ILogger<SolicitudAlertWorker> _logger;
-        private readonly IServiceScopeFactory _scopeFactory;
-        private readonly IHubContext<SgmHub, ISgmClient> _hubContext;
+        private readonly ILogger<SolicitudAlertWorker> _logger = logger;
+        private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
+        private readonly IHubContext<SgmHub, ISgmClient> _hubContext = hubContext;
 
-        // Define cada cuánto tiempo se ejecutará el worker
-        private readonly TimeSpan _timerDelay = TimeSpan.FromMinutes(15); // 15 minutos
-        private const int HorasAlerta = 2; // 2 horas
+        // Configuración del worker
+        private readonly TimeSpan _timerDelay = TimeSpan.FromMinutes(15); // Ejecutar cada 15 min
+        private const int HorasAlerta = 2; // Umbral: 2 horas
 
-        public SolicitudAlertWorker(
-            ILogger<SolicitudAlertWorker> logger,
-            IServiceScopeFactory scopeFactory,
-            IHubContext<SgmHub, ISgmClient> hubContext)
-        {
-            _logger = logger;
-            _scopeFactory = scopeFactory;
-            _hubContext = hubContext;
-        }
+        // Rol responsable de resolver solicitudes
+        private const string RolDestino = "Administrador";
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("Worker de Alerta de Solicitudes (> 2h) iniciado.");
+            _logger.LogInformation(
+                "SolicitudAlertWorker iniciado. Intervalo: {Minutos} min, Umbral: {Horas}h",
+                _timerDelay.TotalMinutes,
+                HorasAlerta
+            );
 
+            // Loop infinito hasta que la app se detenga
             while (!stoppingToken.IsCancellationRequested)
             {
                 try
                 {
-                    _logger.LogInformation("Worker de Solicitudes ejecutando chequeo (cada {Minutos} min)...", _timerDelay.TotalMinutes);
-
-                    // Creamos un nuevo "scope" para obtener servicios Scoped
-                    using (var scope = _scopeFactory.CreateScope())
-                    {
-                        var solicitudRepo = scope.ServiceProvider.GetRequiredService<ISolicitudCorreccionRepository>();
-
-                        // 1. Buscar solicitudes pendientes que superen las 2 horas
-                        var solicitudesVencidas = await solicitudRepo.GetSolicitudesConAlertaAsync(HorasAlerta);
-
-                        if (solicitudesVencidas.Any())
-                        {
-                            _logger.LogWarning("¡ALERTA DE SOLICITUDES VENCIDAS! Se encontraron {Count} solicitudes con más de {Horas}h sin resolver.",
-                                solicitudesVencidas.Count, HorasAlerta);
-
-                            // 2. Mapear a DTOs para enviar al cliente
-                            var dtos = solicitudesVencidas.Select(MapToSolicitudDTO).ToList();
-
-                            // 3. Enviar notificación por SignalR a todos los clientes
-                            // TODO: En el futuro, enviar solo al grupo "Enfermeria"
-                            await _hubContext.Clients.All.RecibirAlertaSolicitudesVencidas(dtos);
-                        }
-                        else
-                        {
-                            _logger.LogInformation("Chequeo de solicitudes vencidas finalizado. 0 alertas encontradas.");
-                        }
-                    }
+                    await VerificarSolicitudesVencidasAsync(stoppingToken);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error en el Worker de Alerta de Solicitudes.");
+                    _logger.LogError(
+                        ex,
+                        "SolicitudAlertWorker: Error inesperado durante verificación"
+                    );
+                    // NO re-throw - el worker debe continuar ejecutándose
                 }
 
-                // Esperar al siguiente ciclo
-                await Task.Delay(_timerDelay, stoppingToken);
+                // Esperar hasta la próxima ejecución
+                try
+                {
+                    await Task.Delay(_timerDelay, stoppingToken);
+                }
+                catch (TaskCanceledException)
+                {
+                    _logger.LogInformation("SolicitudAlertWorker: Cancelación solicitada, deteniendo...");
+                    break;
+                }
             }
 
-            _logger.LogInformation("Worker de Alerta de Solicitudes detenido.");
+            _logger.LogInformation("SolicitudAlertWorker detenido");
         }
 
         /// <summary>
-        /// Método privado para mapear Entidad -> DTO.
+        /// Verifica solicitudes de corrección que superan el tiempo de respuesta esperado.
+        /// Envía alertas por SignalR si encuentra casos.
         /// </summary>
-        private SolicitudCorreccionDTO MapToSolicitudDTO(SolicitudCorreccionExpediente solicitud)
+        private async Task VerificarSolicitudesVencidasAsync(CancellationToken _)
+        {
+            _logger.LogDebug("SolicitudAlertWorker: Iniciando verificación de solicitudes vencidas");
+
+            // Crear scope para servicios Scoped
+            using var scope = _scopeFactory.CreateScope();
+
+            var solicitudRepo = scope.ServiceProvider.GetRequiredService<ISolicitudCorreccionRepository>();
+
+            try
+            {
+                // 1. Buscar solicitudes pendientes que superen el umbral
+                var solicitudesVencidas = await solicitudRepo.GetSolicitudesConAlertaAsync(HorasAlerta);
+
+                if (solicitudesVencidas.Count == 0)
+                {
+                    _logger.LogDebug(
+                        "SolicitudAlertWorker: No se encontraron solicitudes con >{Horas}h sin resolver",
+                        HorasAlerta
+                    );
+                    return;
+                }
+
+                // 2. Loggear alerta encontrada
+                _logger.LogWarning(
+                    "SolicitudAlertWorker: ¡ALERTA! {Count} solicitud(es) con >{Horas}h sin resolver detectadas",
+                    solicitudesVencidas.Count,
+                    HorasAlerta
+                );
+
+                // 3. Mapear entidades a DTOs
+                var dtos = solicitudesVencidas.Select(MapToSolicitudDTO).ToList();
+
+                // 4. Enviar alerta específica de solicitudes vencidas (lista de solicitudes)
+                await _hubContext.Clients
+                    .Group(RolDestino)
+                    .RecibirAlertaSolicitudesVencidas(dtos);
+
+                _logger.LogInformation(
+                    "SolicitudAlertWorker: Alerta específica enviada a rol: {Rol}",
+                    RolDestino
+                );
+
+                // 5. Enviar notificación genérica (para dropdown en header)
+                var notificacion = new NotificacionDTO
+                {
+                    Titulo = "Solicitudes de Corrección Vencidas",
+                    Mensaje = $"{solicitudesVencidas.Count} solicitud(es) de corrección llevan más de {HorasAlerta} horas sin resolver. Requiere atención inmediata.",
+                    Tipo = "error",
+                    RolesDestino = RolDestino,
+                    RequiereAccion = true,
+                    AccionSugerida = "Revisar Solicitudes",
+                    UrlNavegacion = "/solicitudes-correccion"
+                };
+
+                await _hubContext.Clients
+                    .Group(RolDestino)
+                    .RecibirNotificacion(notificacion);
+
+                _logger.LogInformation(
+                    "SolicitudAlertWorker: Notificación genérica enviada. Total alertas: {Count}",
+                    solicitudesVencidas.Count
+                );
+
+                // 6. Loggear detalles de cada solicitud vencida (para auditoría)
+                foreach (var solicitud in solicitudesVencidas)
+                {
+                    var tiempo = solicitud.TiempoTranscurrido();
+                    _logger.LogWarning(
+                        "SolicitudAlertWorker: Solicitud vencida - ID: {SolicitudID}, Expediente: {CodigoExpediente}, " +
+                        "Solicitante: {Solicitante}, Tiempo: {Horas}h {Minutos}m",
+                        solicitud.SolicitudID,
+                        solicitud.Expediente?.CodigoExpediente ?? "N/A",
+                        solicitud.UsuarioSolicita?.NombreCompleto ?? "N/A",
+                        (int)tiempo.TotalHours,
+                        tiempo.Minutes
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "SolicitudAlertWorker: Error al verificar solicitudes o enviar alertas"
+                );
+                throw; // Re-throw para que el catch del ExecuteAsync lo maneje
+            }
+        }
+
+        /// <summary>
+        /// Mapea una entidad SolicitudCorreccionExpediente a su DTO correspondiente.
+        /// Calcula tiempo transcurrido y determina si supera el umbral de alerta.
+        /// </summary>
+        private static SolicitudCorreccionDTO MapToSolicitudDTO(SolicitudCorreccionExpediente solicitud)
         {
             var tiempo = solicitud.TiempoTranscurrido();
             var tiempoTexto = $"{(int)tiempo.TotalHours}h {tiempo.Minutes}m";
@@ -105,6 +202,29 @@ namespace SisMortuorio.Business.Workers
                 TiempoTranscurrido = tiempoTexto,
                 SuperaTiempoAlerta = solicitud.SuperaTiempoAlerta()
             };
+        }
+
+        /// <summary>
+        /// Se ejecuta al detener la aplicación.
+        /// Permite ejecutar una última verificación antes de apagar.
+        /// </summary>
+        public override async Task StopAsync(CancellationToken cancellationToken)
+        {
+            _logger.LogInformation("SolicitudAlertWorker: Deteniendo worker...");
+
+            try
+            {
+                // Verificación final antes de apagar
+                await VerificarSolicitudesVencidasAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "SolicitudAlertWorker: Error en verificación final");
+            }
+
+            await base.StopAsync(cancellationToken);
+
+            _logger.LogInformation("SolicitudAlertWorker: Worker detenido completamente");
         }
     }
 }
