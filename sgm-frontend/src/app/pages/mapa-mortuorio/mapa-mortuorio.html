@@ -1,25 +1,27 @@
 <div class="min-h-screen bg-hospital-bg">
 
   <!-- ===================================================================
-       HEADER
+       HEADER MODERNO (sin anidar div en h1)
        =================================================================== -->
-  <div class="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-10 shadow-sm">
+  <div class="bg-gradient-to-r from-purple-600 to-purple-700 border-b border-purple-800 px-6 py-4 sticky top-0 z-10 shadow-lg">
     <div class="max-w-7xl mx-auto flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <div class="h-10 w-10 bg-purple-600 rounded-lg flex items-center justify-center shadow-md text-white">
-          <app-icon name="building-2" [size]="24"></app-icon>
+        <div class="p-2.5 bg-white/20 backdrop-blur-sm rounded-xl shadow-md text-white">
+          <app-icon name="building-2" [size]="26"></app-icon>
         </div>
         <div>
-          <h1 class="text-xl font-bold text-gray-800">Mapa del Mortuorio</h1>
-          <p class="text-xs text-gray-500">Gestión visual de ubicación de cadáveres</p>
+          <h1 class="text-xl font-bold text-white">Mapa del Mortuorio</h1>
+          <p class="text-xs text-purple-100">Gestión visual en tiempo real</p>
         </div>
       </div>
 
       <!-- Botón recargar -->
       <button (click)="recargar()"
-              class="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all hover:scale-110"
+              [disabled]="isLoading"
+              class="p-2.5 text-white hover:bg-white/20 rounded-lg transition-all hover:scale-110
+                     disabled:opacity-50 disabled:cursor-not-allowed"
               title="Recargar mapa">
-        <app-icon name="refresh-cw" [size]="20"></app-icon>
+        <app-icon name="refresh-cw" [size]="20" [className]="isLoading ? 'animate-spin' : ''"></app-icon>
       </button>
     </div>
   </div>
@@ -30,19 +32,47 @@
   <div class="max-w-7xl mx-auto p-6 space-y-6">
 
     <!-- ===================================================================
-         ESTADÍSTICAS RÁPIDAS
+         🚨 ALERTA DE OCUPACIÓN CRÍTICA
          =================================================================== -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 animate-fade-in">
+    <div *ngIf="alertaOcupacionActiva"
+         class="bg-gradient-to-r from-red-50 to-red-100 border-l-4 border-red-600 p-4 rounded-xl shadow-md
+                flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fade-in">
+      <div class="flex items-center gap-3">
+        <div class="text-red-600 bg-white p-2.5 rounded-full shadow-sm">
+          <app-icon name="alert-triangle" [size]="24"></app-icon>
+        </div>
+        <div>
+          <h3 class="font-bold text-red-800 flex items-center gap-2">
+            <span>¡Capacidad Crítica!</span>
+            <span class="text-xs bg-red-200 text-red-800 px-2 py-0.5 rounded-full font-mono">
+              >70%
+            </span>
+          </h3>
+          <p class="text-sm text-red-700 mt-0.5">
+            El mortuorio ha superado el umbral de ocupación. Se recomienda priorizar salidas.
+          </p>
+        </div>
+      </div>
+      <div class="text-center bg-white px-4 py-2 rounded-lg shadow-sm">
+        <span class="text-4xl font-bold text-red-600">{{ porcentajeOcupacion }}%</span>
+        <span class="text-xs font-bold text-red-400 block uppercase tracking-wide">Ocupado</span>
+      </div>
+    </div>
+
+    <!-- ===================================================================
+         KPIs MEJORADOS (Estilo Compacto)
+         =================================================================== -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 animate-fade-in">
 
       <!-- Total Disponibles -->
-      <div class="card border-l-4 border-green-500">
+      <div class="bg-white rounded-xl shadow-sm border-l-4 border-green-500 hover:shadow-md transition-shadow">
         <div class="p-4">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-xs font-bold text-gray-500 uppercase">Disponibles</p>
-              <p class="text-3xl font-bold text-green-600 mt-1">{{ totalDisponibles }}</p>
+              <p class="text-xs font-bold text-gray-500 uppercase mb-1">Disponibles</p>
+              <p class="text-3xl font-bold text-green-600">{{ totalDisponibles }}</p>
             </div>
-            <div class="p-3 bg-green-100 rounded-lg text-green-600">
+            <div class="p-2.5 bg-green-50 rounded-lg text-green-600">
               <app-icon name="circle-check" [size]="24"></app-icon>
             </div>
           </div>
@@ -50,44 +80,49 @@
       </div>
 
       <!-- Total Ocupadas -->
-      <div class="card border-l-4 border-red-500">
+      <div class="bg-white rounded-xl shadow-sm border-l-4 border-red-500 hover:shadow-md transition-shadow">
         <div class="p-4">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-xs font-bold text-gray-500 uppercase">Ocupadas</p>
-              <p class="text-3xl font-bold text-red-600 mt-1">{{ totalOcupadas }}</p>
+              <p class="text-xs font-bold text-gray-500 uppercase mb-1">Ocupadas</p>
+              <p class="text-3xl font-bold text-red-600">{{ totalOcupadas }}</p>
             </div>
-            <div class="p-3 bg-red-100 rounded-lg text-red-600">
-              <app-icon name="alert-circle" [size]="24"></app-icon>
+            <div class="p-2.5 bg-red-50 rounded-lg text-red-600">
+              <app-icon name="archive" [size]="24"></app-icon>
             </div>
           </div>
         </div>
       </div>
 
       <!-- Ocupación % -->
-      <div class="card border-l-4 border-blue-500">
+      <div class="bg-white rounded-xl shadow-sm border-l-4 hover:shadow-md transition-shadow"
+           [ngClass]="alertaOcupacionActiva ? 'border-red-500 bg-red-50' : 'border-blue-500'">
         <div class="p-4">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-xs font-bold text-gray-500 uppercase">Ocupación</p>
-              <p class="text-3xl font-bold text-blue-600 mt-1">{{ porcentajeOcupacion }}%</p>
+              <p class="text-xs font-bold text-gray-500 uppercase mb-1">Ocupación</p>
+              <p class="text-3xl font-bold"
+                 [ngClass]="alertaOcupacionActiva ? 'text-red-600' : 'text-blue-600'">
+                {{ porcentajeOcupacion }}%
+              </p>
             </div>
-            <div class="p-3 bg-blue-100 rounded-lg text-blue-600">
-              <app-icon name="clipboard-list" [size]="24"></app-icon>
+            <div class="p-2.5 rounded-lg"
+                 [ngClass]="alertaOcupacionActiva ? 'bg-red-100 text-red-600' : 'bg-blue-50 text-blue-600'">
+              <app-icon name="bar-chart" [size]="24"></app-icon>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Alertas -->
-      <div class="card border-l-4 border-yellow-500">
+      <!-- Con Alertas -->
+      <div class="bg-white rounded-xl shadow-sm border-l-4 border-yellow-500 hover:shadow-md transition-shadow">
         <div class="p-4">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-xs font-bold text-gray-500 uppercase">Con Alertas</p>
-              <p class="text-3xl font-bold text-yellow-600 mt-1">{{ bandejaConAlertas }}</p>
+              <p class="text-xs font-bold text-gray-500 uppercase mb-1">Con Alertas</p>
+              <p class="text-3xl font-bold text-yellow-600">{{ bandejaConAlertas }}</p>
             </div>
-            <div class="p-3 bg-yellow-100 rounded-lg text-yellow-600">
+            <div class="p-2.5 bg-yellow-50 rounded-lg text-yellow-600">
               <app-icon name="alert-triangle" [size]="24"></app-icon>
             </div>
           </div>
@@ -97,24 +132,31 @@
     </div>
 
     <!-- ===================================================================
-         LEYENDA
+         LEYENDA + FILTROS (Opcional)
          =================================================================== -->
-    <div class="card animate-fade-in" style="animation-delay: 0.1s">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 animate-fade-in" style="animation-delay: 0.1s">
       <div class="p-4">
-        <div class="flex items-center justify-between">
-          <h3 class="font-bold text-gray-700 text-sm uppercase">Leyenda</h3>
-          <div class="flex gap-6 text-sm">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <h3 class="font-bold text-gray-700 text-sm uppercase flex items-center gap-2">
+            <app-icon name="info" [size]="16" className="text-purple-600"></app-icon>
+            <span>Leyenda</span>
+          </h3>
+          <div class="flex flex-wrap gap-4 text-sm">
             <div class="flex items-center gap-2">
-              <div class="w-3 h-3 bg-green-500 rounded-full"></div>
-              <span class="text-gray-600">Disponible</span>
+              <div class="w-3 h-3 bg-green-500 rounded-full shadow-sm"></div>
+              <span class="text-gray-600 font-medium">Disponible</span>
             </div>
             <div class="flex items-center gap-2">
-              <div class="w-3 h-3 bg-red-500 rounded-full"></div>
-              <span class="text-gray-600">Ocupada</span>
+              <div class="w-3 h-3 bg-red-500 rounded-full shadow-sm"></div>
+              <span class="text-gray-600 font-medium">Ocupada</span>
             </div>
             <div class="flex items-center gap-2">
-              <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
-              <span class="text-gray-600">Mantenimiento</span>
+              <div class="w-3 h-3 bg-yellow-500 rounded-full shadow-sm"></div>
+              <span class="text-gray-600 font-medium">Mantenimiento</span>
+            </div>
+            <div class="flex items-center gap-2 px-2 py-1 bg-red-50 rounded-md">
+              <app-icon name="alert-triangle" [size]="14" className="text-red-500"></app-icon>
+              <span class="text-red-600 font-bold text-xs">Alerta >24h</span>
             </div>
           </div>
         </div>
@@ -122,138 +164,166 @@
     </div>
 
     <!-- ===================================================================
-         GRID DE BANDEJAS
+         GRID DE BANDEJAS (Estilo Triaje/Camas)
          =================================================================== -->
     <div class="animate-fade-in-up" style="animation-delay: 0.2s">
 
       <!-- Loading State -->
-      <div *ngIf="isLoading" class="card">
-        <div class="p-12 text-center">
-          <div class="flex flex-col items-center gap-3">
-            <div class="animate-spin text-gray-400">
-              <app-icon name="refresh-cw" [size]="40"></app-icon>
+      <div *ngIf="isLoading" class="bg-white rounded-xl shadow-md border border-gray-200">
+        <div class="p-16 text-center">
+          <div class="flex flex-col items-center gap-4">
+            <div class="animate-spin text-purple-600">
+              <app-icon name="refresh-cw" [size]="48"></app-icon>
             </div>
-            <span class="text-gray-500">Cargando mapa del mortuorio...</span>
+            <span class="text-gray-600 font-medium">Cargando mapa del mortuorio...</span>
           </div>
         </div>
       </div>
 
       <!-- Error State -->
-      <div *ngIf="errorMessage && !isLoading" class="card">
-        <div class="p-12 text-center">
-          <div class="flex flex-col items-center gap-3">
+      <div *ngIf="errorMessage && !isLoading" class="bg-white rounded-xl shadow-md border border-red-200">
+        <div class="p-16 text-center">
+          <div class="flex flex-col items-center gap-4">
             <div class="text-red-500">
-              <app-icon name="alert-circle" [size]="40"></app-icon>
+              <app-icon name="alert-circle" [size]="56"></app-icon>
             </div>
-            <span class="text-red-600 font-medium">{{ errorMessage }}</span>
-            <button (click)="recargar()" class="btn-primary mt-4">
+            <p class="text-red-600 font-semibold text-lg">{{ errorMessage }}</p>
+            <button (click)="recargar()"
+                    class="px-6 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700
+                           transition-colors font-medium shadow-md">
               Reintentar
             </button>
           </div>
         </div>
       </div>
 
-      <!-- Grid de Bandejas -->
+      <!-- Grid de Bandejas (3 columnas en desktop, responsivo) -->
       <div *ngIf="!isLoading && !errorMessage"
-           class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+           class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
 
         <div *ngFor="let b of bandejas"
              (click)="seleccionarBandeja(b)"
              [class]="getBandejaClasses(b)"
-             class="relative overflow-hidden group">
+             class="transition-all duration-300 hover:-translate-y-1">
 
           <!-- Card Content -->
-          <div class="p-5">
+          <div class="p-5 h-full flex flex-col relative">
 
-            <!-- Header: Código + Estado -->
+            <!-- Indicador de Alerta (Esquina superior derecha) -->
+            <div *ngIf="b.tieneAlerta && b.estado === 'Ocupada'"
+                 class="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold
+                        px-2.5 py-1 rounded-bl-lg animate-pulse flex items-center gap-1 shadow-md z-20">
+              <app-icon name="alert-triangle" [size]="12"></app-icon>
+              <span>ALERTA</span>
+            </div>
+
+            <!-- Header: Código + Ícono de Estado -->
             <div class="flex justify-between items-start mb-4">
               <div>
-                <span class="text-3xl font-bold text-gray-800">{{ b.codigo }}</span>
-                <p class="text-xs text-gray-500 mt-1 uppercase font-semibold">{{ b.estado }}</p>
-              </div>
-              <div [class]="getBandejaIconColor(b)">
-                <app-icon [name]="getBandejaIcon(b)" [size]="28"></app-icon>
-              </div>
-            </div>
-
-            <!-- Estado: DISPONIBLE -->
-            <div *ngIf="b.estado === 'Disponible'" class="text-center py-6">
-              <div class="text-green-600 mb-2">
-                <app-icon name="circle-check" [size]="32"></app-icon>
-              </div>
-              <p class="text-green-700 font-semibold">Espacio Libre</p>
-              <p class="text-xs text-gray-500 mt-2">Click para asignar expediente</p>
-            </div>
-
-            <!-- Estado: OCUPADA -->
-            <div *ngIf="b.estado === 'Ocupada'">
-
-              <!-- Alerta visual si tiene alerta -->
-              <div *ngIf="b.tieneAlerta"
-                   class="absolute top-2 right-2 px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-full animate-pulse flex items-center gap-1">
-                <app-icon name="alert-triangle" [size]="12"></app-icon>
-                <span>ALERTA</span>
-              </div>
-
-              <!-- Info del paciente -->
-              <div class="mb-4">
-                <p class="font-bold text-gray-800 truncate text-sm mb-1">{{ b.nombrePaciente }}</p>
-                <p class="text-xs text-gray-500 font-mono">{{ b.codigoExpediente }}</p>
-              </div>
-
-              <!-- Tiempo ocupada -->
-              <div class="mb-4">
-                <div class="flex items-center gap-2 text-xs text-gray-500 mb-1">
-                  <app-icon name="clock" [size]="14"></app-icon>
-                  <span>Tiempo ocupada:</span>
-                </div>
-                <p class="font-bold text-lg"
-                   [class.text-red-600]="b.tieneAlerta"
-                   [class.text-gray-700]="!b.tieneAlerta">
-                  {{ b.tiempoOcupada }}
+                <span class="text-2xl font-bold text-gray-800 tracking-tight">{{ b.codigo }}</span>
+                <p class="text-[10px] text-gray-500 mt-1 uppercase font-bold tracking-wider">
+                  {{ b.estado }}
                 </p>
               </div>
+              <div [class]="getBandejaIconColor(b)" class="bg-gray-50 p-2.5 rounded-lg shadow-sm">
+                <app-icon [name]="getBandejaIcon(b)" [size]="24"></app-icon>
+              </div>
+            </div>
 
-              <!-- Asignado por -->
-              <div class="text-xs text-gray-500 mb-4" *ngIf="b.usuarioAsignaNombre">
-                <span class="block mb-1">Asignado por:</span>
-                <span class="font-medium text-gray-700">{{ b.usuarioAsignaNombre }}</span>
+            <!-- ============================================================
+                 ESTADO: DISPONIBLE
+                 ============================================================ -->
+            <div *ngIf="b.estado === 'Disponible'"
+                 class="text-center py-6 flex-1 flex flex-col justify-center">
+              <div class="text-green-400 mb-3 opacity-50 group-hover:opacity-100 transition-opacity">
+                <app-icon name="circle-check" [size]="48"></app-icon>
+              </div>
+              <p class="text-green-600 font-semibold text-sm">Bandeja Disponible</p>
+              <p class="text-xs text-gray-400 mt-1">Clic para asignar</p>
+            </div>
+
+            <!-- ============================================================
+                 ESTADO: OCUPADA
+                 ============================================================ -->
+            <div *ngIf="b.estado === 'Ocupada'" class="flex-1 flex flex-col">
+
+              <!-- Información del Paciente -->
+              <div class="mb-3 flex-1">
+                <p class="font-bold text-gray-800 text-sm leading-tight line-clamp-2 mb-2"
+                   [title]="b.nombrePaciente">
+                  {{ b.nombrePaciente || 'Sin nombre' }}
+                </p>
+                <div class="flex items-center gap-1.5 text-xs text-gray-500 bg-gray-50 px-2.5 py-1.5
+                            rounded-md inline-flex border border-gray-200">
+                  <app-icon name="file-text" [size]="12"></app-icon>
+                  <span class="font-mono font-semibold">{{ b.codigoExpediente }}</span>
+                </div>
               </div>
 
-              <!-- Botones de acción -->
-              <div class="pt-4 border-t border-gray-200 flex gap-2">
+              <!-- Tiempo de Ocupación -->
+              <div class="mb-4 border-t border-dashed border-gray-200 pt-3">
+                <div class="flex justify-between items-center">
+                  <span class="text-xs text-gray-500 font-medium">Tiempo en bandeja</span>
+                  <span class="font-bold text-sm px-2 py-1 rounded"
+                        [ngClass]="{
+                          'text-red-600 bg-red-50': b.tieneAlerta,
+                          'text-gray-700 bg-gray-50': !b.tieneAlerta
+                        }">
+                    {{ b.tiempoOcupada || 'N/A' }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Botones de Acción -->
+              <div class="flex gap-2 mt-auto">
                 <button (click)="verExpediente(b.expedienteID); $event.stopPropagation()"
-                        class="flex-1 px-3 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1">
+                        class="flex-1 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg
+                               text-xs font-bold transition-colors flex items-center justify-center gap-1.5
+                               border border-blue-200 hover:border-blue-300">
                   <app-icon name="eye" [size]="14"></app-icon>
                   <span>Ver</span>
                 </button>
                 <button (click)="liberarBandeja(b); $event.stopPropagation()"
-                        class="flex-1 px-3 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1">
+                        class="flex-1 py-2 bg-white text-red-600 hover:bg-red-50 rounded-lg
+                               text-xs font-bold transition-colors flex items-center justify-center gap-1.5
+                               border border-red-200 hover:border-red-300">
                   <app-icon name="log-out" [size]="14"></app-icon>
                   <span>Liberar</span>
                 </button>
               </div>
             </div>
 
-            <!-- Estado: MANTENIMIENTO -->
-            <div *ngIf="b.estado === 'Mantenimiento'" class="text-center py-6">
-              <div class="text-yellow-600 mb-2">
-                <app-icon name="settings" [size]="32"></app-icon>
+            <!-- ============================================================
+                 ESTADO: MANTENIMIENTO
+                 ============================================================ -->
+            <div *ngIf="b.estado === 'Mantenimiento'"
+                 class="text-center py-6 flex-1 flex flex-col justify-center">
+              <div class="text-yellow-600 mb-3 opacity-70">
+                <app-icon name="settings" [size]="40"></app-icon>
               </div>
-              <p class="text-yellow-700 font-semibold">En Mantenimiento</p>
-              <p class="text-xs text-gray-500 mt-2" *ngIf="b.observaciones">
-                {{ b.observaciones }}
+              <p class="text-yellow-700 font-semibold text-sm mb-2">En Mantenimiento</p>
+              <p class="text-xs text-gray-500 italic line-clamp-2 px-2 mb-3"
+                 *ngIf="b.observaciones">
+                "{{ b.observaciones }}"
               </p>
               <button (click)="$event.stopPropagation()"
-                      class="mt-4 px-4 py-2 bg-yellow-50 text-yellow-700 hover:bg-yellow-100 rounded-lg text-xs font-bold transition-all">
+                      class="px-4 py-1.5 bg-yellow-100 text-yellow-700 hover:bg-yellow-200
+                             rounded-lg text-xs font-bold transition-colors mx-auto
+                             border border-yellow-300">
                 Reactivar
               </button>
             </div>
 
           </div>
 
-          <!-- Hover Effect -->
-          <div class="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+          <!-- Barra de Estado Inferior -->
+          <div class="h-1.5 w-full transition-colors"
+               [ngClass]="{
+                 'bg-green-500': b.estado === 'Disponible',
+                 'bg-red-500': b.estado === 'Ocupada',
+                 'bg-yellow-500': b.estado === 'Mantenimiento'
+               }">
+          </div>
 
         </div>
 

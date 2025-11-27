@@ -2,9 +2,11 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { VerificacionService, VerificacionRequest } from '../../../services/verificacion'; // 3 niveles arriba
+import { VerificacionService, VerificacionRequest } from '../../../services/verificacion';
 import { IconComponent } from '../../../components/icon/icon.component';
 import Swal from 'sweetalert2';
+// IMPORTAR EL HELPER DE ESTILOS
+import { getBadgeClasses } from '../../../utils/badge-styles';
 
 @Component({
   selector: 'app-verificacion-ingreso',
@@ -24,7 +26,7 @@ export class VerificacionIngresoComponent {
   codigoQRInput = '';
   datosExpediente: any = null;
 
-  // Checklist Visual (El vigilante debe marcar todo)
+  // Checklist Visual
   checks = {
     hc: false,
     documento: false,
@@ -32,7 +34,7 @@ export class VerificacionIngresoComponent {
     servicio: false
   };
 
-  // --- PASO 1: ESCANEAR (Simulado) ---
+  // --- PASO 1: ESCANEAR ---
   buscarQR() {
     if (!this.codigoQRInput.trim()) {
       Swal.fire('Error', 'Ingrese un código QR', 'warning');
@@ -56,7 +58,6 @@ export class VerificacionIngresoComponent {
 
   // --- PASO 2: VALIDAR Y CONFIRMAR ---
   confirmarIngreso() {
-    // Validar checklist
     if (!this.checks.hc || !this.checks.documento || !this.checks.nombre || !this.checks.servicio) {
       Swal.fire('Atención', 'Debe verificar físicamente todos los datos del brazalete y marcar las casillas.', 'warning');
       return;
@@ -76,10 +77,6 @@ export class VerificacionIngresoComponent {
       confirmButtonText: 'Rechazar y Devolver'
     }).then((result) => {
       if (result.isConfirmed && result.value) {
-        // Enviamos los datos "como si fueran correctos" pero con una observación que podría gatillar lógica en backend
-        // OJO: En tu lógica actual de backend, el rechazo es automático si los datos NO coinciden.
-        // Para simular un rechazo manual por "Brazalete roto" (aunque datos coincidan), 
-        // usamos el campo Observaciones.
         this.enviarVerificacion(result.value);
       }
     });
@@ -88,8 +85,6 @@ export class VerificacionIngresoComponent {
   private enviarVerificacion(observaciones: string | null) {
     this.isLoading = true;
 
-    // Construimos el request con los datos que "leímos" (que son los del sistema en este caso feliz)
-    // Si quisiéramos simular error de datos, alteraríamos estos valores.
     const request: VerificacionRequest = {
       codigoExpedienteBrazalete: this.datosExpediente.codigoExpediente,
       hcBrazalete: this.datosExpediente.hc,
@@ -100,8 +95,7 @@ export class VerificacionIngresoComponent {
       observaciones: observaciones || 'Ingreso verificado correctamente.'
     };
 
-    // SI ES RECHAZO MANUAL (Observaciones llenas), podriamos alterar un dato a propósito
-    // para que el backend detecte "No coincidencia" y lo rechace.
+    // SIMULACIÓN DE ERROR PARA DEMO (Sad Path)
     if (observaciones) {
       request.nombreCompletoBrazalete = "ERROR FORZADO: " + request.nombreCompletoBrazalete;
     }
@@ -111,11 +105,19 @@ export class VerificacionIngresoComponent {
         this.isLoading = false;
 
         if (res.aprobada) {
-          Swal.fire(' Ingreso Exitoso', 'El cuerpo ha sido ingresado al mortuorio. Ahora debe ser ubicado en una bandeja.', 'success')
-            .then(() => this.router.navigate(['/dashboard']));
+          Swal.fire({
+            icon: 'success',
+            title: 'Ingreso Exitoso',
+            text: 'El cuerpo ha sido ingresado. Ahora debe ser ubicado en una bandeja.',
+            confirmButtonColor: '#10B981'
+          }).then(() => this.router.navigate(['/dashboard']));
         } else {
-          Swal.fire(' Ingreso Rechazado', `Se ha generado una solicitud de corrección.\nMotivo: ${res.mensajeResultado}`, 'warning')
-            .then(() => this.router.navigate(['/dashboard']));
+          Swal.fire({
+            icon: 'warning',
+            title: 'Ingreso Rechazado',
+            text: `Se ha generado una solicitud de corrección.\nMotivo: ${res.mensajeResultado}`,
+            confirmButtonColor: '#F59E0B'
+          }).then(() => this.router.navigate(['/dashboard']));
         }
       },
       error: (err) => {
@@ -130,5 +132,10 @@ export class VerificacionIngresoComponent {
     this.datosExpediente = null;
     this.checks = { hc: false, documento: false, nombre: false, servicio: false };
     this.codigoQRInput = '';
+  }
+
+  // Helper para el HTML
+  getBadgeClasses(estado: string): string {
+    return getBadgeClasses(estado);
   }
 }

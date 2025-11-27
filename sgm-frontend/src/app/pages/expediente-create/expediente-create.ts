@@ -2,10 +2,11 @@ import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, FormGroup, FormArray } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
+import Swal from 'sweetalert2';
+
 import { ExpedienteService, CreateExpedienteDTO } from '../../services/expediente';
 import { IntegracionService, PacienteParaForm } from '../../services/integracion';
 import { IconComponent } from '../../components/icon/icon.component';
-import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-expediente-create',
@@ -30,7 +31,6 @@ export class ExpedienteCreateComponent implements OnInit {
   // ===================================================================
   expedienteForm: FormGroup;
   isLoading = false;
-  errorMessage = '';
   pacienteData: PacienteParaForm | null = null;
   modoManual = false;
 
@@ -48,9 +48,9 @@ export class ExpedienteCreateComponent implements OnInit {
   // ===================================================================
   constructor() {
     this.expedienteForm = this.fb.group({
-      // Datos demográficos (disabled por defecto, se habilitan en modo manual)
+      // Datos demográficos
       hc: [{ value: '', disabled: true }, Validators.required],
-      tipoDocumento: [{ value: 1, disabled: true }, Validators.required], 
+      tipoDocumento: [{ value: 1, disabled: true }, Validators.required],
       numeroDocumento: [{ value: '', disabled: true }, Validators.required],
       apellidoPaterno: [{ value: '', disabled: true }, Validators.required],
       apellidoMaterno: [{ value: '', disabled: true }, Validators.required],
@@ -62,7 +62,7 @@ export class ExpedienteCreateComponent implements OnInit {
       // Tipo de expediente
       tipoExpediente: ['Interno', Validators.required],
 
-      // Datos del fallecimiento (editables)
+      // Datos del fallecimiento
       servicioFallecimiento: ['', Validators.required],
       numeroCama: [''],
       fechaHoraFallecimiento: [this.formatDateTimeLocal(new Date()), Validators.required],
@@ -72,7 +72,7 @@ export class ExpedienteCreateComponent implements OnInit {
       medicoRNE: [''],
       numeroCertificadoSINADEF: [''],
 
-      // Pertenencias (FormArray)
+      // Pertenencias
       pertenencias: this.fb.array([])
     });
   }
@@ -81,70 +81,122 @@ export class ExpedienteCreateComponent implements OnInit {
   // INICIALIZACIÓN
   // ===================================================================
   ngOnInit() {
-    const hc = this.route.snapshot.paramMap.get('hc');
+    // 1. Intentar recuperar datos del Router State (Desde Bandeja)
+    const stateData = history.state?.pacientePreseleccionado;
 
-    if (hc) {
-      // Pre-llenar desde Integración
+    // 2. Obtener parámetros de URL
+    const hcUrl = this.route.snapshot.queryParamMap.get('hc');
+    const nombreUrl = this.route.snapshot.queryParamMap.get('nombre');
+
+    if (stateData) {
+      // CASO A: Venimos de la bandeja con el objeto completo
+      console.log('📋 Pre-llenando desde State (Bandeja Universal)', stateData);
+      this.cargarDatosDesdeState(stateData);
+      this.modoManual = false;
+
+    } else if (hcUrl) {
+      // CASO B: Tenemos HC en la URL
+      console.log('🔍 Consultando servicio de integración para HC:', hcUrl);
       this.modoManual = false;
       this.isLoading = true;
 
-      this.integracionService.consultarParaForm(hc).subscribe({
+      this.integracionService.consultarParaForm(hcUrl).subscribe({
         next: (data) => {
-          this.pacienteData = data;
-
-          const fechaNac = data.fechaNacimiento ? data.fechaNacimiento.substring(0, 10) : '';
-          const fechaFallecimiento = data.fechaHoraFallecimiento
-            ? this.formatDateTimeLocal(new Date(data.fechaHoraFallecimiento))
-            : this.formatDateTimeLocal(new Date());
-
-          this.expedienteForm.patchValue({
-            hc: data.hc,
-            tipoDocumento: data.tipoDocumentoID,
-            numeroDocumento: data.numeroDocumento,
-            apellidoPaterno: data.apellidoPaterno,
-            apellidoMaterno: data.apellidoMaterno,
-            nombres: data.nombres,
-            fechaNacimiento: fechaNac,
-            sexo: data.sexo,
-            tipoSeguro: data.fuenteFinanciamiento,
-            servicioFallecimiento: data.servicioFallecimiento || '',
-            numeroCama: data.numeroCama || '',
-            fechaHoraFallecimiento: fechaFallecimiento,
-            diagnosticoFinal: data.diagnosticoFinal || '',
-            medicoCertificaNombre: data.medicoCertificaNombre || '',
-            medicoCMP: data.medicoCMP || '',
-            medicoRNE: data.medicoRNE || ''
-          });
-
+          this.cargarDatosDesdeServicio(data);
           this.isLoading = false;
         },
         error: (err) => {
-          this.errorMessage = 'No se pudo cargar la información del paciente.';
+          console.warn('⚠️ Error consultando integración:', err);
           this.isLoading = false;
-          console.error('Error en consultarParaForm:', err);
+
+          // Fallback si falla el servicio
+          if (nombreUrl) {
+            this.mostrarAlertaInfo('No se pudo conectar con SIGEM. Se han cargado los datos básicos disponibles.');
+            this.expedienteForm.patchValue({ hc: hcUrl });
+            this.modoManual = true;
+            this.habilitarCamposDemograficos();
+          } else {
+            this.mostrarAlertaInfo('No se pudo cargar la información. Por favor ingrese los datos manualmente.');
+            this.modoManual = true;
+            this.habilitarCamposDemograficos();
+          }
         }
       });
     } else {
-      // MODO MANUAL: Habilitar campos demográficos
+      // CASO C: Registro 100% Manual
       this.modoManual = true;
-      this.errorMessage = "Modo Manual: Por favor, ingrese todos los datos del paciente.";
       this.habilitarCamposDemograficos();
     }
+  }
+
+  // ===================================================================
+  // MÉTODOS DE CARGA DE DATOS
+  // ===================================================================
+
+  private cargarDatosDesdeServicio(data: PacienteParaForm) {
+    this.pacienteData = data;
+    const fechaNac = data.fechaNacimiento ? data.fechaNacimiento.substring(0, 10) : '';
+    const fechaFallecimiento = data.fechaHoraFallecimiento
+      ? this.formatDateTimeLocal(new Date(data.fechaHoraFallecimiento))
+      : this.formatDateTimeLocal(new Date());
+
+    this.expedienteForm.patchValue({
+      hc: data.hc,
+      tipoDocumento: data.tipoDocumentoID,
+      numeroDocumento: data.numeroDocumento,
+      apellidoPaterno: data.apellidoPaterno,
+      apellidoMaterno: data.apellidoMaterno,
+      nombres: data.nombres,
+      fechaNacimiento: fechaNac,
+      sexo: data.sexo,
+      tipoSeguro: data.fuenteFinanciamiento,
+      servicioFallecimiento: data.servicioFallecimiento || '',
+      numeroCama: data.numeroCama || '',
+      fechaHoraFallecimiento: fechaFallecimiento,
+      diagnosticoFinal: data.diagnosticoFinal || '',
+      medicoCertificaNombre: data.medicoCertificaNombre || '',
+      medicoCMP: data.medicoCMP || '',
+      medicoRNE: data.medicoRNE || ''
+    });
+  }
+
+  private cargarDatosDesdeState(item: any) {
+    this.expedienteForm.patchValue({
+      hc: item.hc || item.id,
+      numeroDocumento: item.numeroDocumento,
+      apellidoPaterno: item.apellidoPaterno || '',
+      apellidoMaterno: item.apellidoMaterno || '',
+      nombres: item.nombres || '',
+      servicioFallecimiento: item.servicio || '',
+      fechaHoraFallecimiento: item.fechaFallecimiento
+        ? this.formatDateTimeLocal(new Date(item.fechaFallecimiento))
+        : this.formatDateTimeLocal(new Date())
+    });
+
+    // Habilitar edición para completar lo que falte
+    this.habilitarCamposDemograficos();
   }
 
   // ===================================================================
   // HELPERS
   // ===================================================================
 
-  /**
-   * Habilita los campos demográficos para modo manual
-   */
   private habilitarCamposDemograficos() {
     const camposDemograficos = [
       'hc', 'tipoDocumento', 'numeroDocumento', 'apellidoPaterno', 'apellidoMaterno',
       'nombres', 'fechaNacimiento', 'sexo', 'tipoSeguro'
     ];
     camposDemograficos.forEach(campo => this.expedienteForm.get(campo)?.enable());
+  }
+
+  /**
+   * ⭐ NUEVO: Helper para clases dinámicas de inputs
+   * Evita repetir las mismas clases 9 veces en el HTML
+   */
+  getInputClasses(editable: boolean): string {
+    return editable
+      ? 'w-full p-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-hospital-cyan focus:border-transparent outline-none transition-all'
+      : 'w-full p-2.5 border-none rounded-lg bg-gray-100 text-gray-800 font-semibold cursor-not-allowed';
   }
 
   getTipoDocumentoNombre(id: number): string {
@@ -190,19 +242,23 @@ export class ExpedienteCreateComponent implements OnInit {
     this.expedienteForm.markAllAsTouched();
 
     if (this.expedienteForm.invalid) {
-      this.errorMessage = 'Formulario inválido. Revise los campos obligatorios.';
+      Swal.fire({
+        title: 'Formulario Inválido',
+        text: 'Por favor, revise los campos obligatorios marcados en rojo.',
+        icon: 'warning',
+        confirmButtonColor: '#EF4444',
+        confirmButtonText: 'Aceptar'
+      });
       return;
     }
 
     this.isLoading = true;
-    this.errorMessage = '';
 
     const formValue = this.expedienteForm.getRawValue();
 
-    // Construir DTO (Igual que antes)
     const dto: CreateExpedienteDTO = {
       hc: formValue.hc,
-      tipoDocumento: formValue.tipoDocumento,
+      tipoDocumento: Number(formValue.tipoDocumento),
       numeroDocumento: formValue.numeroDocumento,
       apellidoPaterno: formValue.apellidoPaterno,
       apellidoMaterno: formValue.apellidoMaterno,
@@ -225,72 +281,95 @@ export class ExpedienteCreateComponent implements OnInit {
     // 1. CREAR EXPEDIENTE
     this.expedienteService.create(dto).subscribe({
       next: (nuevoExpediente) => {
+        console.log('✅ 1. Expediente creado. ID:', nuevoExpediente.expedienteID);
 
-        console.log('1. Expediente creado. ID:', nuevoExpediente.expedienteID);
-
-        // 2. GENERAR QR (Esto cambia el estado y crea la imagen)
+        // 2. GENERAR QR
         this.expedienteService.generarQR(nuevoExpediente.expedienteID).subscribe({
           next: (qrGenerado) => {
-            console.log('2. QR Generado correctamente');
+            console.log('✅ 2. QR Generado correctamente');
 
-            // 3. IMPRIMIR BRAZALETE (Descargar PDF)
+            // 3. IMPRIMIR BRAZALETE
             this.expedienteService.imprimirBrazalete(nuevoExpediente.expedienteID).subscribe({
               next: (blob) => {
-                // Descargar archivo
-                const url = window.URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `Brazalete-${nuevoExpediente.codigoExpediente}.pdf`;
-                link.click();
-                window.URL.revokeObjectURL(url);
+                this.descargarPDF(blob, `Brazalete-${nuevoExpediente.codigoExpediente}`);
 
-                // ÉXITO TOTAL
                 this.isLoading = false;
                 Swal.fire({
                   title: '¡Expediente Generado!',
-                  text: `Se ha creado el expediente ${nuevoExpediente.codigoExpediente} y se ha descargado el brazalete.`,
+                  html: `
+                    <div class="text-left space-y-2">
+                      <p>✅ Expediente: <strong>${nuevoExpediente.codigoExpediente}</strong></p>
+                      <p>✅ QR generado correctamente</p>
+                      <p>✅ Brazalete descargado</p>
+                    </div>
+                  `,
                   icon: 'success',
                   confirmButtonText: 'Ir al Dashboard',
-                  confirmButtonColor: '#0891B2'
+                  confirmButtonColor: '#0891B2',
+                  timer: 5000,
+                  timerProgressBar: true
                 }).then(() => {
                   this.router.navigate(['/dashboard']);
                 });
               },
               error: (errImp) => {
-                // Falló la impresión, pero el expediente y QR existen
                 this.isLoading = false;
-                console.error('Error impresión:', errImp);
-                Swal.fire('Atención', 'Expediente y QR creados, pero falló la descarga del PDF. Intente reimprimir desde el Dashboard.', 'warning')
-                  .then(() => this.router.navigate(['/dashboard']));
+                console.error('❌ Error impresión:', errImp);
+                Swal.fire({
+                  title: 'Atención',
+                  text: 'Expediente y QR creados, pero falló la descarga del brazalete.',
+                  icon: 'warning',
+                  confirmButtonColor: '#F59E0B'
+                }).then(() => this.router.navigate(['/dashboard']));
               }
             });
           },
           error: (errQR) => {
-            // Falló generar QR (Expediente existe pero en estado EnPiso)
             this.isLoading = false;
-            console.error('Error generando QR:', errQR);
-            Swal.fire('Error Parcial', 'El expediente se creó pero no se pudo generar el QR. Contacte a soporte.', 'warning')
-              .then(() => this.router.navigate(['/dashboard']));
+            console.error('❌ Error generando QR:', errQR);
+            Swal.fire({
+              title: 'Error Parcial',
+              text: 'El expediente se creó pero no se pudo generar el QR.',
+              icon: 'warning',
+              confirmButtonColor: '#F59E0B'
+            }).then(() => this.router.navigate(['/dashboard']));
           }
         });
       },
       error: (err) => {
-        // Falló crear expediente
         this.isLoading = false;
-        this.errorMessage = err.error?.message || 'Error al conectar con la API';
-        console.error('Error en POST /api/Expedientes:', err);
+        const msg = err.error?.message || 'Error al crear el expediente. Verifique los datos.';
+        console.error('❌ Error en POST /api/Expedientes:', err);
+
+        Swal.fire({
+          title: 'Error',
+          text: msg,
+          icon: 'error',
+          confirmButtonColor: '#EF4444',
+          confirmButtonText: 'Cerrar'
+        });
       }
     });
   }
-  // Helper para descargar el archivo
+
   private descargarPDF(blob: Blob, nombreArchivo: string) {
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     link.download = `${nombreArchivo}.pdf`;
     link.click();
-    window.URL.revokeObjectURL(url);
+    setTimeout(() => window.URL.revokeObjectURL(url), 100);
   }
+
+  private mostrarAlertaInfo(mensaje: string) {
+    Swal.fire({
+      title: 'Información',
+      text: mensaje,
+      icon: 'info',
+      confirmButtonColor: '#0891B2'
+    });
+  }
+
   cancelar() {
     if (this.modoManual) {
       this.router.navigate(['/dashboard']);

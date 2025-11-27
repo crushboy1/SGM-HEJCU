@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System;
 
+
 namespace SisMortuorio.Business.Services
 {
     /// <summary>
@@ -18,6 +19,7 @@ namespace SisMortuorio.Business.Services
     public class QRService : IQRService
     {
         private readonly IExpedienteRepository _expedienteRepository;
+        private readonly IBandejaRepository _bandejaRepository;
         private readonly IWebHostEnvironment _environment;
         private readonly ILogger<QRService> _logger;
         private readonly IStateMachineService _stateMachineService;
@@ -28,12 +30,14 @@ namespace SisMortuorio.Business.Services
         /// </summary>
         public QRService(
             IExpedienteRepository expedienteRepository,
+            IBandejaRepository bandejaRepository,
             IWebHostEnvironment environment,
             ILogger<QRService> logger,
             IStateMachineService stateMachineService,
             IExpedienteMapperService mapper) // <-- 2. Recibir el Mapper
         {
             _expedienteRepository = expedienteRepository;
+            _bandejaRepository = bandejaRepository;
             _environment = environment;
             _logger = logger;
             _stateMachineService = stateMachineService;
@@ -185,8 +189,24 @@ namespace SisMortuorio.Business.Services
                 "Expediente {CodigoExpediente} consultado por QR",
                 expediente.CodigoExpediente);
 
-            // 2. Mapear a DTO
-            return _mapper.MapToExpedienteDTO(expediente)!;
+            // 2. Mapear a DTO base
+            var dto = _mapper.MapToExpedienteDTO(expediente)!;
+
+            //  Buscar Bandeja Activa
+            // Si el expediente está en mortuorio (EnBandeja o PendienteRetiro), buscamos dónde está.
+            if (expediente.EstadoActual == EstadoExpediente.EnBandeja ||
+                expediente.EstadoActual == EstadoExpediente.PendienteRetiro)
+            {
+                var bandeja = await _bandejaRepository.GetByExpedienteIdAsync(expediente.ExpedienteID);
+                if (bandeja != null)
+                {
+                   
+                    dto.CodigoBandeja = bandeja.Codigo;
+                    dto.BandejaID = bandeja.BandejaID;
+                }
+            }
+
+            return dto;
         }
 
         /// <summary>

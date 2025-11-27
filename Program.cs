@@ -15,12 +15,16 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Configurar DbContext
+// ===================================================================
+// 1. CONFIGURAR DbContext
+// ===================================================================
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 
-// 2. Configurar Identity
+// ===================================================================
+// 2. CONFIGURAR Identity
+// ===================================================================
 builder.Services.AddIdentity<Usuario, Rol>(options =>
 {
     // Configuración de contraseñas (relajada para desarrollo)
@@ -39,7 +43,9 @@ builder.Services.AddIdentity<Usuario, Rol>(options =>
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
 
-// 3. Configurar JWT Authentication
+// ===================================================================
+// 3. CONFIGURAR JWT Authentication
+// ===================================================================
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var secretKey = builder.Configuration["Jwt:SecretKey"]
     ?? throw new InvalidOperationException("JWT SecretKey no configurada en User Secrets");
@@ -65,45 +71,127 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
         ClockSkew = TimeSpan.Zero
     };
+
+    // Configurar autenticación JWT para SignalR
+    // SignalR puede enviar el token en query string (?access_token=...)
+    // o en el header Authorization estándar
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            // Leer el token desde el query string si existe
+            var accessToken = context.Request.Query["access_token"];
+
+            // Si el request es para el Hub de SignalR
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/sgmhub"))
+            {
+                // Asignar el token al contexto para que JWT lo valide
+                context.Token = accessToken;
+            }
+
+            return Task.CompletedTask;
+        }
+    };
 });
 
-// 4. Registrar servicios de negocio
+// ===================================================================
+// 4. REGISTRAR SERVICIOS DE NEGOCIO
+// ===================================================================
+
+// Servicios principales
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IExpedienteService, ExpedienteService>();
 builder.Services.AddScoped<IQRService, QRService>();
 builder.Services.AddScoped<IBrazaleteService, BrazaleteService>();
 builder.Services.AddScoped<ICustodiaService, CustodiaService>();
+
 // Repositorios
 builder.Services.AddScoped<IExpedienteRepository, ExpedienteRepository>();
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<ICustodiaRepository, CustodiaRepository>();
+
 // Repositorios Entrada-Salida Mortuorio-SolicitudDeCorrecion
 builder.Services.AddScoped<IBandejaRepository, BandejaRepository>();
 builder.Services.AddScoped<IOcupacionBandejaRepository, OcupacionBandejaRepository>();
 builder.Services.AddScoped<IVerificacionMortuorioRepository, VerificacionMortuorioRepository>();
 builder.Services.AddScoped<ISalidaMortuorioRepository, SalidaMortuorioRepository>();
 builder.Services.AddScoped<ISolicitudCorreccionRepository, SolicitudCorreccionRepository>();
+
 // Servicios FASE 4.5
 builder.Services.AddScoped<IVerificacionService, VerificacionService>();
 builder.Services.AddScoped<IBandejaService, BandejaService>();
 builder.Services.AddScoped<ISalidaMortuorioService, SalidaMortuorioService>();
 builder.Services.AddScoped<ISolicitudCorreccionService, SolicitudCorreccionService>();
+
 // Servicios de sistemas externos
 builder.Services.AddScoped<IGalenhosService, GalenhosService>();
 builder.Services.AddScoped<ISigemService, SigemService>();
 builder.Services.AddScoped<IIntegracionService, IntegracionService>();
+
 // Servicio de máquina de estados
 builder.Services.AddScoped<IStateMachineService, StateMachineService>();
-// Se registra el nuevo servicio de Mapeo
+
+// Servicio de Mapeo
 builder.Services.AddScoped<IExpedienteMapperService, ExpedienteMapperService>();
-// 5. Configurar Controllers
-builder.Services.AddControllers();
-// Configurar SignalR (FASE 4.8)
-builder.Services.AddSignalR();
-// Registrar Workers (FASE 4.8)
+
+// Servicio de tracking de conexiones SignalR (Singleton)
+// Singleton = una sola instancia compartida en toda la aplicación
+builder.Services.AddSingleton<IConnectionTrackerService, ConnectionTrackerService>();
+
+// ===================================================================
+// 5. CONFIGURAR Controllers
+// ===================================================================
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Esto permite convertir strings ("Familiar") a Enums automáticamente
+        options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+    });
+
+// ===================================================================
+// 6. CONFIGURAR SignalR (FASE 2 )
+// ===================================================================
+builder.Services.AddSignalR(options =>
+{
+    // Keepalive Interval: Cada cuánto el servidor envía un "ping" al cliente
+    // Default: 15 segundos. Reducido a 10 para detectar desconexiones más rápido.
+    options.KeepAliveInterval = TimeSpan.FromSeconds(10);
+
+    // Client Timeout: Tiempo máximo sin respuesta del cliente antes de considerarlo desconectado
+    // Default: 30 segundos. Aumentado a 60 para conexiones lentas (3G/4G).
+    options.ClientTimeoutInterval = TimeSpan.FromSeconds(60);
+
+    // Handshake Timeout: Tiempo máximo para completar el handshake inicial
+    // Default: 15 segundos. Suficiente para conexiones lentas.
+    options.HandshakeTimeout = TimeSpan.FromSeconds(15);
+
+    // Max Message Size: Tamaño máximo de mensaje en bytes
+    // Default: 32KB. Aumentado a 128KB para soportar notificaciones con datos grandes.
+    options.MaximumReceiveMessageSize = 128 * 1024; // 128KB
+
+    // Enable Detailed Errors: Mostrar errores detallados en desarrollo
+    options.EnableDetailedErrors = builder.Environment.IsDevelopment();
+});
+
+// ===================================================================
+// 7. REGISTRAR WORKERS (Background Services)
+// ===================================================================
+
+// Worker: Alerta de permanencia (cada 60 min)
 builder.Services.AddHostedService<PermanenciaAlertWorker>();
+
+// Worker: Alerta de solicitudes vencidas (cada 15 min)
 builder.Services.AddHostedService<SolicitudAlertWorker>();
-// 6.Configurar Swagger con JWT
+
+// Worker para limpiar conexiones zombies (cada 30 min)
+// Este worker llama a ConnectionTracker.CleanupStaleConnectionsAsync()
+// para remover conexiones que llevan >60 min sin actividad
+builder.Services.AddHostedService<ConnectionCleanupWorker>();
+
+// ===================================================================
+// 8. CONFIGURAR Swagger con JWT
+// ===================================================================
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -111,7 +199,7 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title = "SGM API - Sistema de Gestión de Mortuorio",
         Version = "v1",
-        Description = "API para gestión de expedientes de fallecidos"
+        Description = "API para gestión de expedientes de fallecidos con soporte SignalR"
     });
 
     // Configurar autenticación JWT en Swagger
@@ -141,9 +229,25 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// 7. CORS (para futuro frontend)
+// ===================================================================
+// 9. CONFIGURAR CORS
+// ===================================================================
 builder.Services.AddCors(options =>
 {
+    options.AddPolicy("AllowAngular",
+        policy =>
+        {
+            // ⭐ IMPORTANTE: SignalR requiere AllowCredentials para WebSockets
+            policy.WithOrigins(
+                    "http://localhost:4200",  // Angular dev server
+                    "https://localhost:4200"  // Angular dev server HTTPS
+                )
+                .AllowAnyMethod()
+                .AllowAnyHeader()
+                .AllowCredentials(); // ⭐ CRÍTICO para SignalR WebSockets
+        });
+
+    // Política permisiva solo para desarrollo
     options.AddPolicy("AllowAll",
         policy =>
         {
@@ -152,33 +256,38 @@ builder.Services.AddCors(options =>
                    .AllowAnyHeader();
         });
 });
-// TODO: Configurar política CORS más restrictiva para Angular y SignalR en Producción
+
+// ===================================================================
+// 10. BUILD APP
+// ===================================================================
 var app = builder.Build();
 
-// 8. Ejecutar Seeder en desarrollo (ANTES de configurar pipeline)
+// ===================================================================
+// 11. EJECUTAR SEEDER EN DESARROLLO
+// ===================================================================
 if (app.Environment.IsDevelopment())
 {
-    using (var scope = app.Services.CreateScope())
+    using var scope = app.Services.CreateScope();
+    var services = scope.ServiceProvider;
+    try
     {
-        var services = scope.ServiceProvider;
-        try
-        {
-            var context = services.GetRequiredService<ApplicationDbContext>();
-            var userManager = services.GetRequiredService<UserManager<Usuario>>();
-            var roleManager = services.GetRequiredService<RoleManager<Rol>>();
-            var environment = services.GetRequiredService<IWebHostEnvironment>();
+        var context = services.GetRequiredService<ApplicationDbContext>();
+        var userManager = services.GetRequiredService<UserManager<Usuario>>();
+        var roleManager = services.GetRequiredService<RoleManager<Rol>>();
+        var environment = services.GetRequiredService<IWebHostEnvironment>();
 
-            await DataSeeder.SeedAsync(context, userManager, roleManager, environment);
-        }
-        catch (Exception ex)
-        {
-            var logger = services.GetRequiredService<ILogger<Program>>();
-            logger.LogError(ex, "Error al ejecutar seeding de datos");
-        }
+        await DataSeeder.SeedAsync(context, userManager, roleManager, environment);
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Error al ejecutar seeding de datos");
     }
 }
 
-// 9. Configure the HTTP request pipeline
+// ===================================================================
+// 12. CONFIGURAR HTTP PIPELINE
+// ===================================================================
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -190,12 +299,19 @@ if (app.Environment.IsDevelopment())
 
 app.UseStaticFiles();
 app.UseHttpsRedirection();
-app.UseCors("AllowAll");
 
-// IMPORTANTE: El orden importa
-app.UseAuthentication();  // ← Primero autenticación
-app.UseAuthorization();   // ← Luego autorización
+// Usar política CORS específica para Angular en producción
+// En desarrollo usa "AllowAll" por simplicidad
+app.UseCors(app.Environment.IsDevelopment() ? "AllowAll" : "AllowAngular");
+
+// El orden importa (Authentication antes de Authorization)
+app.UseAuthentication();  // ← Primero autenticación (valida JWT)
+app.UseAuthorization();   // ← Luego autorización (valida permisos)
 
 app.MapControllers();
-app.MapHub<SgmHub>("/sgmhub");// <- (Endpoint de SignalR)
+
+// Mapear el Hub de SignalR en la ruta /sgmhub
+// El cliente Angular se conectará a: https://localhost:7153/sgmhub
+app.MapHub<SgmHub>("/sgmhub");
+
 app.Run();  // ← ESTO SIEMPRE AL FINAL

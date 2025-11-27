@@ -1,53 +1,51 @@
-﻿using SisMortuorio.Business.DTOs;
+﻿using Microsoft.AspNetCore.SignalR; // ⭐ SignalR
+using SisMortuorio.Business.DTOs;
+using SisMortuorio.Business.DTOs.Notificacion; // ⭐ DTO Notificacion
+using SisMortuorio.Business.Hubs; // ⭐ Hubs
 using SisMortuorio.Data.Entities;
 using SisMortuorio.Data.Entities.Enums;
 using SisMortuorio.Data.Repositories;
-using SisMortuorio.Business.Services; // <-- 1. Asegurarse de que el using del Mapper esté
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using System;
 
 namespace SisMortuorio.Business.Services
 {
     public class ExpedienteService : IExpedienteService
     {
         private readonly IExpedienteRepository _expedienteRepository;
-        private readonly IExpedienteMapperService _mapper; // <-- 2. Inyectar el Mapper
+        private readonly IExpedienteMapperService _mapper;
+        private readonly IHubContext<SgmHub, ISgmClient> _hubContext; // 1. Inyectar Hub
 
         public ExpedienteService(
             IExpedienteRepository expedienteRepository,
-            IExpedienteMapperService mapper) // <-- 3. Recibir el Mapper en el constructor
+            IExpedienteMapperService mapper,
+            IHubContext<SgmHub, ISgmClient> hubContext) //  2. Recibir en constructor
         {
             _expedienteRepository = expedienteRepository;
-            _mapper = mapper; // <-- 4. Asignar el Mapper
+            _mapper = mapper;
+            _hubContext = hubContext;
         }
 
         public async Task<ExpedienteDTO?> GetByIdAsync(int id)
         {
             var expediente = await _expedienteRepository.GetByIdAsync(id);
             if (expediente == null) return null;
-
-            return _mapper.MapToExpedienteDTO(expediente); // <-- 5. Usar el Mapper
+            return _mapper.MapToExpedienteDTO(expediente);
         }
 
         public async Task<List<ExpedienteDTO>> GetAllAsync()
         {
             var expedientes = await _expedienteRepository.GetAllAsync();
-            return expedientes.Select(_mapper.MapToExpedienteDTO).Where(dto => dto != null).Select(dto => dto!).ToList(); // <-- 5. Usar el Mapper
+            return expedientes.Select(_mapper.MapToExpedienteDTO).Where(dto => dto != null).Select(dto => dto!).ToList();
         }
 
         public async Task<List<ExpedienteDTO>> GetByFiltrosAsync(
-            string? hc,
-            string? dni,
-            string? servicio,
-            DateTime? fechaDesde,
-            DateTime? fechaHasta,
-            EstadoExpediente? estado)
+            string? hc, string? dni, string? servicio, DateTime? fd, DateTime? fh, EstadoExpediente? estado)
         {
-            
-            var expedientes = await _expedienteRepository.GetByFiltrosAsync(hc, dni, servicio, fechaDesde, fechaHasta, estado);
-            return expedientes.Select(_mapper.MapToExpedienteDTO).Where(dto => dto != null).Select(dto => dto!).ToList(); // <-- 5. Usar el Mapper
+            var expedientes = await _expedienteRepository.GetByFiltrosAsync(hc, dni, servicio, fd, fh, estado);
+            return expedientes.Select(_mapper.MapToExpedienteDTO).Where(dto => dto != null).Select(dto => dto!).ToList();
         }
 
         public async Task<ExpedienteDTO> CreateAsync(CreateExpedienteDTO dto, int usuarioCreadorId)
@@ -60,14 +58,13 @@ namespace SisMortuorio.Business.Services
                 await _expedienteRepository.ExistsCertificadoSINADEFAsync(dto.NumeroCertificadoSINADEF))
                 throw new InvalidOperationException($"El certificado SINADEF {dto.NumeroCertificadoSINADEF} ya está registrado");
 
-            // Validar fechas
             if (dto.FechaHoraFallecimiento > DateTime.Now)
                 throw new InvalidOperationException("La fecha de fallecimiento no puede ser futura");
 
             if (dto.FechaHoraFallecimiento < dto.FechaNacimiento)
                 throw new InvalidOperationException("La fecha de fallecimiento debe ser posterior a la fecha de nacimiento");
 
-            // Generar código de expediente
+            // Generar código
             var año = DateTime.Now.Year;
             var codigoExpediente = await GenerarCodigoUnicoAsync(año);
 
@@ -76,7 +73,7 @@ namespace SisMortuorio.Business.Services
                 CodigoExpediente = codigoExpediente,
                 TipoExpediente = dto.TipoExpediente,
                 HC = dto.HC,
-                TipoDocumento = dto.TipoDocumento,
+                TipoDocumento = (TipoDocumentoIdentidad)dto.TipoDocumento, // Asegúrate que el DTO tenga el tipo correcto (int)
                 NumeroDocumento = dto.NumeroDocumento,
                 ApellidoPaterno = dto.ApellidoPaterno,
                 ApellidoMaterno = dto.ApellidoMaterno,
@@ -93,18 +90,17 @@ namespace SisMortuorio.Business.Services
                 MedicoRNE = dto.MedicoRNE,
                 NumeroCertificadoSINADEF = string.IsNullOrEmpty(dto.NumeroCertificadoSINADEF) ? null : dto.NumeroCertificadoSINADEF,
                 DiagnosticoFinal = dto.DiagnosticoFinal,
-                EstadoActual = EstadoExpediente.EnPiso, // Estado inicial del enum
+                EstadoActual = EstadoExpediente.EnPiso,
                 UsuarioCreadorID = usuarioCreadorId,
                 FechaCreacion = DateTime.Now
             };
 
-            // Agregar pertenencias si existen
             if (dto.Pertenencias != null && dto.Pertenencias.Any())
             {
                 expediente.Pertenencias = dto.Pertenencias.Select(p => new Pertenencia
                 {
                     Descripcion = p.Descripcion,
-                    Estado = "ConCuerpo", // TODO: Considerar refactorizar a un enum
+                    Estado = "ConCuerpo",
                     Observaciones = p.Observaciones,
                     FechaRegistro = DateTime.Now
                 }).ToList();
@@ -112,7 +108,37 @@ namespace SisMortuorio.Business.Services
 
             var expedienteCreado = await _expedienteRepository.CreateAsync(expediente);
 
-            return _mapper.MapToExpedienteDTO(expedienteCreado)!; // <-- 5. Usar el Mapper
+            // ============================================================
+            //  3. ENVIAR NOTIFICACIÓN (SIGNALR)
+            // ============================================================
+            try
+            {
+                // Notificar a AMBULANCIA y ADMINISTRADOR
+                var notificacion = new NotificacionDTO
+                {
+                    Titulo = "Nuevo Fallecido en Piso",
+                    Mensaje = $"Se requiere traslado para {expedienteCreado.NombreCompleto} en {expedienteCreado.ServicioFallecimiento}.",
+                    Tipo = "info",
+                    CodigoExpediente = expedienteCreado.CodigoExpediente,
+                    ExpedienteId = expedienteCreado.ExpedienteID,
+                    RolesDestino = "Ambulancia,Administrador",
+                    RequiereAccion = true,
+                    AccionSugerida = "Realizar Recojo",
+                    UrlNavegacion = "/mis-tareas" // Ruta de la app móvil
+                };
+
+                await _hubContext.Clients.Groups(["Ambulancia", "Administrador"])
+                    .RecibirNotificacion(notificacion);
+            }
+            catch (Exception ex)
+            {
+                // Loggear error pero NO detener la creación
+                // _logger.LogError(ex, "Error enviando notificación SignalR");
+                Console.WriteLine($"Error SignalR: {ex.Message}");
+            }
+            // ============================================================
+
+            return _mapper.MapToExpedienteDTO(expedienteCreado)!;
         }
 
         public async Task<ExpedienteDTO?> UpdateAsync(int id, UpdateExpedienteDTO dto)
@@ -120,7 +146,6 @@ namespace SisMortuorio.Business.Services
             var expediente = await _expedienteRepository.GetByIdAsync(id);
             if (expediente == null) return null;
 
-            // Actualizar solo campos permitidos
             if (!string.IsNullOrEmpty(dto.NumeroCama))
                 expediente.NumeroCama = dto.NumeroCama;
 
@@ -132,7 +157,6 @@ namespace SisMortuorio.Business.Services
 
             if (!string.IsNullOrEmpty(dto.NumeroCertificadoSINADEF))
             {
-                // Validar unicidad solo si el valor es nuevo
                 if (expediente.NumeroCertificadoSINADEF != dto.NumeroCertificadoSINADEF &&
                     await _expedienteRepository.ExistsCertificadoSINADEFAsync(dto.NumeroCertificadoSINADEF))
                 {
@@ -143,7 +167,7 @@ namespace SisMortuorio.Business.Services
 
             await _expedienteRepository.UpdateAsync(expediente);
 
-            return _mapper.MapToExpedienteDTO(expediente); // <-- 5. Usar el Mapper
+            return _mapper.MapToExpedienteDTO(expediente);
         }
 
         public async Task<bool> ValidarHCUnicoAsync(string hc)
@@ -157,21 +181,13 @@ namespace SisMortuorio.Business.Services
             return !await _expedienteRepository.ExistsCertificadoSINADEFAsync(certificado);
         }
 
-        // 6. ELIMINAR EL MÉTODO PRIVADO MapToDTO
-        // private ExpedienteDTO MapToDTO(Expediente expediente) { ... }
-
-        /// <summary>
-        /// Genera un código de expediente único y correlativo por año.
-        /// </summary>
         private async Task<string> GenerarCodigoUnicoAsync(int año)
         {
             var ultimoExpediente = await _expedienteRepository.GetUltimoExpedienteDelAñoAsync(año);
-
             int siguienteNumero = 1;
 
             if (ultimoExpediente != null)
             {
-                // Extraer el número del último código
                 var partes = ultimoExpediente.CodigoExpediente.Split('-');
                 if (partes.Length == 3 && int.TryParse(partes[2], out int numeroActual))
                 {
@@ -179,11 +195,9 @@ namespace SisMortuorio.Business.Services
                 }
             }
 
-            // Verificar que el código no exista (manejo de concurrencia simple)
             var codigoPropuesto = $"SGM-{año}-{siguienteNumero:D5}";
             var existe = await _expedienteRepository.GetByCodigoAsync(codigoPropuesto);
 
-            // Si ya existe (ej. dos usuarios crean al mismo tiempo), buscar el siguiente disponible
             while (existe != null)
             {
                 siguienteNumero++;
