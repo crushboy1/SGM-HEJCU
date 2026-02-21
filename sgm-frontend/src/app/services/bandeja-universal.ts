@@ -15,11 +15,10 @@ import { IntegracionService, PacientePendiente } from './integracion';
 export interface BandejaItem {
   // ===== IDENTIFICADORES =====
   id: string | number;              // ID principal (puede ser HC o Código SGM)
-  tipoId: 'hc' | 'codigo_sgm';      // ⭐ NUEVO: Indica qué tipo de ID es
-
+  tipoId: 'hc' | 'codigo_sgm';      // Indica qué tipo de ID es
+  expedienteID?: number;            // ID numérico de la BD (para navegación)
   hc?: string;                      // Historia Clínica (SIEMPRE presente si existe)
   codigoExpediente?: string;        // Código SGM (solo para expedientes generados)
-
   numeroDocumento?: string;         // DNI, CE, Pasaporte
   tipoDocumento?: string;           // "DNI", "CE", "Pasaporte", "NN"
 
@@ -99,6 +98,7 @@ export class BandejaUniversalService {
       'EnfermeriaTecnica': () => this.getParaEnfermeria(),
       'EnfermeriaLicenciada': () => this.getParaEnfermeria(),
       'SupervisoraEnfermeria': () => this.getParaEnfermeria(),
+      'Ambulancia': () => this.getParaAmbulancia(),
       'BancoSangre': () => this.getParaBancoSangre(),
       'CuentasPacientes': () => this.getParaCuentas(),
       'ServicioSocial': () => this.getParaCuentas(),
@@ -160,7 +160,7 @@ export class BandejaUniversalService {
             apellidoMaterno: p.apellidoMaterno,
             nombres: p.nombres,
 
-            // Datos específicos (SIN emojis)
+            // Datos específicos 
             servicio: p.servicioFallecimiento || 'No especificado', 
             fechaFallecimiento: fechaFallecimiento, 
 
@@ -388,6 +388,59 @@ export class BandejaUniversalService {
       }
     ];
     return of(mockData);
+  }
+
+  /**
+ * AMBULANCIA: Expedientes pendientes de recojo
+ * Estados: EnPiso, PendienteDeRecojo
+ */
+  private getParaAmbulancia(): Observable<BandejaItem[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/Expedientes/pendientes-recojo`).pipe(
+      map((expedientes: any[]) =>
+        expedientes.map(exp => {
+          const fechaFallecimiento = exp.fechaHoraFallecimiento
+            ? new Date(exp.fechaHoraFallecimiento)
+            : undefined;
+
+          const horasTranscurridas = fechaFallecimiento
+            ? (Date.now() - fechaFallecimiento.getTime()) / (1000 * 60 * 60)
+            : 0;
+
+          return {
+            // Identificadores
+            id: exp.codigoExpediente,
+            tipoId: 'codigo_sgm' as const,
+            expedienteID: exp.expedienteID,
+            codigoExpediente: exp.codigoExpediente,
+            hc: exp.hc,
+            numeroDocumento: exp.numeroDocumento,
+            tipoDocumento: this.obtenerTipoDocumento(exp.tipoDocumentoID),
+
+            // Datos del paciente
+            nombreCompleto: exp.nombreCompleto,
+            apellidoPaterno: exp.apellidoPaterno,
+            apellidoMaterno: exp.apellidoMaterno,
+            nombres: exp.nombres,
+
+            // Datos específicos
+            servicio: exp.servicioFallecimiento || 'No especificado',
+            fechaFallecimiento: fechaFallecimiento,
+
+            // Metadata
+            estado: exp.estadoActual,
+            estadoTexto: exp.estadoActual === 'EnPiso' ? 'En Piso' : 'Pendiente Recojo',
+            tipoItem: 'generacion_expediente',
+            accionPrincipal: 'Aceptar Custodia',
+            tiempoTranscurrido: horasTranscurridas,
+            esUrgente: horasTranscurridas > 4
+          } as BandejaItem;
+        })
+      ),
+      catchError(error => {
+        console.error('❌ Error al obtener pendientes de ambulancia:', error);
+        return of([]);
+      })
+    );
   }
 
   // ===================================================================

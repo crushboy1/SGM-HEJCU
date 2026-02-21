@@ -1,6 +1,6 @@
 ﻿using SisMortuorio.Data.Entities;
 using System.ComponentModel.DataAnnotations;
-
+using SisMortuorio.Data.Entities.Enums;
 namespace SisMortuorio.Business.DTOs
 {
     public class CreateExpedienteDTO

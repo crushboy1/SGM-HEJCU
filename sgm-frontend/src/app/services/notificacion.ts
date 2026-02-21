@@ -10,14 +10,20 @@ import {
 } from '../models/notificacion.model';
 
 /**
- * NotificacionService v3.0
+ * NotificacionService v4.0
+ * 
+ * CHANGELOG v4.0:
+ * - Integración completa con backend Fase Administrativa
+ * - Eventos Deudas: DeudaCreada, DeudaResuelta, DesbloqueoTotal, DesbloqueoParcial
+ * - Helper agregarNotificacion() para evitar código duplicado
+ * - Emojis limitados en console.log
+ * - Compatibilidad con NotificacionDeudaService y NotificacionBandejaService
  * 
  * CHANGELOG v3.0:
- * - ✅ FIX CRÍTICO: Usar localStorage 'sgm_user' en lugar de decodificar token
- * - ✅ Prevención de colisión de datos entre usuarios
- * - ✅ Limpieza de keys huérfanas en localStorage
- * - ✅ Validación de username antes de crear storage key
- * - ✅ Logs mejorados para debugging
+ * - FIX CRÍTICO: Usar localStorage 'sgm_user' en lugar de decodificar token
+ * - Prevención de colisión de datos entre usuarios
+ * - Limpieza de keys huérfanas en localStorage
+ * - Validación de username antes de crear storage key
  */
 @Injectable({
   providedIn: 'root'
@@ -32,13 +38,23 @@ export class NotificacionService {
   private notificaciones$ = new BehaviorSubject<NotificacionDTO[]>([]);
   private contadorNoLeidas$ = new BehaviorSubject<number>(0);
 
-  // Subjects para eventos específicos
+  // Subjects para eventos específicos - Bandejas
   private alertaOcupacion$ = new Subject<EstadisticasBandejaDTO>();
   private alertaPermanencia$ = new Subject<BandejaDTO[]>();
   private alertaSolicitudesVencidas$ = new Subject<SolicitudCorreccionDTO[]>();
   private actualizacionBandeja$ = new Subject<BandejaDTO>();
+
+  // Subjects para eventos específicos - Expedientes
   private nuevoExpediente$ = new Subject<NotificacionDTO>();
   private expedienteActualizado$ = new Subject<NotificacionDTO>();
+
+  // Subjects para eventos específicos - Deudas (NUEVOS)
+  private notificacionDeudaCreada$ = new Subject<NotificacionDTO>();
+  private notificacionDeudaResuelta$ = new Subject<NotificacionDTO>();
+  private notificacionDesbloqueoTotal$ = new Subject<NotificacionDTO>();
+  private notificacionDesbloqueoParcial$ = new Subject<NotificacionDTO>();
+
+  // Subjects genéricos
   private notificacionGenerica$ = new Subject<NotificacionDTO>();
   private confirmacionAccion$ = new Subject<{
     accion: string;
@@ -52,7 +68,6 @@ export class NotificacionService {
   private readonly MAX_NOTIFICACIONES = 20;
 
   constructor() {
-    // Limpieza inicial de keys huérfanas
     this.limpiarKeysHuerfanas();
   }
 
@@ -63,22 +78,19 @@ export class NotificacionService {
   async iniciarConexion(): Promise<void> {
     const token = localStorage.getItem('sgm_token');
     if (!token) {
-      console.error('❌ NotificacionService: No se encontró token JWT');
+      console.error('[NotificacionService] No se encontró token JWT');
       return;
     }
 
-    // ⭐ FIX CRÍTICO: Usar directamente 'sgm_user' guardado por AuthService
     const username = this.obtenerUsernameSeguro();
     if (!username) {
-      console.error('❌ NotificacionService: No se pudo obtener username del usuario');
+      console.error('[NotificacionService] No se pudo obtener username del usuario');
       return;
     }
 
-    // Configurar clave de storage única por usuario
     this.currentStorageKey = `${this.STORAGE_BASE_KEY}${username}`;
-    console.log(`✅ Storage key configurada: ${this.currentStorageKey}`);
+    console.log(`[NotificacionService] Storage key configurada: ${this.currentStorageKey}`);
 
-    // Cargar notificaciones del usuario desde localStorage
     this.cargarNotificacionesDesdeStorage();
 
     try {
@@ -103,29 +115,28 @@ export class NotificacionService {
       this.configurarManejadoresDeEventos();
 
       this.hubConnection.onreconnecting((error) => {
-        console.warn('⚠️ SignalR: Reconectando...', error);
+        console.warn('[SignalR] Reconectando...', error);
         this.conexionEstablecida$.next(false);
       });
 
       this.hubConnection.onreconnected((connectionId) => {
-        console.log('✅ SignalR: Reconexión exitosa:', connectionId);
+        console.log('[SignalR] Reconexión exitosa:', connectionId);
         this.conexionEstablecida$.next(true);
       });
 
       this.hubConnection.onclose((error) => {
-        console.error('❌ SignalR: Conexión cerrada', error);
+        console.error('[SignalR] Conexión cerrada', error);
         this.conexionEstablecida$.next(false);
       });
 
       await this.hubConnection.start();
-      console.log('✅ SignalR: Conexión establecida');
+      console.log('[SignalR] Conexión establecida');
       this.conexionEstablecida$.next(true);
 
-      // Ping inicial para verificar latencia
       await this.ping();
 
     } catch (error) {
-      console.error('❌ SignalR: Error al iniciar conexión:', error);
+      console.error('[SignalR] Error al iniciar conexión:', error);
       this.conexionEstablecida$.next(false);
     }
   }
@@ -134,10 +145,10 @@ export class NotificacionService {
     if (this.hubConnection) {
       try {
         await this.hubConnection.stop();
-        console.log('✅ SignalR: Conexión detenida correctamente');
+        console.log('[SignalR] Conexión detenida correctamente');
         this.conexionEstablecida$.next(false);
       } catch (error) {
-        console.error('❌ SignalR: Error al detener conexión:', error);
+        console.error('[SignalR] Error al detener conexión:', error);
       }
     }
   }
@@ -149,49 +160,21 @@ export class NotificacionService {
   private configurarManejadoresDeEventos(): void {
     if (!this.hubConnection) return;
 
-    // Evento: RecibirNotificacion
+    // ========== EVENTO GENÉRICO ==========
     this.hubConnection.on('RecibirNotificacion', (notificacion: NotificacionDTO) => {
-      console.log('📬 SignalR: Notificación recibida:', notificacion);
-
-      // Convertir fechas de string a Date
-      notificacion.fechaHora = new Date(notificacion.fechaHora);
-      if (notificacion.fechaExpiracion) {
-        notificacion.fechaExpiracion = new Date(notificacion.fechaExpiracion);
-      }
-      notificacion.leida = false;
-
-      // Agregar al inicio del array (las más recientes primero)
-      const notificacionesActuales = this.notificaciones$.value;
-      const notificacionesActualizadas = [notificacion, ...notificacionesActuales];
-
-      // Limitar a MAX_NOTIFICACIONES
-      if (notificacionesActualizadas.length > this.MAX_NOTIFICACIONES) {
-        notificacionesActualizadas.pop();
-      }
-
-      this.notificaciones$.next(notificacionesActualizadas);
-      this.actualizarContadorNoLeidas();
-      this.guardarNotificacionesEnStorage();
-
-      // Emitir en observable genérico
-      this.notificacionGenerica$.next(notificacion);
-
-      // Clasificar automáticamente
+      console.log('[SignalR] Notificación recibida:', notificacion.titulo);
+      this.agregarNotificacion(notificacion);
       this.clasificarNotificacion(notificacion);
-
-      // Mostrar notificación de navegador si la pestaña está oculta
-      this.mostrarNotificacionNavegador(notificacion);
     });
 
-    // Evento: RecibirAlertaOcupacion
+    // ========== EVENTOS BANDEJAS ==========
     this.hubConnection.on('RecibirAlertaOcupacion', (estadisticas: EstadisticasBandejaDTO) => {
-      console.log('⚠️ SignalR: Alerta ocupación:', estadisticas);
+      console.log('[SignalR] Alerta ocupación:', estadisticas.porcentajeOcupacion + '%');
       this.alertaOcupacion$.next(estadisticas);
     });
 
-    // Evento: RecibirAlertaPermanencia
     this.hubConnection.on('RecibirAlertaPermanencia', (bandejas: BandejaDTO[]) => {
-      console.log('⏱️ SignalR: Alerta permanencia:', bandejas);
+      console.log('[SignalR] Alerta permanencia:', bandejas.length + ' bandejas');
       bandejas.forEach(b => {
         if (b.fechaHoraAsignacion) {
           b.fechaHoraAsignacion = new Date(b.fechaHoraAsignacion);
@@ -200,9 +183,8 @@ export class NotificacionService {
       this.alertaPermanencia$.next(bandejas);
     });
 
-    // Evento: RecibirAlertaSolicitudesVencidas
     this.hubConnection.on('RecibirAlertaSolicitudesVencidas', (solicitudes: SolicitudCorreccionDTO[]) => {
-      console.log('📋 SignalR: Alerta solicitudes vencidas:', solicitudes);
+      console.log('[SignalR] Alerta solicitudes vencidas:', solicitudes.length);
       solicitudes.forEach(s => {
         s.fechaHoraSolicitud = new Date(s.fechaHoraSolicitud);
         if (s.fechaHoraResolucion) {
@@ -212,22 +194,96 @@ export class NotificacionService {
       this.alertaSolicitudesVencidas$.next(solicitudes);
     });
 
-    // Evento: RecibirActualizacionBandeja
     this.hubConnection.on('RecibirActualizacionBandeja', (bandeja: BandejaDTO) => {
-      console.log('🔄 SignalR: Actualización bandeja:', bandeja);
+      console.log('[SignalR] Actualización bandeja:', bandeja.codigo);
       if (bandeja.fechaHoraAsignacion) {
         bandeja.fechaHoraAsignacion = new Date(bandeja.fechaHoraAsignacion);
+      }
+      if (bandeja.fechaHoraLiberacion) {
+        bandeja.fechaHoraLiberacion = new Date(bandeja.fechaHoraLiberacion);
       }
       this.actualizacionBandeja$.next(bandeja);
     });
 
-    // Evento: RecibirConfirmacionAccion
-    this.hubConnection.on('RecibirConfirmacionAccion',
-      (accion: string, exito: boolean, mensaje: string) => {
-        console.log('✅ SignalR: Confirmación:', { accion, exito, mensaje });
-        this.confirmacionAccion$.next({ accion, exito, mensaje });
-      }
-    );
+    // ========== EVENTOS EXPEDIENTES ==========
+    this.hubConnection.on('RecibirNuevoExpediente', (notificacion: NotificacionDTO) => {
+      console.log('[SignalR] Nuevo expediente:', notificacion.mensaje);
+      this.agregarNotificacion(notificacion);
+      this.nuevoExpediente$.next(notificacion);
+    });
+
+    this.hubConnection.on('RecibirExpedienteActualizado', (notificacion: NotificacionDTO) => {
+      console.log('[SignalR] Expediente actualizado:', notificacion.mensaje);
+      this.agregarNotificacion(notificacion);
+      this.expedienteActualizado$.next(notificacion);
+    });
+
+    // ========== EVENTOS DEUDAS (NUEVOS) ==========
+    this.hubConnection.on('RecibirNotificacionDeudaCreada', (notificacion: NotificacionDTO) => {
+      console.log('[SignalR] Deuda creada:', notificacion.categoriaNotificacion);
+      this.agregarNotificacion(notificacion);
+      this.notificacionDeudaCreada$.next(notificacion);
+    });
+
+    this.hubConnection.on('RecibirNotificacionDeudaResuelta', (notificacion: NotificacionDTO) => {
+      console.log('[SignalR] Deuda resuelta:', notificacion.categoriaNotificacion);
+      this.agregarNotificacion(notificacion);
+      this.notificacionDeudaResuelta$.next(notificacion);
+    });
+
+    this.hubConnection.on('RecibirNotificacionDesbloqueoTotal', (notificacion: NotificacionDTO) => {
+      console.log('[SignalR] Desbloqueo total:', notificacion.mensaje);
+      this.agregarNotificacion(notificacion);
+      this.notificacionDesbloqueoTotal$.next(notificacion);
+    });
+
+    this.hubConnection.on('RecibirNotificacionDesbloqueoParcial', (notificacion: NotificacionDTO) => {
+      console.log('[SignalR] Desbloqueo parcial:', notificacion.mensaje);
+      this.agregarNotificacion(notificacion);
+      this.notificacionDesbloqueoParcial$.next(notificacion);
+    });
+
+    // ========== EVENTO CONFIRMACIÓN ACCIÓN ==========
+    this.hubConnection.on('RecibirConfirmacionAccion', (data: { accion: string; exito: boolean; mensaje: string }) => {
+      console.log('[SignalR] Confirmación acción:', data.accion, data.exito ? 'EXITO' : 'FALLO');
+      this.confirmacionAccion$.next(data);
+    });
+  }
+
+  // ===================================================================
+  // HELPER: AGREGAR NOTIFICACIÓN (EVITA CÓDIGO DUPLICADO)
+  // ===================================================================
+
+  /**
+   * Helper centralizado para agregar notificaciones
+   * Convierte fechas, marca como no leída, actualiza storage y contador
+   */
+  private agregarNotificacion(notificacion: NotificacionDTO): void {
+    // Convertir fechas de string a Date
+    notificacion.fechaHora = new Date(notificacion.fechaHora);
+    if (notificacion.fechaExpiracion) {
+      notificacion.fechaExpiracion = new Date(notificacion.fechaExpiracion);
+    }
+    notificacion.leida = false;
+
+    // Agregar al inicio del array (más recientes primero)
+    const notificacionesActuales = this.notificaciones$.value;
+    const notificacionesActualizadas = [notificacion, ...notificacionesActuales];
+
+    // Limitar a MAX_NOTIFICACIONES
+    if (notificacionesActualizadas.length > this.MAX_NOTIFICACIONES) {
+      notificacionesActualizadas.pop();
+    }
+
+    this.notificaciones$.next(notificacionesActualizadas);
+    this.actualizarContadorNoLeidas();
+    this.guardarNotificacionesEnStorage();
+
+    // Emitir en observable genérico
+    this.notificacionGenerica$.next(notificacion);
+
+    // Mostrar notificación de navegador si pestaña oculta
+    this.mostrarNotificacionNavegador(notificacion);
   }
 
   // ===================================================================
@@ -235,55 +291,55 @@ export class NotificacionService {
   // ===================================================================
 
   private clasificarNotificacion(notificacion: NotificacionDTO): void {
-    const titulo = notificacion.titulo.toLowerCase();
-    const mensaje = notificacion.mensaje.toLowerCase();
+    const categoria = notificacion.categoriaNotificacion?.toLowerCase() || '';
 
-    // Clasificar: Nuevo Expediente
-    if (titulo.includes('nuevo expediente') || mensaje.includes('expediente creado')) {
-      console.log('📋 Clasificado: Nuevo Expediente');
+    // Clasificación por categoría
+    if (categoria.includes('expediente_nuevo')) {
       this.nuevoExpediente$.next(notificacion);
-    }
-
-    // Clasificar: Expediente Actualizado
-    if (titulo.includes('expediente actualizado') ||
-      titulo.includes('cambio de estado') ||
-      mensaje.includes('estado ha cambiado')) {
-      console.log('🔄 Clasificado: Expediente Actualizado');
+    } else if (categoria.includes('expediente_actualizado')) {
       this.expedienteActualizado$.next(notificacion);
+    } else if (categoria.includes('deuda_creada')) {
+      this.notificacionDeudaCreada$.next(notificacion);
+    } else if (categoria.includes('deuda_resuelta')) {
+      this.notificacionDeudaResuelta$.next(notificacion);
+    } else if (categoria.includes('desbloqueo_total')) {
+      this.notificacionDesbloqueoTotal$.next(notificacion);
+    } else if (categoria.includes('desbloqueo_parcial')) {
+      this.notificacionDesbloqueoParcial$.next(notificacion);
     }
   }
 
   // ===================================================================
-  // UTILIDADES SIGNALR
+  // MÉTODOS DE SERVIDOR (INVOKE)
   // ===================================================================
 
-  async ping(): Promise<number | null> {
+  async ping(): Promise<void> {
     if (!this.hubConnection || this.hubConnection.state !== signalR.HubConnectionState.Connected) {
-      return null;
+      console.warn('[SignalR] No se puede hacer ping: conexión no establecida');
+      return;
     }
+
     try {
-      const clientTime = Date.now();
-      const serverTime = await this.hubConnection.invoke<number>('Ping');
-      const latency = Date.now() - clientTime;
-      console.log(`🏓 SignalR Ping: ${latency}ms`);
-      return latency;
+      const inicio = Date.now();
+      await this.hubConnection.invoke('Ping');
+      const latencia = Date.now() - inicio;
+      console.log(`[SignalR] Ping exitoso - Latencia: ${latencia}ms`);
     } catch (error) {
-      console.error('❌ SignalR: Error en Ping:', error);
-      return null;
+      console.error('[SignalR] Error en ping:', error);
     }
   }
 
-  async obtenerInfoConexion(): Promise<any> {
+  async solicitarEstadisticasBandejas(): Promise<void> {
     if (!this.hubConnection || this.hubConnection.state !== signalR.HubConnectionState.Connected) {
-      return null;
+      console.warn('[SignalR] No se pueden solicitar estadísticas: conexión no establecida');
+      return;
     }
+
     try {
-      const info = await this.hubConnection.invoke('GetConnectionInfo');
-      console.log('ℹ️ SignalR: Info conexión:', info);
-      return info;
+      await this.hubConnection.invoke('SolicitarEstadisticasBandejas');
+      console.log('[SignalR] Solicitud de estadísticas enviada');
     } catch (error) {
-      console.error('❌ SignalR: Error obtener info:', error);
-      return null;
+      console.error('[SignalR] Error al solicitar estadísticas:', error);
     }
   }
 
@@ -303,6 +359,7 @@ export class NotificacionService {
     return this.contadorNoLeidas$.asObservable();
   }
 
+  // Observables Bandejas
   get onAlertaOcupacion(): Observable<EstadisticasBandejaDTO> {
     return this.alertaOcupacion$.asObservable();
   }
@@ -319,6 +376,7 @@ export class NotificacionService {
     return this.actualizacionBandeja$.asObservable();
   }
 
+  // Observables Expedientes
   get onNuevoExpediente(): Observable<NotificacionDTO> {
     return this.nuevoExpediente$.asObservable();
   }
@@ -327,6 +385,24 @@ export class NotificacionService {
     return this.expedienteActualizado$.asObservable();
   }
 
+  // Observables Deudas (NUEVOS)
+  get onNotificacionDeudaCreada(): Observable<NotificacionDTO> {
+    return this.notificacionDeudaCreada$.asObservable();
+  }
+
+  get onNotificacionDeudaResuelta(): Observable<NotificacionDTO> {
+    return this.notificacionDeudaResuelta$.asObservable();
+  }
+
+  get onNotificacionDesbloqueoTotal(): Observable<NotificacionDTO> {
+    return this.notificacionDesbloqueoTotal$.asObservable();
+  }
+
+  get onNotificacionDesbloqueoParcial(): Observable<NotificacionDTO> {
+    return this.notificacionDesbloqueoParcial$.asObservable();
+  }
+
+  // Observables Genéricos
   get onNotificacionGenerica(): Observable<NotificacionDTO> {
     return this.notificacionGenerica$.asObservable();
   }
@@ -348,7 +424,7 @@ export class NotificacionService {
       this.notificaciones$.next([...notificaciones]);
       this.actualizarContadorNoLeidas();
       this.guardarNotificacionesEnStorage();
-      console.log(`✅ Notificación marcada como leída: ${notificacionId}`);
+      console.log(`[Notificaciones] Marcada como leída: ${notificacionId}`);
     }
   }
 
@@ -358,7 +434,7 @@ export class NotificacionService {
     this.notificaciones$.next([...notificaciones]);
     this.actualizarContadorNoLeidas();
     this.guardarNotificacionesEnStorage();
-    console.log('✅ Todas las notificaciones marcadas como leídas');
+    console.log('[Notificaciones] Todas marcadas como leídas');
   }
 
   eliminarNotificacion(notificacionId: string): void {
@@ -366,7 +442,7 @@ export class NotificacionService {
     this.notificaciones$.next(notificaciones);
     this.actualizarContadorNoLeidas();
     this.guardarNotificacionesEnStorage();
-    console.log(`🗑️ Notificación eliminada: ${notificacionId}`);
+    console.log(`[Notificaciones] Eliminada: ${notificacionId}`);
   }
 
   limpiarTodas(): void {
@@ -374,36 +450,32 @@ export class NotificacionService {
     this.contadorNoLeidas$.next(0);
     if (this.currentStorageKey) {
       localStorage.removeItem(this.currentStorageKey);
-      console.log('🧹 Todas las notificaciones limpiadas');
+      console.log('[Notificaciones] Todas limpiadas');
     }
   }
 
   // ===================================================================
-  // GESTIÓN DE LOCALSTORAGE (CORREGIDO)
+  // GESTIÓN DE LOCALSTORAGE
   // ===================================================================
 
   /**
-   * ⭐ FIX CRÍTICO: Obtener username de forma segura desde localStorage
-   * Ya no decodifica el token JWT manualmente (propenso a errores)
+   * Obtener username de forma segura desde localStorage
    * Usa directamente el valor guardado por AuthService en 'sgm_user'
    */
   private obtenerUsernameSeguro(): string {
-    // Intentar obtener desde 'sgm_user' (guardado por AuthService)
     const username = localStorage.getItem('sgm_user');
 
     if (username && username.trim() !== '') {
-      console.log(`✅ Username obtenido de localStorage: ${username}`);
+      console.log(`[NotificacionService] Username obtenido: ${username}`);
       return username;
     }
 
-    // Fallback: si no existe, usar 'anonimo' temporalmente
-    console.warn('⚠️ No se encontró username en localStorage (sgm_user)');
+    console.warn('[NotificacionService] No se encontró username en localStorage (sgm_user)');
     return 'anonimo';
   }
 
   /**
    * Limpia keys de notificaciones huérfanas en localStorage
-   * (de sesiones anteriores o usuarios eliminados)
    */
   private limpiarKeysHuerfanas(): void {
     try {
@@ -411,9 +483,8 @@ export class NotificacionService {
       const keysNotificaciones = todasLasKeys.filter(k => k.startsWith(this.STORAGE_BASE_KEY));
 
       if (keysNotificaciones.length > 5) {
-        console.warn(`⚠️ Se encontraron ${keysNotificaciones.length} keys de notificaciones. Limpiando...`);
+        console.warn(`[NotificacionService] Se encontraron ${keysNotificaciones.length} keys de notificaciones. Limpiando...`);
 
-        // Mantener solo las 3 más recientes (en caso de múltiples usuarios en el mismo navegador)
         keysNotificaciones
           .sort((a, b) => {
             const dataA = localStorage.getItem(a);
@@ -424,19 +495,19 @@ export class NotificacionService {
               const parsedB = JSON.parse(dataB);
               const maxDateA = Math.max(...parsedA.map((n: any) => new Date(n.fechaHora).getTime()));
               const maxDateB = Math.max(...parsedB.map((n: any) => new Date(n.fechaHora).getTime()));
-              return maxDateB - maxDateA; // Más reciente primero
+              return maxDateB - maxDateA;
             } catch {
               return 0;
             }
           })
-          .slice(3) // Eliminar todo excepto las 3 primeras (más recientes)
+          .slice(3)
           .forEach(key => {
             localStorage.removeItem(key);
-            console.log(`🗑️ Key huérfana eliminada: ${key}`);
+            console.log(`[NotificacionService] Key huérfana eliminada: ${key}`);
           });
       }
     } catch (error) {
-      console.error('❌ Error al limpiar keys huérfanas:', error);
+      console.error('[NotificacionService] Error al limpiar keys huérfanas:', error);
     }
   }
 
@@ -447,20 +518,19 @@ export class NotificacionService {
 
   private guardarNotificacionesEnStorage(): void {
     if (!this.currentStorageKey) {
-      console.warn('⚠️ No se puede guardar: currentStorageKey no está configurada');
+      console.warn('[NotificacionService] No se puede guardar: currentStorageKey no configurada');
       return;
     }
 
     try {
       const data = JSON.stringify(this.notificaciones$.value);
       localStorage.setItem(this.currentStorageKey, data);
-      console.log(`💾 Notificaciones guardadas en: ${this.currentStorageKey}`);
+      console.log(`[NotificacionService] Notificaciones guardadas en: ${this.currentStorageKey}`);
     } catch (error) {
-      console.error('❌ Error al guardar notificaciones:', error);
+      console.error('[NotificacionService] Error al guardar notificaciones:', error);
 
-      // Si el error es por cuota excedida, limpiar keys antiguas
       if (error instanceof DOMException && error.name === 'QuotaExceededError') {
-        console.warn('⚠️ Cuota de localStorage excedida. Limpiando...');
+        console.warn('[NotificacionService] Cuota de localStorage excedida. Limpiando...');
         this.limpiarKeysHuerfanas();
       }
     }
@@ -468,7 +538,7 @@ export class NotificacionService {
 
   private cargarNotificacionesDesdeStorage(): void {
     if (!this.currentStorageKey) {
-      console.warn('⚠️ No se puede cargar: currentStorageKey no está configurada');
+      console.warn('[NotificacionService] No se puede cargar: currentStorageKey no configurada');
       return;
     }
 
@@ -478,7 +548,6 @@ export class NotificacionService {
       if (stored) {
         const parsed: NotificacionDTO[] = JSON.parse(stored);
 
-        // Revivir fechas (convertir strings a Date)
         parsed.forEach(n => {
           n.fechaHora = new Date(n.fechaHora);
           if (n.fechaExpiracion) {
@@ -486,7 +555,6 @@ export class NotificacionService {
           }
         });
 
-        // Filtrar notificaciones expiradas
         const validas = parsed.filter(n => {
           if (!n.fechaExpiracion) return true;
           return n.fechaExpiracion > new Date();
@@ -494,17 +562,15 @@ export class NotificacionService {
 
         this.notificaciones$.next(validas);
         this.actualizarContadorNoLeidas();
-        console.log(`✅ Cargadas ${validas.length} notificaciones desde: ${this.currentStorageKey}`);
+        console.log(`[NotificacionService] Cargadas ${validas.length} notificaciones desde: ${this.currentStorageKey}`);
 
       } else {
-        // Usuario nuevo en este navegador, empezar con array vacío
         this.notificaciones$.next([]);
         this.contadorNoLeidas$.next(0);
-        console.log('ℹ️ No hay notificaciones previas para este usuario');
+        console.log('[NotificacionService] No hay notificaciones previas para este usuario');
       }
     } catch (error) {
-      console.error('❌ Error al cargar notificaciones:', error);
-      // En caso de error, empezar limpio
+      console.error('[NotificacionService] Error al cargar notificaciones:', error);
       this.notificaciones$.next([]);
       this.contadorNoLeidas$.next(0);
     }
@@ -515,16 +581,13 @@ export class NotificacionService {
   // ===================================================================
 
   private async mostrarNotificacionNavegador(notificacion: NotificacionDTO): Promise<void> {
-    // Solo mostrar si la pestaña está oculta
     if (!document.hidden) return;
 
     if ('Notification' in window) {
-      // Solicitar permiso si no se ha hecho antes
       if (Notification.permission === 'default') {
         await Notification.requestPermission();
       }
 
-      // Mostrar notificación si se tiene permiso
       if (Notification.permission === 'granted') {
         new Notification(notificacion.titulo, {
           body: notificacion.mensaje,

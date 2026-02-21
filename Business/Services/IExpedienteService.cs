@@ -12,5 +12,11 @@ namespace SisMortuorio.Business.Services
         Task<ExpedienteDTO?> UpdateAsync(int id, UpdateExpedienteDTO dto);
         Task<bool> ValidarHCUnicoAsync(string hc);
         Task<bool> ValidarCertificadoSINADEFUnicoAsync(string certificado);
+        Task<ExpedienteDTO> ValidarDocumentacionAdmisionAsync(int expedienteId, int usuarioAdmisionId);
+        Task<List<ExpedienteDTO>> GetPendientesValidacionAdmisionAsync();
+        Task<List<ExpedienteDTO>> GetPendientesRecojoAsync();
+        Task<ExpedienteDTO?> BuscarPorHCAsync(string hc);
+        Task<ExpedienteDTO?> BuscarPorDNIAsync(string dni);
+        Task<ExpedienteDTO?> BuscarPorCodigoAsync(string codigoExpediente);
     }
 }

@@ -402,7 +402,7 @@ export class BandejaUniversalComponent implements OnInit, OnDestroy {
     this.notificacionService.onNuevoExpediente
       .pipe(takeUntil(this.destroy$))
       .subscribe((notificacion) => {
-        console.log('📥 Bandeja Universal: Nuevo expediente recibido', notificacion);
+        console.log(' Bandeja Universal: Nuevo expediente recibido', notificacion);
 
         this.ultimaActualizacionSignalR = new Date();
 
@@ -417,7 +417,7 @@ export class BandejaUniversalComponent implements OnInit, OnDestroy {
     this.notificacionService.onExpedienteActualizado
       .pipe(takeUntil(this.destroy$))
       .subscribe((notificacion) => {
-        console.log('🔄 Bandeja Universal: Expediente actualizado', notificacion);
+        console.log(' Bandeja Universal: Expediente actualizado', notificacion);
 
         this.ultimaActualizacionSignalR = new Date();
 
@@ -428,7 +428,7 @@ export class BandejaUniversalComponent implements OnInit, OnDestroy {
 
         if (expedienteLocal && notificacion.estadoNuevo) {
           expedienteLocal.estadoTexto = notificacion.estadoNuevo;
-          console.log('✨ Actualización optimista aplicada:', notificacion.codigoExpediente);
+          console.log(' Actualización optimista aplicada:', notificacion.codigoExpediente);
 
           // Re-aplicar filtros sin hacer HTTP request
           this.aplicarFiltros();

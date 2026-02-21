@@ -203,5 +203,54 @@ namespace SisMortuorio.Controllers
                 return StatusCode(500, new { message = "Error interno del servidor" });
             }
         }
+
+        /// <summary>
+        /// Libera manualmente una bandeja ocupada (emergencia/corrección).
+        /// Solo para roles administrativos. Registra motivo y observaciones para auditoría.
+        /// </summary>
+        [HttpPut("{bandejaId}/liberar-manualmente")]
+        [Authorize(Roles = "Administrador, JefeGuardia, VigilanteSupervisor")]
+        [ProducesResponseType(typeof(BandejaDTO), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> LiberarManualmente(int bandejaId, [FromBody] LiberarBandejaManualDTO dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            // Validar que el bandejaId del parámetro coincida con el del DTO
+            if (dto.BandejaID != bandejaId)
+                return BadRequest(new { message = "El ID de la bandeja no coincide con el parámetro de la URL" });
+
+            try
+            {
+                var usuarioId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+                dto.UsuarioLiberaID = usuarioId; // Sobrescribir con el usuario autenticado
+
+                var resultado = await _bandejaService.LiberarManualmenteAsync(dto);
+
+                _logger.LogWarning(
+                    "LIBERACIÓN MANUAL: Usuario {UsuarioID} liberó Bandeja {BandejaID}. Motivo: {Motivo}",
+                    usuarioId, bandejaId, dto.MotivoLiberacion
+                );
+
+                return Ok(resultado);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                _logger.LogWarning(ex, "Bandeja {BandejaID} no encontrada", bandejaId);
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Error de negocio al liberar manualmente Bandeja {BandejaID}", bandejaId);
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al liberar manualmente Bandeja {BandejaID}", bandejaId);
+                return StatusCode(500, new { message = "Error interno del servidor" });
+            }
+        }
     }
 }

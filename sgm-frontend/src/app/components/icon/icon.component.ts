@@ -17,11 +17,11 @@ import { CommonModule } from '@angular/common';
  *   <app-icon name="inbox" [size]="24"></app-icon>
  * </div>
  * 
- * Íconos disponibles (50):
+ * Íconos disponibles (53):
  * - Navegación: home, menu, log-out, x, chevron-*
- * - Archivos: file-plus, file-text, file-check, folder, archive
+ * - Archivos: file-plus, file-text, file-check, file-badge, folder, archive
  * - Alertas: alert-triangle, alert-circle, circle-check, circle-x, info
- * - Acciones: zap, refresh-cw, search, eye, printer, filter, download, plus, minus, edit, trash
+ * - Acciones: zap, refresh-cw, search, eye, printer, filter, download, upload, plus, minus, edit, trash, loader
  * - Tiempo: clock, calendar
  * - Usuarios: user, users
  * - Identificadores: hash, qr-code
@@ -211,7 +211,7 @@ import { CommonModule } from '@angular/common';
           <rect width="12" height="8" x="6" y="14"></rect>
         </g>
 
-        <!-- ⭐ NUEVO: Filtros y Exportación -->
+        <!--  Filtros y Exportación -->
         <g *ngSwitchCase="'filter'">
           <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
         </g>
@@ -222,7 +222,33 @@ import { CommonModule } from '@angular/common';
           <line x1="12" x2="12" y1="15" y2="3"></line>
         </g>
 
-        <!-- ⭐ NUEVO: Operaciones CRUD -->
+        <!-- Upload y File Badge -->
+        <g *ngSwitchCase="'upload'">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" x2="12" y1="3" y2="15"></line>
+        </g>
+
+        <g *ngSwitchCase="'file-badge'">
+          <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <path d="M12 11.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z"></path>
+          <path d="M9 16.5v1.5"></path>
+          <path d="M15 16.5v1.5"></path>
+        </g>
+
+        <g *ngSwitchCase="'loader'">
+          <line x1="12" x2="12" y1="2" y2="6"></line>
+          <line x1="12" x2="12" y1="18" y2="22"></line>
+          <line x1="4.93" x2="7.76" y1="4.93" y2="7.76"></line>
+          <line x1="16.24" x2="19.07" y1="16.24" y2="19.07"></line>
+          <line x1="2" x2="6" y1="12" y2="12"></line>
+          <line x1="18" x2="22" y1="12" y2="12"></line>
+          <line x1="4.93" x2="7.76" y1="19.07" y2="16.24"></line>
+          <line x1="16.24" x2="19.07" y1="7.76" y2="4.93"></line>
+        </g>
+
+        <!--  Operaciones CRUD -->
         <g *ngSwitchCase="'plus'">
           <path d="M5 12h14"></path>
           <path d="M12 5v14"></path>

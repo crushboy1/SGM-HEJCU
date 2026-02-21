@@ -31,7 +31,8 @@ export interface RegistrarSalidaRequest {
   conductorFuneraria?: string;
   dniConductor?: string;
   placaVehiculo?: string;
-
+  ayudanteFuneraria?: string;
+  dniAyudante?: string;
   // Destino y observaciones
   destino?: string; // "CementerioLocal" | "CementerioForáneo" | "Crematorio" | "Otro"
   observaciones?: string;

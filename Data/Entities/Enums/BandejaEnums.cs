@@ -44,45 +44,24 @@
         Liberacion = 2,
 
         /// <summary>
+        /// Liberación de la bandeja (cuerpo retirado del mortuorio manualmente)
+        /// </summary>
+        LiberacionManual = 3,
+
+        /// <summary>
         /// Movimiento interno del cuerpo a otra bandeja
         /// </summary>
-        Reasignacion = 3,
+        Reasignacion = 4,
 
         /// <summary>
         /// Inicio de mantenimiento/limpieza de la bandeja
         /// </summary>
-        InicioMantenimiento = 4,
+        InicioMantenimiento = 5,
 
         /// <summary>
         /// Fin de mantenimiento, bandeja lista para usar
         /// </summary>
-        FinMantenimiento = 5
+        FinMantenimiento = 6
     }
 
-    /// <summary>
-    /// Define el tipo de salida del cuerpo del mortuorio.
-    /// Determina el flujo de autorización y documentación requerida.
-    /// </summary>
-    public enum TipoSalida
-    {
-        /// <summary>
-        /// Retiro por familiares autorizados (caso normal)
-        /// </summary>
-        Familiar = 1,
-
-        /// <summary>
-        /// Retiro por autoridades legales (fiscalía, PNP, medicina legal)
-        /// </summary>
-        AutoridadLegal = 2,
-
-        /// <summary>
-        /// Traslado a otro establecimiento de salud
-        /// </summary>
-        TrasladoHospital = 3,
-
-        /// <summary>
-        /// Otros casos no contemplados
-        /// </summary>
-        Otro = 4
-    }
 }

@@ -1,0 +1,94 @@
+<div class="min-h-screen bg-hospital-bg p-4 md:p-6">
+  <div class="max-w-5xl mx-auto space-y-6">
+
+    <header class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+      <div class="flex items-center gap-3">
+        <div class="p-3 bg-cyan-100 rounded-xl">
+          <app-icon name="credit-card" [size]="28" class="text-hospital-cyan"></app-icon>
+        </div>
+        <div>
+          <h1 class="text-2xl font-bold text-gray-800">Caja: Registro de Pagos</h1>
+          <p class="text-sm text-gray-500">Regularización de deudas hospitalarias</p>
+        </div>
+      </div>
+      <button (click)="volver()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium transition flex items-center gap-2">
+        <app-icon name="chevron-left" [size]="16"></app-icon> Volver
+      </button>
+    </header>
+
+    <section class="bg-white rounded-xl shadow-card p-6">
+      <div class="flex flex-col md:flex-row gap-4 items-end">
+        <div class="w-full md:w-1/4">
+          <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Buscar por</label>
+          <select [(ngModel)]="busqueda.tipo" class="w-full px-3 py-2 border rounded-lg bg-gray-50">
+            <option value="HC">Historia Clínica</option>
+            <option value="DNI">DNI</option>
+            <option value="CODIGO">Cód. Expediente</option>
+          </select>
+        </div>
+        <div class="flex-1 w-full">
+          <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Dato de búsqueda</label>
+          <input [(ngModel)]="busqueda.termino" (keyup.enter)="buscarPaciente()"
+                 class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hospital-cyan"
+                 placeholder="Ingrese número...">
+        </div>
+        <button (click)="buscarPaciente()" [disabled]="busqueda.buscando"
+                class="bg-hospital-cyan text-white px-6 py-2 rounded-lg hover:bg-cyan-700 transition flex gap-2">
+          <app-icon [name]="busqueda.buscando ? 'loader' : 'search'" [class.animate-spin]="busqueda.buscando"></app-icon>
+          Buscar
+        </button>
+      </div>
+    </section>
+
+    <div *ngIf="expedienteActual && deudaActual && deudaActual.estado === 'Pendiente'"
+         class="grid md:grid-cols-3 gap-6 animate-fade-in-up">
+
+      <div class="md:col-span-1 bg-white rounded-xl shadow-card p-6 border-t-4 border-hospital-cyan">
+        <h3 class="font-bold text-gray-800 mb-1">{{ expedienteActual.nombreCompleto }}</h3>
+        <p class="text-xs text-gray-500 mb-4">HC: {{ expedienteActual.hc }}</p>
+
+        <div class="p-4 bg-cyan-50 rounded-lg text-center border border-cyan-100">
+          <p class="text-xs text-hospital-cyan font-bold uppercase">Monto Pendiente</p>
+          <p class="text-3xl font-bold text-gray-800">S/. {{ deudaActual.montoPendiente | number:'1.2-2' }}</p>
+        </div>
+      </div>
+
+      <div class="md:col-span-2 bg-white rounded-xl shadow-card p-6">
+        <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">Registrar Transacción</h3>
+
+        <div class="grid md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">N° Boleta / Recibo *</label>
+            <input [(ngModel)]="formLiquidacion.numeroBoleta" type="text"
+                   class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hospital-cyan"
+                   placeholder="Ej: B001-123456">
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Monto Pagado (S/.) *</label>
+            <input [(ngModel)]="formLiquidacion.montoPagado" type="number" step="0.1"
+                   class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hospital-cyan font-bold text-lg">
+          </div>
+        </div>
+
+        <div class="mb-6">
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Observaciones</label>
+          <textarea [(ngModel)]="formLiquidacion.observaciones" rows="2"
+                    class="w-full px-3 py-2 border rounded-lg" placeholder="Opcional..."></textarea>
+        </div>
+
+        <button (click)="confirmarPago()" [disabled]="guardando"
+                class="w-full py-3 bg-hospital-cyan text-white font-bold rounded-lg hover:bg-cyan-700 shadow-md transition flex justify-center items-center gap-2">
+          <app-icon name="check-circle" [size]="20"></app-icon>
+          {{ guardando ? 'Procesando...' : 'Confirmar Pago' }}
+        </button>
+      </div>
+
+    </div>
+
+    <div *ngIf="deudaActual && deudaActual.estado !== 'Pendiente'" class="p-6 bg-green-50 rounded-xl text-center border border-green-200">
+      <app-icon name="check-circle" [size]="40" class="text-green-600 mx-auto mb-2"></app-icon>
+      <p class="font-bold text-green-800">El paciente no tiene deuda pendiente.</p>
+    </div>
+
+  </div>
+</div>

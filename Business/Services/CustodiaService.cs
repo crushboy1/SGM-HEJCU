@@ -21,7 +21,7 @@ namespace SisMortuorio.Business.Services
         private readonly IExpedienteRepository _expedienteRepository;
         private readonly ICustodiaRepository _custodiaRepository;
         private readonly IUsuarioRepository _usuarioRepository;
-        private readonly IStateMachineService _stateMachineService; // Inyectar la máquina de estados
+        private readonly IStateMachineService _stateMachineService;
         private readonly ILogger<CustodiaService> _logger;
         private readonly IHubContext<SgmHub, ISgmClient> _hubContext;
 

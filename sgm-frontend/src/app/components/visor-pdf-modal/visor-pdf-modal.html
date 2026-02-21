@@ -1,0 +1,60 @@
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" role="dialog" aria-modal="true">
+
+  <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-sm transition-opacity"
+       (click)="onCerrar()"></div>
+
+  <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden animate-fade-in-up">
+
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
+      <div class="flex items-center gap-3">
+        <div class="p-2 bg-red-100 rounded-lg">
+          <app-icon name="file-text" [size]="20" class="text-red-600"></app-icon>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold text-gray-800 line-clamp-1" [title]="titulo">
+            {{ titulo }}
+          </h3>
+          <p class="text-xs text-gray-500">Vista previa del documento</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button (click)="descargar()"
+                class="p-2 text-gray-500 hover:text-hospital-blue hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100"
+                title="Descargar archivo original">
+          <app-icon name="download" [size]="20"></app-icon>
+        </button>
+
+        <div class="h-6 w-px bg-gray-300 mx-1"></div>
+
+        <button (click)="onCerrar()"
+                class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                title="Cerrar visor">
+          <app-icon name="x" [size]="24"></app-icon>
+        </button>
+      </div>
+    </div>
+
+    <div class="flex-1 bg-gray-100 relative w-full h-full">
+
+      <iframe *ngIf="pdfUrlSegura"
+              [src]="pdfUrlSegura"
+              class="w-full h-full border-none block"
+              type="application/pdf">
+      </iframe>
+
+      <div *ngIf="!pdfUrlSegura" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
+        <app-icon name="alert-circle" [size]="48" class="mb-4 opacity-50"></app-icon>
+        <p class="text-lg font-medium">No se pudo cargar el documento</p>
+        <p class="text-sm">El archivo está dañado o no es un PDF válido.</p>
+      </div>
+
+    </div>
+
+    <div class="px-6 py-2 border-t border-gray-200 bg-white flex justify-between items-center text-xs text-gray-400">
+      <span>Sistema de Gestión Mortuorio</span>
+      <span>Visor PDF v1.0</span>
+    </div>
+
+  </div>
+</div>

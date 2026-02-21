@@ -31,11 +31,20 @@ export interface SalidaStats {
   salidasOtro: number;         
   conIncidentes: number;
 }
+export interface DeudaStats {
+  sangrePendientes: number;
+  sangreAnuladas: number;
+  economicasPendientes: number;
+  economicasExoneradas: number;
+  montoTotalPendiente: number;
+  montoTotalExonerado: number;
+}
 
 export interface DashboardKPIs {
   bandejas: BandejaStats;
   solicitudes: SolicitudStats;
   salidas: SalidaStats;
+  deudas?: DeudaStats;
 }
 
 @Injectable({
@@ -70,11 +79,23 @@ export class DashboardService {
    * Carga combinada de todos los KPIs del Dashboard
    * Optimizado con forkJoin para ejecutar en paralelo
    */
-  getDashboardKPIs(): Observable<DashboardKPIs> {
-    return forkJoin({
+  getDashboardKPIs(incluirDeudas: boolean = false): Observable<DashboardKPIs> {
+    const requests: any = {
       bandejas: this.getBandejaStats(),
       solicitudes: this.getSolicitudStats(),
-      salidas: this.getSalidaStats() // ← AGREGADO
-    });
+      salidas: this.getSalidaStats()
+    };
+
+    if (incluirDeudas) {
+      requests.deudas = this.getDeudaStats();
+    }
+
+    return forkJoin(requests) as Observable<DashboardKPIs>;  // ✅ Cast explícito
+  }
+  /**
+ * Obtener estadísticas de deudas (Sangre + Económica)
+ */
+  getDeudaStats(): Observable<DeudaStats> {
+    return this.http.get<DeudaStats>(`${this.apiUrl}/Deudas/estadisticas`);
   }
 }

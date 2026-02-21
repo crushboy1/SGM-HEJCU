@@ -1,0 +1,139 @@
+<div class="min-h-screen bg-gray-50 p-4 md:p-6 animate-fade-in">
+  <div class="max-w-7xl mx-auto space-y-6">
+
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+
+      <div>
+        <h1 class="text-2xl font-bold text-gray-800 tracking-tight">Expedientes Legales</h1>
+        <p class="text-sm text-gray-500">Gestión de casos médico-legales y levantamiento de cadáveres</p>
+      </div>
+
+      <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+
+        <div class="relative w-full sm:w-64">
+          <input type="text"
+                 [(ngModel)]="terminoBusqueda"
+                 (keyup)="filtrar()"
+                 placeholder="Buscar por nombre, HC, código..."
+                 class="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition-all shadow-sm">
+          <app-icon name="search" [size]="18" class="absolute left-3 top-3 text-gray-400"></app-icon>
+        </div>
+
+        <button (click)="irACrear()"
+                class="px-5 py-2.5 bg-gray-900 text-white font-semibold rounded-lg hover:bg-gray-800 transition-colors shadow-md flex items-center justify-center gap-2">
+          <app-icon name="plus" [size]="20"></app-icon>
+          Nuevo Caso
+        </button>
+      </div>
+    </div>
+
+    <div *ngIf="loading" class="flex flex-col items-center justify-center py-20 bg-white rounded-xl shadow-sm border border-gray-100">
+      <app-icon name="loader" [size]="40" class="text-hospital-cyan animate-spin mb-4"></app-icon>
+      <p class="text-gray-500 font-medium">Cargando expedientes...</p>
+    </div>
+
+    <div *ngIf="error && !loading" class="p-6 bg-red-50 border border-red-100 rounded-xl text-center">
+      <app-icon name="alert-triangle" [size]="32" class="text-red-500 mx-auto mb-2"></app-icon>
+      <p class="text-red-700 font-medium">{{ error }}</p>
+      <button (click)="cargarExpedientes()" class="mt-3 text-sm text-red-600 hover:underline">Intentar nuevamente</button>
+    </div>
+
+    <div *ngIf="!loading && !error" class="bg-white rounded-xl shadow-card border border-gray-200 overflow-hidden">
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-gray-50 border-b border-gray-200 text-xs uppercase tracking-wider text-gray-500 font-semibold">
+              <th class="px-6 py-4">Código</th>
+              <th class="px-6 py-4">Paciente</th>
+              <th class="px-6 py-4">Identificación</th>
+              <th class="px-6 py-4">Estado</th>
+              <th class="px-6 py-4 text-center">Docs</th>
+              <th class="px-6 py-4 text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+
+            <tr *ngFor="let item of expedientesFiltrados"
+                class="hover:bg-blue-50/50 transition-colors group">
+
+              <td class="px-6 py-4">
+                <div class="flex items-center gap-2">
+                  <div class="p-2 bg-gray-100 rounded-lg text-gray-600">
+                    <app-icon name="folder" [size]="18"></app-icon>
+                  </div>
+                  <span class="font-bold text-gray-700">{{ item.codigoExpediente }}</span>
+                </div>
+              </td>
+
+              <td class="px-6 py-4">
+                <div class="flex flex-col">
+                  <span class="font-bold text-gray-800 text-sm">
+                    {{ item.apellidoPaterno }} {{ item.apellidoMaterno }}
+                  </span>
+                  <span class="text-sm text-gray-500">{{ item.nombres }}</span>
+                </div>
+              </td>
+
+              <td class="px-6 py-4">
+                <div class="space-y-1">
+                  <div class="flex items-center gap-1.5 text-sm text-gray-600" title="Historia Clínica">
+                    <app-icon name="hash" [size]="14" class="text-gray-400"></app-icon>
+                    <span>{{ item.hc || 'S/N' }}</span>
+                  </div>
+                  <div class="flex items-center gap-1.5 text-sm text-gray-600" title="Documento de Identidad">
+                    <app-icon name="credit-card" [size]="14" class="text-gray-400"></app-icon>
+                    <span>{{ item.numeroDocumento || 'S/N' }}</span>
+                  </div>
+                </div>
+              </td>
+
+              <td class="px-6 py-4">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
+                      [ngClass]="helper.getEstadoColor(item.estado)">
+                  {{ helper.getEstadoLabel(item.estado) }}
+                </span>
+                <div class="text-xs text-gray-400 mt-1 pl-1">
+                  {{ item.fechaCreacion | date:'dd/MM/yyyy' }}
+                </div>
+              </td>
+
+              <td class="px-6 py-4 text-center">
+                <div class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-gray-100 text-gray-600 text-xs font-medium">
+                  <app-icon name="paperclip" [size]="12"></app-icon>
+                  {{ item.cantidadDocumentos }}
+                </div>
+              </td>
+
+              <td class="px-6 py-4 text-right">
+                <button (click)="irADetalle(item.expedienteLegalID)"
+                        class="text-hospital-cyan hover:text-cyan-700 font-medium text-sm flex items-center justify-end gap-1 ml-auto">
+                  Ver Detalle
+                  <app-icon name="arrow-right" [size]="16"></app-icon>
+                </button>
+              </td>
+            </tr>
+
+            <tr *ngIf="expedientesFiltrados.length === 0">
+              <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                <div class="flex flex-col items-center justify-center">
+                  <div class="p-4 bg-gray-50 rounded-full mb-3">
+                    <app-icon name="search" [size]="24" class="text-gray-400"></app-icon>
+                  </div>
+                  <p class="font-medium">No se encontraron expedientes</p>
+                  <p class="text-sm mt-1">Intente con otro término de búsqueda o cree un nuevo caso.</p>
+                </div>
+              </td>
+            </tr>
+
+          </tbody>
+        </table>
+      </div>
+
+      <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 text-xs text-gray-500 flex justify-between items-center">
+        <span>Mostrando {{ expedientesFiltrados.length }} registros</span>
+      </div>
+    </div>
+
+  </div>
+</div>

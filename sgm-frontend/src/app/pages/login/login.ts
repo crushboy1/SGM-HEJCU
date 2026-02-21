@@ -28,8 +28,6 @@ export class LoginComponent {
       next: (res) => {
         this.isLoading = false;
         if (res.success) {
-          // ¡Login Exitoso!
-          alert(`Bienvenido ${res.nombreCompleto} (${res.rol})`);
           this.router.navigate(['/dashboard']);
         } else {
           this.errorMessage = res.errorMessage || 'Credenciales inválidas';

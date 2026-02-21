@@ -1,0 +1,173 @@
+<div class="min-h-screen bg-hospital-bg p-4 md:p-6">
+  <div class="max-w-5xl mx-auto space-y-6">
+
+    <header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+      <div class="flex items-center gap-3">
+        <div class="p-3 bg-cyan-100 rounded-xl shadow-inner">
+          <app-icon name="credit-card" [size]="28" class="text-hospital-cyan"></app-icon>
+        </div>
+        <div>
+          <h1 class="text-2xl font-bold text-gray-800 tracking-tight">Registrar Deuda Económica</h1>
+          <p class="text-sm text-gray-500">Módulo simulador para Cuentas Pacientes</p>
+        </div>
+      </div>
+
+      <button (click)="volverDashboard()"
+              class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+        <app-icon name="chevron-left" [size]="16"></app-icon>
+        Volver
+      </button>
+    </header>
+
+    <section class="bg-white rounded-xl shadow-card border border-gray-200 p-6">
+      <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+        <app-icon name="search" [size]="20" class="text-hospital-blue"></app-icon>
+        Buscar Paciente Fallecido
+      </h2>
+
+      <div class="flex flex-col md:flex-row gap-4 items-end">
+
+        <div class="w-full md:w-1/4">
+          <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Buscar por</label>
+          <div class="relative">
+            <select [(ngModel)]="busqueda.tipoBusqueda"
+                    (change)="limpiarBusqueda()"
+                    class="w-full pl-3 pr-8 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan bg-gray-50 text-gray-700 font-medium appearance-none cursor-pointer">
+              <option value="HC">Historia Clínica (HC)</option>
+              <option value="DNI">DNI / Documento</option>
+              <option value="CODIGO">Cód. Expediente SGM</option>
+            </select>
+            <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-gray-500">
+              <app-icon name="chevron-down" [size]="16"></app-icon>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex-1 w-full">
+          <label class="block text-xs font-bold text-gray-500 uppercase mb-1">
+            <ng-container [ngSwitch]="busqueda.tipoBusqueda">
+              <span *ngSwitchCase="'HC'">Número de Historia Clínica</span>
+              <span *ngSwitchCase="'DNI'">Número de Documento</span>
+              <span *ngSwitchCase="'CODIGO'">Código de Expediente SGM</span>
+            </ng-container>
+          </label>
+
+          <div class="relative">
+            <input type="text"
+                   [(ngModel)]="busqueda.terminoBusqueda"
+                   (keyup.enter)="buscarExpediente()"
+                   [placeholder]="busqueda.tipoBusqueda === 'HC' ? 'Ej: 154023' : (busqueda.tipoBusqueda === 'DNI' ? 'Ej: 45889922' : 'Ej: 15')"
+                   class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all"
+                   [disabled]="busqueda.buscando || mostrarFormulario">
+            <app-icon name="search" [size]="18" class="absolute left-3 top-3 text-gray-400"></app-icon>
+          </div>
+        </div>
+
+        <div class="flex gap-2 w-full md:w-auto">
+          <button (click)="buscarExpediente()"
+                  [disabled]="busqueda.buscando || mostrarFormulario || !busqueda.terminoBusqueda"
+                  class="flex-1 md:flex-none px-6 py-2.5 bg-hospital-cyan hover:bg-cyan-600 text-white font-semibold rounded-lg shadow-soft transition-all disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2">
+            <app-icon [name]="busqueda.buscando ? 'loader' : 'search'"
+                      [size]="18"
+                      [class.animate-spin]="busqueda.buscando"></app-icon>
+            {{ busqueda.buscando ? 'Buscando...' : 'Buscar' }}
+          </button>
+
+          <button *ngIf="mostrarFormulario || busqueda.terminoBusqueda"
+                  (click)="limpiarBusqueda()"
+                  class="px-4 py-2.5 bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 font-medium rounded-lg transition-all"
+                  title="Limpiar búsqueda">
+            <app-icon name="x" [size]="18"></app-icon>
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="busqueda.errorBusqueda"
+           class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700 text-sm animate-fade-in">
+        <app-icon name="alert-circle" [size]="18" class="flex-shrink-0"></app-icon>
+        <span>{{ busqueda.errorBusqueda }}</span>
+      </div>
+    </section>
+
+    <div *ngIf="mostrarFormulario && busqueda.expedienteEncontrado"
+         class="grid md:grid-cols-3 gap-6 animate-fade-in-up">
+
+      <div class="md:col-span-1">
+        <div class="bg-white rounded-xl shadow-card border border-gray-200 p-6 sticky top-6">
+
+          <div class="flex items-center gap-3 mb-4 pb-4 border-b border-gray-100">
+            <div class="h-12 w-12 rounded-full bg-cyan-50 flex items-center justify-center text-hospital-cyan font-bold text-xl border border-cyan-100">
+              {{ busqueda.expedienteEncontrado.nombreCompleto.charAt(0) }}
+            </div>
+            <div>
+              <h3 class="font-bold text-gray-800 leading-tight">Paciente Fallecido</h3>
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 text-xs font-medium mt-1">
+                <app-icon name="building-2" [size]="12"></app-icon>
+                Cuentas Pacientes
+              </span>
+            </div>
+          </div>
+
+          <div class="space-y-4">
+
+            <div>
+              <span class="block text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Apellidos y Nombres</span>
+              <p class="text-gray-900 font-semibold text-base leading-snug">
+                {{ busqueda.expedienteEncontrado.nombreCompleto }}
+              </p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div class="p-2 bg-gray-50 rounded-lg border border-gray-100">
+                <span class="block text-xs text-gray-500 font-bold uppercase mb-1">H.C.</span>
+                <p class="text-gray-800 font-mono font-medium">
+                  {{ busqueda.expedienteEncontrado.hc || '---' }}
+                </p>
+              </div>
+
+              <div class="p-2 bg-gray-50 rounded-lg border border-gray-100">
+                <span class="block text-xs text-gray-500 font-bold uppercase mb-1">Doc. Identidad</span>
+                <p class="text-gray-800 font-mono font-medium">
+                  {{ busqueda.expedienteEncontrado.numeroDocumento || '---' }}
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <span class="block text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Referencia SGM</span>
+              <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-cyan-50 text-hospital-cyan rounded-md border border-cyan-100 w-full">
+                <app-icon name="hash" [size]="14"></app-icon>
+                <span class="font-mono font-bold">{{ busqueda.expedienteEncontrado.codigoExpediente }}</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <div class="md:col-span-2">
+        <div class="relative">
+          <div class="hidden md:block absolute top-10 -left-6 w-6 h-0.5 border-t-2 border-dashed border-gray-300"></div>
+
+          <app-form-deuda-economica [expedienteId]="busqueda.expedienteEncontrado.expedienteID"
+                                    [codigoExpediente]="busqueda.expedienteEncontrado.codigoExpediente"
+                                    (onRegistroExitoso)="handleRegistroExitoso($event)"
+                                    (onCancelar)="handleCancelar()">
+          </app-form-deuda-economica>
+        </div>
+      </div>
+
+    </div>
+
+    <div *ngIf="!mostrarFormulario && !busqueda.buscando" class="py-12 text-center opacity-60">
+      <div class="inline-flex p-6 bg-gray-100 rounded-full mb-4">
+        <app-icon name="credit-card" [size]="48" class="text-gray-400"></app-icon>
+      </div>
+      <h3 class="text-lg font-medium text-gray-600">Gestión de Deudas Hospitalarias</h3>
+      <p class="text-sm text-gray-500 max-w-sm mx-auto mt-2">
+        Busque el paciente por HC o DNI para registrar montos pendientes de pago.
+      </p>
+    </div>
+
+  </div>
+</div>

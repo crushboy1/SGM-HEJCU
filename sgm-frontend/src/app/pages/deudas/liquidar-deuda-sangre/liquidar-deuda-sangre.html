@@ -1,0 +1,117 @@
+<div class="min-h-screen bg-hospital-bg p-4 md:p-6">
+  <div class="max-w-6xl mx-auto space-y-6">
+
+    <header class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+      <div class="flex items-center gap-3">
+        <div class="p-3 bg-blue-100 rounded-xl">
+          <app-icon name="file-check" [size]="28" class="text-blue-600"></app-icon>
+        </div>
+        <div>
+          <h1 class="text-2xl font-bold text-gray-800">Compromiso de Pago</h1>
+          <p class="text-sm text-gray-500">Banco de Sangre: Regularización de Deudas</p>
+        </div>
+      </div>
+      <button (click)="volver()" class="btn-secondary flex items-center gap-2">
+        <app-icon name="chevron-left" [size]="16"></app-icon> Volver
+      </button>
+    </header>
+
+    <section class="bg-white rounded-xl shadow-card p-6">
+      <div class="flex flex-col md:flex-row gap-4 items-end">
+        <div class="w-full md:w-1/4">
+          <label class="label-control">Buscar por</label>
+          <select [(ngModel)]="busqueda.tipo" class="input-control">
+            <option value="HC">Historia Clínica</option>
+            <option value="DNI">DNI Paciente</option>
+          </select>
+        </div>
+        <div class="flex-1 w-full">
+          <label class="label-control">Número</label>
+          <input type="text" [(ngModel)]="busqueda.termino" (keyup.enter)="buscarPaciente()" 
+                 class="input-control" placeholder="Ingrese número...">
+        </div>
+        <button (click)="buscarPaciente()" [disabled]="busqueda.buscando" 
+                class="bg-hospital-blue text-white px-6 py-2.5 rounded-lg hover:bg-cyan-700 transition flex gap-2">
+          <app-icon [name]="busqueda.buscando ? 'loader' : 'search'" [class.animate-spin]="busqueda.buscando"></app-icon>
+          Buscar
+        </button>
+      </div>
+    </section>
+
+    <div *ngIf="expedienteActual && deudaActual && deudaActual.estado === 'Pendiente'" 
+         class="grid md:grid-cols-2 gap-6 animate-fade-in-up">
+
+      <div class="bg-white rounded-xl shadow-card p-6 border-l-4 border-hospital-blue">
+        <div class="flex items-center gap-2 mb-4">
+          <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">PASO 1</span>
+          <h3 class="font-bold text-gray-800">Generar Acta</h3>
+        </div>
+
+        <div class="p-4 bg-gray-50 rounded-lg mb-4 border border-gray-100">
+          <p class="text-sm text-gray-600">Paciente: <span class="font-bold text-gray-900">{{ expedienteActual.nombreCompleto }}</span></p>
+          <p class="text-sm text-gray-600">Deuda: <span class="font-bold text-red-600">{{ deudaActual.cantidadUnidades }} Unidades de Sangre</span></p>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <label class="label-control">Nombre Familiar Responsable</label>
+            <input [(ngModel)]="datosFamiliar.nombre" type="text" class="input-control" placeholder="Quien firma el documento">
+          </div>
+          <div>
+            <label class="label-control">DNI Familiar</label>
+            <input [(ngModel)]="datosFamiliar.dni" type="text" class="input-control" placeholder="Documento identidad">
+          </div>
+
+          <button (click)="generarImprimible()" [disabled]="generandoPdf"
+                  class="w-full py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition flex justify-center items-center gap-2 shadow-lg">
+            <app-icon name="printer" [size]="20"></app-icon>
+            {{ generandoPdf ? 'Generando...' : 'Generar e Imprimir Acta' }}
+          </button>
+          <p class="text-xs text-gray-400 text-center">Esto descargará un PDF para firma física.</p>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-card p-6 border-l-4 border-green-500">
+        <div class="flex items-center gap-2 mb-4">
+          <span class="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">PASO 2</span>
+          <h3 class="font-bold text-gray-800">Regularizar (Desbloquear)</h3>
+        </div>
+
+        <p class="text-sm text-gray-600 mb-4">
+          Una vez firmado el documento por el familiar y el médico, suba la evidencia aquí para liberar la deuda.
+        </p>
+
+        <div class="mb-6">
+          <app-upload-pdf 
+            label="Subir Acta Firmada (Escaneada)" 
+            (fileSelected)="onArchivoSeleccionado($event)">
+          </app-upload-pdf>
+        </div>
+
+        <button (click)="confirmarCompromiso()" 
+                [disabled]="!archivoFirmado || guardando"
+                class="w-full py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex justify-center items-center gap-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
+          <app-icon name="check-circle" [size]="20"></app-icon>
+          {{ guardando ? 'Procesando...' : 'Confirmar Compromiso y Desbloquear' }}
+        </button>
+      </div>
+
+    </div>
+
+    <div *ngIf="expedienteActual && (!deudaActual || deudaActual.estado !== 'Pendiente')" 
+         class="p-8 text-center bg-white rounded-xl shadow-sm border border-green-200">
+       <app-icon name="check-circle" [size]="48" class="text-green-500 mx-auto mb-2"></app-icon>
+       <h3 class="text-xl font-bold text-gray-800">Paciente sin deudas pendientes</h3>
+       <p class="text-gray-500">No se requiere generar compromisos de pago.</p>
+    </div>
+
+  </div>
+
+  <app-visor-pdf-modal 
+    *ngIf="mostrarVisor && pdfBlobParaImprimir"
+    [titulo]="'Acta de Compromiso - Vista Previa'"
+    [archivoBlob]="pdfBlobParaImprimir"
+    (cerrar)="mostrarVisor = false">
+  </app-visor-pdf-modal>
+
+</div>

@@ -2,7 +2,8 @@ import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
-import { BandejaService, Bandeja } from '../../services/bandeja';
+import { BandejaService } from '../../services/bandeja';
+import { BandejaDTO } from '../../models/notificacion.model';
 import { IconComponent } from '../../components/icon/icon.component';
 import Swal from 'sweetalert2';
 
@@ -18,7 +19,7 @@ export class AsignarBandejaComponent implements OnInit {
   private bandejaService = inject(BandejaService);
 
   bandejaId: number = 0;
-  bandeja: Bandeja | null = null;
+  bandeja: BandejaDTO | null = null;
   isLoading = true;
   isSaving = false;
 

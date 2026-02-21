@@ -1,7 +1,6 @@
-﻿using Microsoft.AspNetCore.SignalR;
+﻿using Microsoft.EntityFrameworkCore;
 using SisMortuorio.Business.DTOs.Bandeja;
-using SisMortuorio.Business.DTOs.Notificacion;
-using SisMortuorio.Business.Hubs;
+using SisMortuorio.Data;
 using SisMortuorio.Data.Entities;
 using SisMortuorio.Data.Entities.Enums;
 using SisMortuorio.Data.Repositories;
@@ -15,32 +14,31 @@ namespace SisMortuorio.Business.Services
     /// 1. Asignar/liberar bandejas a expedientes
     /// 2. Gestionar mantenimiento de bandejas
     /// 3. Calcular estadísticas de ocupación
-    /// 4. Enviar alertas en tiempo real por SignalR cuando:
-    ///    - Ocupación supera 70%
-    ///    - Una bandeja cambia de estado (asignada/liberada)
+    /// 4. Registrar auditoría completa en AuditLog
     /// 
-    /// Integración con SignalR:
-    /// - RecibirAlertaOcupacion: Alerta específica con estadísticas completas
-    /// - RecibirNotificacion: Notificación genérica para dropdown
-    /// - RecibirActualizacionBandeja: Actualización de bandeja individual (mapa en vivo)
+    /// Notificaciones SignalR delegadas a INotificacionBandejaService:
+    /// - NotificarBandejaAsignadaAsync
+    /// - NotificarBandejaLiberadaAsync
+    /// - NotificarBandejaEnMantenimientoAsync
+    /// - NotificarBandejaSalidaMantenimientoAsync
+    /// - VerificarYNotificarOcupacionCriticaAsync
     /// </summary>
     public class BandejaService(
         IBandejaRepository bandejaRepo,
-        IOcupacionBandejaRepository ocupacionRepo,
+        IBandejaHistorialRepository ocupacionRepo,
         IExpedienteRepository expedienteRepo,
         IStateMachineService stateMachine,
+        INotificacionBandejaService notificacionService,
         ILogger<BandejaService> logger,
-        IHubContext<SgmHub, ISgmClient> hubContext) : IBandejaService
+        ApplicationDbContext context) : IBandejaService
     {
         private readonly IBandejaRepository _bandejaRepo = bandejaRepo;
-        private readonly IOcupacionBandejaRepository _ocupacionRepo = ocupacionRepo;
+        private readonly IBandejaHistorialRepository _ocupacionRepo = ocupacionRepo;
         private readonly IExpedienteRepository _expedienteRepo = expedienteRepo;
         private readonly IStateMachineService _stateMachine = stateMachine;
+        private readonly INotificacionBandejaService _notificacionService = notificacionService;
         private readonly ILogger<BandejaService> _logger = logger;
-        private readonly IHubContext<SgmHub, ISgmClient> _hubContext = hubContext;
-
-        // Roles que deben recibir alertas de ocupación
-        private static readonly string[] RolesAlertaOcupacion = ["Admision","JefeGuardia","Administrador","VigilanteSupervisor"];
+        private readonly ApplicationDbContext _context = context;
 
         public async Task<List<BandejaDTO>> GetOcupacionDashboardAsync()
         {
@@ -70,8 +68,10 @@ namespace SisMortuorio.Business.Services
         public async Task<BandejaDTO> AsignarBandejaAsync(AsignarBandejaDTO dto, int usuarioAsignaId)
         {
             // 1. Validar Entidades
-            var expediente = await _expedienteRepo.GetByIdAsync(dto.ExpedienteID) ?? throw new InvalidOperationException($"Expediente ID {dto.ExpedienteID} no encontrado.");
-            var bandeja = await _bandejaRepo.GetByIdAsync(dto.BandejaID) ?? throw new InvalidOperationException($"Bandeja ID {dto.BandejaID} no encontrada.");
+            var expediente = await _expedienteRepo.GetByIdAsync(dto.ExpedienteID)
+                ?? throw new InvalidOperationException($"Expediente ID {dto.ExpedienteID} no encontrado.");
+            var bandeja = await _bandejaRepo.GetByIdAsync(dto.BandejaID)
+                ?? throw new InvalidOperationException($"Bandeja ID {dto.BandejaID} no encontrada.");
 
             // 2. Validar Lógica de Negocio
             if (!bandeja.EstaDisponible())
@@ -92,10 +92,12 @@ namespace SisMortuorio.Business.Services
 
             // b. Cambiar estado del expediente
             await _stateMachine.FireAsync(expediente, TriggerExpediente.AsignarBandeja);
+            expediente.BandejaActualID = bandeja.BandejaID;
+            _context.Entry(expediente).Property(e => e.BandejaActualID).IsModified = true;
             await _expedienteRepo.UpdateAsync(expediente);
 
-            // c. Crear registro de auditoría en OcupacionBandeja
-            var ocupacion = new OcupacionBandeja
+            // c. Crear registro de auditoría en BandejaHistorial
+            var ocupacion = new BandejaHistorial
             {
                 BandejaID = bandeja.BandejaID,
                 ExpedienteID = expediente.ExpedienteID,
@@ -111,19 +113,34 @@ namespace SisMortuorio.Business.Services
                 bandeja.Codigo, expediente.CodigoExpediente, usuarioAsignaId, estadoAnterior, expediente.EstadoActual
             );
 
-            // 5. NOTIFICACIONES SIGNALR
-
-            // 5a. Enviar actualización de bandeja individual (para actualizar mapa en vivo)
-            var bandejaDTO = MapToBandejaDTO(bandeja);
-            await _hubContext.Clients.All.RecibirActualizacionBandeja(bandejaDTO);
-
-            _logger.LogDebug(
-                "SignalR: Actualización de bandeja {CodigoBandeja} enviada a todos los clientes",
-                bandeja.Codigo
+            // d. Registrar en AuditLog
+            await RegistrarAuditoriaAsync(
+                accion: "AsignarBandeja",
+                usuarioId: usuarioAsignaId,
+                expedienteId: expediente.ExpedienteID,
+                datosAntes: new
+                {
+                    EstadoExpediente = estadoAnterior.ToString(),
+                    BandejaID = (int?)null,
+                    CodigoBandeja = (string?)null
+                },
+                datosDespues: new
+                {
+                    EstadoExpediente = expediente.EstadoActual.ToString(),
+                    BandejaID = bandeja.BandejaID,
+                    CodigoBandeja = bandeja.Codigo,
+                    Observaciones = dto.Observaciones
+                }
             );
 
-            // 5b. Verificar y enviar alerta de ocupación (si supera 70%)
-            await CheckOcupacionAlertAsync();
+            // 5. NOTIFICACIONES SIGNALR (delegadas al servicio centralizado)
+            var bandejaDTO = MapToBandejaDTO(bandeja);
+
+            await _notificacionService.NotificarBandejaAsignadaAsync(bandejaDTO);
+
+            // Verificar y enviar alerta de ocupación si supera 70%
+            var estadisticas = await GetEstadisticasAsync();
+            await _notificacionService.VerificarYNotificarOcupacionCriticaAsync(estadisticas);
 
             // 6. Devolver DTO
             return bandejaDTO;
@@ -141,6 +158,9 @@ namespace SisMortuorio.Business.Services
                 return;
             }
 
+            var codigoBandeja = bandeja.Codigo;
+            var bandejaId = bandeja.BandejaID;
+
             // 2. Buscar el registro de ocupación activo
             var ocupacion = await _ocupacionRepo.GetActualByExpedienteIdAsync(expedienteId);
             if (ocupacion == null)
@@ -157,6 +177,14 @@ namespace SisMortuorio.Business.Services
             await _bandejaRepo.UpdateAsync(bandeja);
 
             // b. Cerrar el registro de ocupación
+
+            var expediente = await _expedienteRepo.GetByIdAsync(expedienteId);
+            if (expediente != null)
+            {
+                expediente.BandejaActualID = null;
+                await _expedienteRepo.UpdateAsync(expediente);
+            }
+
             if (ocupacion != null)
             {
                 ocupacion.RegistrarSalida(usuarioLiberaId, "Salida registrada por Vigilante");
@@ -168,16 +196,30 @@ namespace SisMortuorio.Business.Services
                 bandeja.Codigo, usuarioLiberaId
             );
 
-            // 4. NOTIFICACIONES SIGNALR
-
-            // 4a. Enviar actualización de bandeja individual (para actualizar mapa en vivo)
-            var bandejaDTO = MapToBandejaDTO(bandeja);
-            await _hubContext.Clients.All.RecibirActualizacionBandeja(bandejaDTO);
-
-            _logger.LogDebug(
-                "SignalR: Actualización de bandeja {CodigoBandeja} (liberada) enviada a todos los clientes",
-                bandeja.Codigo
+            // c. Registrar en AuditLog
+            await RegistrarAuditoriaAsync(
+                accion: "LiberarBandeja",
+                usuarioId: usuarioLiberaId,
+                expedienteId: expedienteId,
+                datosAntes: new
+                {
+                    BandejaID = bandejaId,
+                    CodigoBandeja = codigoBandeja,
+                    Estado = "Ocupada",
+                    ExpedienteID = expedienteId
+                },
+                datosDespues: new
+                {
+                    BandejaID = bandejaId,
+                    CodigoBandeja = codigoBandeja,
+                    Estado = "Disponible",
+                    ExpedienteID = (int?)null
+                }
             );
+
+            // 4. NOTIFICACIONES SIGNALR (delegadas al servicio centralizado)
+            var bandejaDTO = MapToBandejaDTO(bandeja);
+            await _notificacionService.NotificarBandejaLiberadaAsync(bandejaDTO);
         }
 
         public async Task<EstadisticasBandejaDTO> GetEstadisticasAsync()
@@ -200,7 +242,11 @@ namespace SisMortuorio.Business.Services
 
         public async Task<BandejaDTO> IniciarMantenimientoAsync(int bandejaId, string observaciones, int usuarioId)
         {
-            var bandeja = await _bandejaRepo.GetByIdAsync(bandejaId) ?? throw new InvalidOperationException($"Bandeja ID {bandejaId} no encontrada.");
+            var bandeja = await _bandejaRepo.GetByIdAsync(bandejaId)
+                ?? throw new InvalidOperationException($"Bandeja ID {bandejaId} no encontrada.");
+
+            var estadoAnterior = bandeja.Estado;
+
             bandeja.IniciarMantenimiento(observaciones);
             await _bandejaRepo.UpdateAsync(bandeja);
 
@@ -209,16 +255,40 @@ namespace SisMortuorio.Business.Services
                 bandeja.Codigo, usuarioId, observaciones
             );
 
-            // Enviar actualización de bandeja (mapa en vivo)
+            // Registrar en AuditLog
+            await RegistrarAuditoriaAsync(
+                accion: "IniciarMantenimiento",
+                usuarioId: usuarioId,
+                expedienteId: null,
+                datosAntes: new
+                {
+                    BandejaID = bandejaId,
+                    Codigo = bandeja.Codigo,
+                    Estado = estadoAnterior.ToString()
+                },
+                datosDespues: new
+                {
+                    BandejaID = bandejaId,
+                    Codigo = bandeja.Codigo,
+                    Estado = bandeja.Estado.ToString(),
+                    Observaciones = observaciones
+                }
+            );
+
+            // NOTIFICACIONES SIGNALR (delegadas al servicio centralizado)
             var bandejaDTO = MapToBandejaDTO(bandeja);
-            await _hubContext.Clients.All.RecibirActualizacionBandeja(bandejaDTO);
+            await _notificacionService.NotificarBandejaEnMantenimientoAsync(bandejaDTO);
 
             return bandejaDTO;
         }
 
         public async Task<BandejaDTO> FinalizarMantenimientoAsync(int bandejaId, int usuarioId)
         {
-            var bandeja = await _bandejaRepo.GetByIdAsync(bandejaId) ?? throw new InvalidOperationException($"Bandeja ID {bandejaId} no encontrada.");
+            var bandeja = await _bandejaRepo.GetByIdAsync(bandejaId)
+                ?? throw new InvalidOperationException($"Bandeja ID {bandejaId} no encontrada.");
+
+            var estadoAnterior = bandeja.Estado;
+
             bandeja.FinalizarMantenimiento();
             await _bandejaRepo.UpdateAsync(bandeja);
 
@@ -227,14 +297,80 @@ namespace SisMortuorio.Business.Services
                 bandeja.Codigo, usuarioId
             );
 
-            // Enviar actualización de bandeja (mapa en vivo)
+            // Registrar en AuditLog
+            await RegistrarAuditoriaAsync(
+                accion: "FinalizarMantenimiento",
+                usuarioId: usuarioId,
+                expedienteId: null,
+                datosAntes: new
+                {
+                    BandejaID = bandejaId,
+                    Codigo = bandeja.Codigo,
+                    Estado = estadoAnterior.ToString()
+                },
+                datosDespues: new
+                {
+                    BandejaID = bandejaId,
+                    Codigo = bandeja.Codigo,
+                    Estado = bandeja.Estado.ToString()
+                }
+            );
+
+            // NOTIFICACIONES SIGNALR (delegadas al servicio centralizado)
             var bandejaDTO = MapToBandejaDTO(bandeja);
-            await _hubContext.Clients.All.RecibirActualizacionBandeja(bandejaDTO);
+            await _notificacionService.NotificarBandejaSalidaMantenimientoAsync(bandejaDTO);
 
             return bandejaDTO;
         }
+        public async Task<BandejaDTO> LiberarManualmenteAsync(LiberarBandejaManualDTO dto)
+        {
+            var bandeja = await _bandejaRepo.GetByIdAsync(dto.BandejaID)
+                ?? throw new KeyNotFoundException($"Bandeja con ID {dto.BandejaID} no encontrada");
 
-        // --- Métodos Privados de Mapeo y Alertas ---
+            if (bandeja.Estado != EstadoBandeja.Ocupada)
+                throw new InvalidOperationException($"La bandeja {bandeja.Codigo} no está ocupada. Estado actual: {bandeja.Estado}");
+
+            _logger.LogWarning("Liberación MANUAL de bandeja {Codigo}. Usuario: {UsuarioID}, Motivo: {Motivo}",
+                bandeja.Codigo, dto.UsuarioLiberaID, dto.MotivoLiberacion);
+
+            // Guardar datos antes de liberar (para historial y auditoría)
+            var expedienteID = bandeja.ExpedienteID!.Value;
+
+            // Liberar la bandeja
+            bandeja.Liberar(dto.UsuarioLiberaID);
+            bandeja.Observaciones = $"[LIBERACIÓN MANUAL] Motivo: {dto.MotivoLiberacion}. {dto.Observaciones}";
+            await _bandejaRepo.UpdateAsync(bandeja);
+
+            // Limpiar BandejaActualID del expediente
+            var expediente = await _expedienteRepo.GetByIdAsync(expedienteID);
+            if (expediente != null)
+            {
+                expediente.BandejaActualID = null;
+                await _expedienteRepo.UpdateAsync(expediente);
+            }
+
+            // Registrar en historial
+            var ocupacionActiva = await _ocupacionRepo.GetActualByExpedienteIdAsync(expedienteID);
+            if (ocupacionActiva != null)
+            {
+                ocupacionActiva.RegistrarSalida(
+                    dto.UsuarioLiberaID,
+                    $"[LIBERACIÓN MANUAL] Motivo: {dto.MotivoLiberacion}. {dto.Observaciones}"
+                );
+                ocupacionActiva.Accion = AccionBandeja.LiberacionManual;
+                await _ocupacionRepo.UpdateAsync(ocupacionActiva);
+            }
+
+            _logger.LogInformation("Bandeja {Codigo} liberada manualmente. Expediente: {ExpedienteID}",
+                bandeja.Codigo, expedienteID);
+
+            // Mapear y retornar
+            return MapToBandejaDTO(bandeja);
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // MÉTODOS PRIVADOS - MAPEO Y AUDITORÍA
+        // ═══════════════════════════════════════════════════════════
 
         /// <summary>
         /// Mapea una entidad Bandeja a su DTO correspondiente.
@@ -246,7 +382,13 @@ namespace SisMortuorio.Business.Services
                 BandejaID = bandeja.BandejaID,
                 Codigo = bandeja.Codigo,
                 Estado = bandeja.Estado.ToString(),
-                Observaciones = bandeja.Observaciones
+                Observaciones = bandeja.Observaciones,
+
+                // Auditoría
+                FechaCreacion = bandeja.FechaCreacion,
+                FechaModificacion = bandeja.FechaModificacion,
+                UsuarioLiberaNombre = bandeja.UsuarioLibera?.NombreCompleto,
+                FechaHoraLiberacion = bandeja.FechaHoraLiberacion
             };
 
             if (bandeja.EstaOcupada())
@@ -269,61 +411,19 @@ namespace SisMortuorio.Business.Services
         }
 
         /// <summary>
-        /// Verifica el porcentaje de ocupación y envía alertas por SignalR si supera el 70%.
-        /// Envía dos notificaciones:
-        /// 1. RecibirAlertaOcupacion: Alerta específica con estadísticas completas (actualiza dashboard)
-        /// 2. RecibirNotificacion: Notificación genérica para dropdown del header
+        /// Registra operación en AuditLog.
         /// </summary>
-        private async Task CheckOcupacionAlertAsync()
+        private async Task RegistrarAuditoriaAsync(string accion, int usuarioId, int? expedienteId, object datosAntes, object datosDespues)
         {
             try
             {
-                var statsDTO = await GetEstadisticasAsync();
-
-                // Umbral de alerta: 70%
-                if (statsDTO.PorcentajeOcupacion > 70)
-                {
-                    _logger.LogWarning(
-                        "ALERTA DE OCUPACIÓN: El mortuorio ha superado el 70% de capacidad. Ocupación actual: {PorcentajeOcupacion}%",
-                        statsDTO.PorcentajeOcupacion.ToString("F2")
-                    );
-
-                    // 1. Enviar alerta específica con estadísticas completas
-                    await _hubContext.Clients
-                        .Groups(RolesAlertaOcupacion)
-                        .RecibirAlertaOcupacion(statsDTO);
-
-                    _logger.LogInformation(
-                        "SignalR: Alerta de ocupación enviada a roles: {Roles}",
-                        string.Join(", ", RolesAlertaOcupacion)
-                    );
-
-                    // 2. Enviar notificación genérica (para dropdown en header)
-                    var notificacion = new NotificacionDTO
-                    {
-                        Titulo = "Capacidad Crítica del Mortuorio",
-                        Mensaje = $"El mortuorio ha alcanzado el {statsDTO.PorcentajeOcupacion:F1}% de ocupación ({statsDTO.Ocupadas}/{statsDTO.Total} bandejas). Se recomienda agilizar retiros.",
-                        Tipo = "warning",
-                        RolesDestino = string.Join(",", RolesAlertaOcupacion),
-                        RequiereAccion = true,
-                        AccionSugerida = "Ver Mapa del Mortuorio",
-                        UrlNavegacion = "/mapa-mortuorio"
-                    };
-
-                    await _hubContext.Clients
-                        .Groups(RolesAlertaOcupacion)
-                        .RecibirNotificacion(notificacion);
-
-                    _logger.LogInformation(
-                        "SignalR: Notificación genérica de ocupación enviada. Ocupación: {Porcentaje}%",
-                        statsDTO.PorcentajeOcupacion.ToString("F2")
-                    );
-                }
+                var log = AuditLog.CrearLogPersonalizado("Bandeja", accion, usuarioId, expedienteId, datosAntes, datosDespues, null);
+                _context.AuditLogs.Add(log);
+                await _context.SaveChangesAsync();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error al intentar enviar alerta de ocupación por SignalR");
-                // NO re-throw - la alerta no debe bloquear la asignación de bandeja
+                _logger.LogError(ex, "Error al registrar auditoría para acción {Accion}", accion);
             }
         }
     }

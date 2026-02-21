@@ -333,8 +333,7 @@ export class MisExpedientesComponent implements OnInit {
           icon: 'success',
           title: 'Brazalete Descargado',
           text: 'El archivo PDF se descargó correctamente.',
-          timer: 2000,
-          showConfirmButton: false
+          showConfirmButton: true
         });
       },
       error: (err) => {

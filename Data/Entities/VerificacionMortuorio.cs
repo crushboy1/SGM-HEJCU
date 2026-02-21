@@ -148,6 +148,21 @@ namespace SisMortuorio.Data.Entities
         [MaxLength(1000)]
         public string? Observaciones { get; set; }
 
+
+        // ═══════════════════════════════════════════════════════════
+        //  RELACIÓN CON BANDEJA
+        // ═══════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// ID de la bandeja asignada tras verificación exitosa
+        /// Solo se llena si Aprobada = true
+        /// </summary>
+        public int? BandejaAsignadaID { get; set; }
+
+        /// <summary>
+        /// Navegación a la bandeja asignada
+        /// </summary>
+        public virtual Bandeja? BandejaAsignada { get; set; }
         // ═══════════════════════════════════════════════════════════
         // MÉTODOS DE VALIDACIÓN Y LÓGICA DE NEGOCIO
         // ═══════════════════════════════════════════════════════════

@@ -133,7 +133,8 @@ namespace SisMortuorio.Business.Workers
                 {
                     Titulo = "Alerta de Permanencia",
                     Mensaje = $"{bandejasConAlerta.Count} cuerpo(s) llevan más de {HorasAlerta} horas en el mortuorio. Requiere atención urgente.",
-                    Tipo = "advertencia",
+                    Tipo = "warning",
+                    CategoriaNotificacion = "alerta_permanencia",
                     RolesDestino = string.Join(",", RolesDestino),
                     RequiereAccion = true,
                     AccionSugerida = "Ver Bandejas con Alerta",

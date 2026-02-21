@@ -21,17 +21,27 @@
 
     <!-- Header del Sidebar -->
     <div class="h-16 flex items-center px-4 bg-gray-800 border-b border-gray-700 justify-between shrink-0">
-      <div class="flex items-center overflow-hidden">
-        <div class="h-9 w-9 bg-hospital-cyan rounded-lg flex items-center justify-center shadow-md flex-shrink-0 transition-all"
-             [ngClass]="{'mr-3': !sidebarCollapsed}">
-          <span class="font-bold text-sm text-white">SGM</span>
+      <div class="flex items-center gap-3 overflow-hidden">
+
+        <!-- Logo Image -->
+        <div class="h-10 w-10 flex-shrink-0 transition-all"
+             [ngClass]="{'h-10 w-10': !sidebarCollapsed, 'h-8 w-8': sidebarCollapsed}">
+          <img src="logo.png"
+               alt="Logo HEJCU"
+               class="w-full h-full object-contain"
+               [class.scale-90]="sidebarCollapsed">
         </div>
+
+        <!-- Texto (se oculta al colapsar) -->
         <div *ngIf="!sidebarCollapsed" class="transition-opacity duration-300 min-w-0">
           <h1 class="font-bold text-base tracking-wide text-white truncate">HEJCU</h1>
           <p class="text-xs text-gray-400 uppercase leading-tight truncate">Gestión Mortuoria</p>
         </div>
       </div>
-      <button (click)="toggleSidebar()" class="md:hidden text-gray-400 hover:text-white p-1 rounded">
+
+      <!-- Botón cerrar (solo móvil) -->
+      <button (click)="toggleSidebar()"
+              class="md:hidden text-gray-400 hover:text-white p-1 rounded transition-colors">
         <app-icon name="x" [size]="20"></app-icon>
       </button>
     </div>
@@ -41,8 +51,8 @@
       <ul class="space-y-1 px-3">
 
         <!-- ============================================================
-        SECCIÓN: INICIO
-        ============================================================ -->
+  SECCIÓN: INICIO
+  ============================================================ -->
         <li *ngIf="!sidebarCollapsed" class="px-3 py-2">
           <p class="text-xs text-gray-500 uppercase font-bold">Inicio</p>
         </li>
@@ -83,8 +93,8 @@
         </li>
 
         <!-- ============================================================
-        SECCIÓN: EXPEDIENTES
-        ============================================================ -->
+  SECCIÓN: EXPEDIENTES
+  ============================================================ -->
         <li *ngIf="!sidebarCollapsed" class="px-3 py-2 mt-2">
           <div class="border-t border-gray-700 mb-2"></div>
           <p class="text-xs text-gray-500 uppercase font-bold">Expedientes</p>
@@ -128,8 +138,8 @@
         </li>
 
         <!-- ============================================================
-        SECCIÓN: OPERACIONES
-        ============================================================ -->
+  SECCIÓN: OPERACIONES
+  ============================================================ -->
         <li *ngIf="!sidebarCollapsed" class="px-3 py-2 mt-2">
           <div class="border-t border-gray-700 mb-2"></div>
           <p class="text-xs text-gray-500 uppercase font-bold">Operaciones</p>
@@ -172,7 +182,7 @@
           </a>
         </li>
         <li *ngIf="userRole === 'VigilanciaMortuorio' || userRole === 'VigilanteSupervisor' || userRole === 'Administrador'">
-          <a routerLink="/registro-salida"
+          <a routerLink="/busqueda-salida"
              routerLinkActive="bg-hospital-cyan text-white shadow-md"
              (click)="closeMobileSidebar()"
              class="flex items-center px-3 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
@@ -205,8 +215,186 @@
         </li>
 
         <!-- ============================================================
-        SECCIÓN: ADMINISTRACIÓN
-        ============================================================ -->
+  SECCIÓN: DEUDAS (Solo roles autorizados)
+  ============================================================ -->
+        <li *ngIf="!sidebarCollapsed && (userRole === 'CuentasPacientes' || userRole === 'BancoSangre' || userRole === 'ServicioSocial' || userRole === 'Administrador')"
+            class="px-3 py-2 mt-2">
+          <div class="border-t border-gray-700 mb-2"></div>
+          <p class="text-xs text-gray-500 uppercase font-bold">Deudas</p>
+        </li>
+        <li *ngIf="sidebarCollapsed && (userRole === 'CuentasPacientes' || userRole === 'BancoSangre' || userRole === 'ServicioSocial' || userRole === 'Administrador')"
+            class="px-3 py-2">
+          <div class="border-t border-gray-700"></div>
+        </li>
+
+        <!-- Registrar Deuda Económica (Cuentas Pacientes) -->
+        <li *ngIf="userRole === 'CuentasPacientes' || userRole === 'Administrador'">
+          <a routerLink="/deudas/registrar-economica"
+             routerLinkActive="bg-hospital-cyan text-white shadow-md"
+             (click)="closeMobileSidebar()"
+             class="flex items-center px-3 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
+             [ngClass]="{'justify-center': sidebarCollapsed}">
+            <app-icon name="plus-circle" [size]="20" [className]="!sidebarCollapsed ? 'mr-3' : ''"></app-icon>
+            <span *ngIf="!sidebarCollapsed" class="font-medium text-sm">Registrar Deuda Económica</span>
+
+            <span *ngIf="sidebarCollapsed"
+                  class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+              Deuda Económica
+            </span>
+          </a>
+        </li>
+
+        <!-- Liquidar Deuda Económica (Caja) -->
+        <li *ngIf="userRole === 'CuentasPacientes' || userRole === 'Administrador'">
+          <a routerLink="/deudas/liquidar-economica"
+             routerLinkActive="bg-hospital-cyan text-white shadow-md"
+             (click)="closeMobileSidebar()"
+             class="flex items-center px-3 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
+             [ngClass]="{'justify-center': sidebarCollapsed}">
+            <app-icon name="credit-card" [size]="20" [className]="!sidebarCollapsed ? 'mr-3' : ''"></app-icon>
+            <span *ngIf="!sidebarCollapsed" class="font-medium text-sm">Liquidar Deuda Económica</span>
+
+            <span *ngIf="sidebarCollapsed"
+                  class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+              Liquidar Económica
+            </span>
+          </a>
+        </li>
+
+        <!-- Registrar Deuda Sangre (Banco Sangre) -->
+        <li *ngIf="userRole === 'BancoSangre' || userRole === 'Administrador'">
+          <a routerLink="/deudas/registrar-sangre"
+             routerLinkActive="bg-hospital-cyan text-white shadow-md"
+             (click)="closeMobileSidebar()"
+             class="flex items-center px-3 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
+             [ngClass]="{'justify-center': sidebarCollapsed}">
+            <app-icon name="droplet" [size]="20" [className]="!sidebarCollapsed ? 'mr-3' : ''"></app-icon>
+            <span *ngIf="!sidebarCollapsed" class="font-medium text-sm">Registrar Deuda Sangre</span>
+
+            <span *ngIf="sidebarCollapsed"
+                  class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+              Deuda Sangre
+            </span>
+          </a>
+        </li>
+
+        <!-- Liquidar Deuda Sangre (Banco Sangre) -->
+        <li *ngIf="userRole === 'BancoSangre' || userRole === 'Administrador'">
+          <a routerLink="/deudas/liquidar-sangre"
+             routerLinkActive="bg-hospital-cyan text-white shadow-md"
+             (click)="closeMobileSidebar()"
+             class="flex items-center px-3 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
+             [ngClass]="{'justify-center': sidebarCollapsed}">
+            <app-icon name="check-circle" [size]="20" [className]="!sidebarCollapsed ? 'mr-3' : ''"></app-icon>
+            <span *ngIf="!sidebarCollapsed" class="font-medium text-sm">Liquidar Deuda Sangre</span>
+
+            <span *ngIf="sidebarCollapsed"
+                  class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+              Liquidar Sangre
+            </span>
+          </a>
+        </li>
+
+        <!-- Gestionar Exoneración (Servicio Social) -->
+        <li *ngIf="userRole === 'ServicioSocial' || userRole === 'Administrador'">
+          <a routerLink="/deudas/gestionar-exoneracion"
+             routerLinkActive="bg-hospital-cyan text-white shadow-md"
+             (click)="closeMobileSidebar()"
+             class="flex items-center px-3 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
+             [ngClass]="{'justify-center': sidebarCollapsed}">
+            <app-icon name="shield-check" [size]="20" [className]="!sidebarCollapsed ? 'mr-3' : ''"></app-icon>
+            <span *ngIf="!sidebarCollapsed" class="font-medium text-sm">Gestionar Exoneración</span>
+
+            <span *ngIf="sidebarCollapsed"
+                  class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+              Exoneración
+            </span>
+          </a>
+        </li>
+        <!-- ============================================================
+     SECCIÓN: EXPEDIENTE LEGAL (Solo roles autorizados)
+  ============================================================ -->
+        <li *ngIf="!sidebarCollapsed && (userRole === 'VigilanteSupervisor' || userRole === 'Admision' || userRole === 'JefeGuardia' || userRole === 'Administrador')"
+            class="px-3 py-2 mt-2">
+          <div class="border-t border-gray-700 mb-2"></div>
+          <p class="text-xs text-gray-500 uppercase font-bold">Expediente Legal</p>
+        </li>
+        <li *ngIf="sidebarCollapsed && (userRole === 'VigilanteSupervisor' || userRole === 'Admision' || userRole === 'JefeGuardia' || userRole === 'Administrador')"
+            class="px-3 py-2">
+          <div class="border-t border-gray-700"></div>
+        </li>
+
+        <!-- Lista Expedientes Legales (Vigilante Supervisor) -->
+        <li *ngIf="userRole === 'VigilanteSupervisor' || userRole === 'Administrador'">
+          <a routerLink="/administrativo/legal/lista"
+             routerLinkActive="bg-hospital-cyan text-white shadow-md"
+             (click)="closeMobileSidebar()"
+             class="flex items-center px-3 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
+             [ngClass]="{'justify-center': sidebarCollapsed}">
+            <app-icon name="folder" [size]="20" [className]="!sidebarCollapsed ? 'mr-3' : ''"></app-icon>
+            <span *ngIf="!sidebarCollapsed" class="font-medium text-sm">Lista de Expedientes</span>
+
+            <span *ngIf="sidebarCollapsed"
+                  class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+              Expedientes Legales
+            </span>
+          </a>
+        </li>
+
+        <!-- Crear Expediente Legal (Vigilante Supervisor) -->
+        <li *ngIf="userRole === 'VigilanteSupervisor' || userRole === 'Administrador'">
+          <a routerLink="/administrativo/legal/crear"
+             routerLinkActive="bg-hospital-cyan text-white shadow-md"
+             (click)="closeMobileSidebar()"
+             class="flex items-center px-3 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
+             [ngClass]="{'justify-center': sidebarCollapsed}">
+            <app-icon name="file-plus" [size]="20" [className]="!sidebarCollapsed ? 'mr-3' : ''"></app-icon>
+            <span *ngIf="!sidebarCollapsed" class="font-medium text-sm">Crear Expediente Legal</span>
+
+            <span *ngIf="sidebarCollapsed"
+                  class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+              Crear Legal
+            </span>
+          </a>
+        </li>
+
+        <!-- Validar Admisión (Admisión) -->
+        <li *ngIf="userRole === 'Admision' || userRole === 'Administrador'">
+          <a routerLink="/administrativo/expedientes/validar-admision"
+             routerLinkActive="bg-hospital-cyan text-white shadow-md"
+             (click)="closeMobileSidebar()"
+             class="flex items-center px-3 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
+             [ngClass]="{'justify-center': sidebarCollapsed}">
+            <app-icon name="check-circle" [size]="20" [className]="!sidebarCollapsed ? 'mr-3' : ''"></app-icon>
+            <span *ngIf="!sidebarCollapsed" class="font-medium text-sm">Validar Admisión</span>
+
+            <span *ngIf="sidebarCollapsed"
+                  class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+              Validar Admisión
+            </span>
+          </a>
+        </li>
+
+        <!-- Autorizar Levantamientos (Jefe Guardia) -->
+        <li *ngIf="userRole === 'JefeGuardia' || userRole === 'Administrador'">
+          <a routerLink="/administrativo/legal/autorizar-jefe-guardia"
+             routerLinkActive="bg-hospital-cyan text-white shadow-md"
+             (click)="closeMobileSidebar()"
+             class="flex items-center px-3 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
+             [ngClass]="{'justify-center': sidebarCollapsed}">
+            <app-icon name="shield-check" [size]="20" [className]="!sidebarCollapsed ? 'mr-3' : ''"></app-icon>
+            <span *ngIf="!sidebarCollapsed" class="font-medium text-sm">Autorizar Levantamientos</span>
+
+            <span *ngIf="sidebarCollapsed"
+                  class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+              Autorizar
+            </span>
+          </a>
+        </li>
+
+        <!-- ============================================================
+  SECCIÓN: ADMINISTRACIÓN
+  ============================================================ -->
         <li *ngIf="!sidebarCollapsed" class="px-3 py-2 mt-2">
           <div class="border-t border-gray-700 mb-2"></div>
           <p class="text-xs text-gray-500 uppercase font-bold">Administración</p>

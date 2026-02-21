@@ -328,3 +328,71 @@ export function getEstadoPriority(estado: string): number {
 
   return priorities[normalized] || 0;
 }
+// ===================================================================
+// HELPERS PARA SEMÁFORO DE DEUDAS
+// ===================================================================
+
+/**
+ * Obtiene las clases completas para badge de semáforo de deudas
+ * @param bloqueaRetiro - Si true, muestra estado "DEBE" (rojo), si false "NO DEBE" (verde)
+ * @param compacto - Si true, usa tamaño reducido
+ * @returns Clases Tailwind completas para el badge
+ */
+export function getSemaforoDeudaClasses(bloqueaRetiro: boolean, compacto: boolean = false): string {
+  const baseClasses = 'inline-flex items-center gap-1.5 rounded-lg font-semibold border-2 transition-all';
+  const sizeClasses = compacto ? 'text-xs px-2 py-1' : 'px-3 py-1.5';
+
+  if (bloqueaRetiro) {
+    return `${baseClasses} ${sizeClasses} bg-red-50 border-red-300 text-red-700 shadow-sm`;
+  }
+
+  return `${baseClasses} ${sizeClasses} bg-green-50 border-green-300 text-green-700 shadow-sm`;
+}
+
+/**
+ * Obtiene el ícono apropiado para semáforo de deudas
+ * @param bloqueaRetiro - Si true, retorna ícono de alerta, si false de check
+ * @returns Nombre del ícono Lucide
+ */
+export function getSemaforoDeudaIcon(bloqueaRetiro: boolean): string {
+  return bloqueaRetiro ? 'alert-circle' : 'circle-check';
+}
+
+/**
+ * Obtiene el color del texto para semáforo de deudas
+ * @param bloqueaRetiro - Si true, retorna color rojo, si false verde
+ * @returns Clase Tailwind de color de texto
+ */
+export function getSemaforoDeudaTextColor(bloqueaRetiro: boolean): string {
+  return bloqueaRetiro ? 'text-red-700' : 'text-green-700';
+}
+
+/**
+ * Obtiene el texto legible del semáforo
+ * @param bloqueaRetiro - Estado de bloqueo de retiro
+ * @returns "DEBE" o "NO DEBE"
+ */
+export function getSemaforoDeudaLabel(bloqueaRetiro: boolean): string {
+  return bloqueaRetiro ? 'DEBE' : 'NO DEBE';
+}
+
+/**
+ * Obtiene un objeto completo con toda la configuración del semáforo
+ * Útil para uso en templates que necesitan múltiples propiedades
+ * @param bloqueaRetiro - Estado de bloqueo de retiro
+ * @param compacto - Si true, usa versión reducida
+ * @returns Objeto con classes, icon, textColor y label
+ */
+export function getSemaforoDeudaConfig(bloqueaRetiro: boolean, compacto: boolean = false): {
+  classes: string;
+  icon: string;
+  textColor: string;
+  label: string;
+} {
+  return {
+    classes: getSemaforoDeudaClasses(bloqueaRetiro, compacto),
+    icon: getSemaforoDeudaIcon(bloqueaRetiro),
+    textColor: getSemaforoDeudaTextColor(bloqueaRetiro),
+    label: getSemaforoDeudaLabel(bloqueaRetiro)
+  };
+}

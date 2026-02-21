@@ -125,6 +125,259 @@ namespace SisMortuorio.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("SisMortuorio.Data.Entities.ActaRetiro", b =>
+                {
+                    b.Property<int>("ActaRetiroID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ActaRetiroID"));
+
+                    b.Property<string>("AutoridadApellidoMaterno")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("AutoridadApellidoPaterno")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("AutoridadCargo")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("AutoridadInstitucion")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("AutoridadNombreCompleto")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("AutoridadNombres")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("AutoridadNumeroDocumento")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("AutoridadPlacaVehiculo")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("AutoridadTelefono")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int?>("AutoridadTipoDocumento")
+                        .HasColumnType("int");
+
+                    b.Property<string>("DatosAdicionales")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Destino")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("ExpedienteID")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ExpedienteID1")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FamiliarApellidoMaterno")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("FamiliarApellidoPaterno")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("FamiliarNombreCompleto")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("FamiliarNombres")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("FamiliarNumeroDocumento")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("FamiliarParentesco")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("FamiliarTelefono")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int?>("FamiliarTipoDocumento")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("FechaFirmaAdmisionista")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("FechaFirmaResponsable")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("FechaHoraFallecimiento")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("FechaRegistro")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETDATE()");
+
+                    b.Property<DateTime?>("FechaSubidaPDF")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("FechaSupervisorVigilancia")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("FirmadoAdmisionista")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("FirmadoResponsable")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("FirmadoSupervisorVigilancia")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("HistoriaClinica")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("JefeGuardiaCMP")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("JefeGuardiaNombre")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("MedicoCMP")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("MedicoCertificaNombre")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("MedicoRNE")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("NombreArchivoPDFFirmado")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("NombreArchivoPDFSinFirmar")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("NombreCompletoFallecido")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("NumeroCertificadoDefuncion")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("NumeroDocumentoFallecido")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("NumeroOficioLegal")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("Observaciones")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("RutaPDFFirmado")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("RutaPDFSinFirmar")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ServicioFallecimiento")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<long?>("TamañoPDFFirmado")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("TamañoPDFSinFirmar")
+                        .HasColumnType("bigint");
+
+                    b.Property<int?>("TipoAutoridad")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TipoDocumentoFallecido")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TipoSalida")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
+                    b.Property<int>("UsuarioAdmisionID")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("UsuarioSubidaPDFID")
+                        .HasColumnType("int");
+
+                    b.HasKey("ActaRetiroID");
+
+                    b.HasIndex("AutoridadNumeroDocumento");
+
+                    b.HasIndex("ExpedienteID")
+                        .IsUnique();
+
+                    b.HasIndex("ExpedienteID1")
+                        .IsUnique()
+                        .HasFilter("[ExpedienteID1] IS NOT NULL");
+
+                    b.HasIndex("FamiliarNumeroDocumento");
+
+                    b.HasIndex("FechaRegistro");
+
+                    b.HasIndex("NumeroCertificadoDefuncion");
+
+                    b.HasIndex("NumeroOficioLegal");
+
+                    b.HasIndex("TipoAutoridad");
+
+                    b.HasIndex("TipoSalida");
+
+                    b.HasIndex("UsuarioAdmisionID");
+
+                    b.HasIndex("UsuarioSubidaPDFID");
+
+                    b.HasIndex("TipoSalida", "FechaRegistro");
+
+                    b.ToTable("ActasRetiro", (string)null);
+                });
+
             modelBuilder.Entity("SisMortuorio.Data.Entities.AuditLog", b =>
                 {
                     b.Property<int>("LogID")
@@ -156,8 +409,8 @@ namespace SisMortuorio.Migrations
 
                     b.Property<string>("Modulo")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("Observaciones")
                         .HasMaxLength(1000)
@@ -187,39 +440,94 @@ namespace SisMortuorio.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AutoridadID"));
 
+                    b.Property<string>("ApellidoMaterno")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ApellidoPaterno")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Cargo")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("CodigoEspecial")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<bool>("DocumentoEntregado")
+                        .HasColumnType("bit");
+
                     b.Property<int>("ExpedienteID")
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("FechaRegistro")
+                    b.Property<int?>("ExpedienteID1")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ExpedienteLegalID")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("FechaDocumentoOficial")
                         .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("FechaHoraLlegada")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETDATE()");
+
+                    b.Property<DateTime?>("FechaHoraSalida")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("FechaRegistro")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETDATE()");
 
                     b.Property<string>("Institucion")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<string>("Nombre")
+                    b.Property<string>("NombreCompleto")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("Nombres")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("NumeroDocumento")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("NumeroDocumentoOficial")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Observaciones")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<string>("PlacaVehiculo")
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<string>("Telefono")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<int>("TipoAutoridad")
+                        .HasMaxLength(30)
                         .HasColumnType("int");
 
                     b.Property<int>("TipoDocumento")
+                        .HasMaxLength(30)
                         .HasColumnType("int");
 
                     b.Property<int>("UsuarioRegistroID")
@@ -229,9 +537,19 @@ namespace SisMortuorio.Migrations
 
                     b.HasIndex("ExpedienteID");
 
+                    b.HasIndex("ExpedienteID1");
+
+                    b.HasIndex("ExpedienteLegalID");
+
+                    b.HasIndex("FechaHoraLlegada");
+
+                    b.HasIndex("NumeroDocumento");
+
+                    b.HasIndex("TipoAutoridad");
+
                     b.HasIndex("UsuarioRegistroID");
 
-                    b.ToTable("AutoridadesExternas");
+                    b.ToTable("AutoridadesExternas", (string)null);
                 });
 
             modelBuilder.Entity("SisMortuorio.Data.Entities.Bandeja", b =>
@@ -298,6 +616,54 @@ namespace SisMortuorio.Migrations
                     b.ToTable("Bandejas");
                 });
 
+            modelBuilder.Entity("SisMortuorio.Data.Entities.BandejaHistorial", b =>
+                {
+                    b.Property<int>("OcupacionID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("OcupacionID"));
+
+                    b.Property<string>("Accion")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int>("BandejaID")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ExpedienteID")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("FechaHoraIngreso")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("FechaHoraSalida")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Observaciones")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("UsuarioAsignadorID")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("UsuarioLiberaID")
+                        .HasColumnType("int");
+
+                    b.HasKey("OcupacionID");
+
+                    b.HasIndex("ExpedienteID");
+
+                    b.HasIndex("UsuarioAsignadorID");
+
+                    b.HasIndex("UsuarioLiberaID");
+
+                    b.HasIndex("BandejaID", "FechaHoraSalida");
+
+                    b.ToTable("BandejaHistoriales");
+                });
+
             modelBuilder.Entity("SisMortuorio.Data.Entities.CustodiaTransferencia", b =>
                 {
                     b.Property<int>("TransferenciaID")
@@ -351,8 +717,13 @@ namespace SisMortuorio.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("DeudaEconomicaID"));
 
-                    b.Property<int>("Estado")
+                    b.Property<int?>("AsistentaSocialID")
                         .HasColumnType("int");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
 
                     b.Property<int>("ExpedienteID")
                         .HasColumnType("int");
@@ -360,13 +731,33 @@ namespace SisMortuorio.Migrations
                     b.Property<DateTime?>("FechaActualizacion")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("FechaExoneracion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("FechaPago")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime>("FechaRegistro")
                         .HasColumnType("datetime2");
 
                     b.Property<decimal>("MontoDeuda")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<decimal>("MontoExonerado")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<decimal>("MontoPagado")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<string>("NombreArchivoSustento")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
 
                     b.Property<string>("NumeroBoleta")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("NumeroBoletaExoneracion")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
@@ -374,8 +765,21 @@ namespace SisMortuorio.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
-                    b.Property<decimal?>("PorcentajeExoneracion")
-                        .HasColumnType("decimal(5,2)");
+                    b.Property<string>("ObservacionesPago")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("RutaPDFSustento")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<long?>("TamañoArchivoSustento")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("TipoExoneracion")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
 
                     b.Property<int?>("UsuarioActualizacionID")
                         .HasColumnType("int");
@@ -385,7 +789,10 @@ namespace SisMortuorio.Migrations
 
                     b.HasKey("DeudaEconomicaID");
 
-                    b.HasIndex("ExpedienteID");
+                    b.HasIndex("AsistentaSocialID");
+
+                    b.HasIndex("ExpedienteID")
+                        .IsUnique();
 
                     b.HasIndex("UsuarioActualizacionID");
 
@@ -402,12 +809,24 @@ namespace SisMortuorio.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("DeudaSangreID"));
 
-                    b.Property<bool>("CompromisoFirmado")
+                    b.Property<bool>("AnuladaPorMedico")
                         .HasColumnType("bit");
+
+                    b.Property<int?>("CantidadUnidades")
+                        .HasColumnType("int");
+
+                    b.Property<string>("DNIFamiliarCompromiso")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("Detalle")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
 
                     b.Property<int>("ExpedienteID")
                         .HasColumnType("int");
@@ -415,11 +834,33 @@ namespace SisMortuorio.Migrations
                     b.Property<DateTime?>("FechaActualizacion")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("FechaAnulacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("FechaCompromisoFirmado")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime>("FechaRegistro")
                         .HasColumnType("datetime2");
 
-                    b.Property<bool>("TieneDeuda")
-                        .HasColumnType("bit");
+                    b.Property<string>("JustificacionAnulacion")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("MedicoAnulaID")
+                        .HasColumnType("int");
+
+                    b.Property<string>("NombreFamiliarCompromiso")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("RutaPDFCompromiso")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("TipoSangre")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
 
                     b.Property<int?>("UsuarioActualizacionID")
                         .HasColumnType("int");
@@ -429,7 +870,10 @@ namespace SisMortuorio.Migrations
 
                     b.HasKey("DeudaSangreID");
 
-                    b.HasIndex("ExpedienteID");
+                    b.HasIndex("ExpedienteID")
+                        .IsUnique();
+
+                    b.HasIndex("MedicoAnulaID");
 
                     b.HasIndex("UsuarioActualizacionID");
 
@@ -446,32 +890,84 @@ namespace SisMortuorio.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("DocumentoID"));
 
-                    b.Property<bool>("EstaCompleto")
-                        .HasColumnType("bit");
+                    b.Property<bool>("Adjuntado")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Descripcion")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<int>("ExpedienteID")
                         .HasColumnType("int");
 
+                    b.Property<int?>("ExpedienteID1")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ExpedienteLegalID")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Extension")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
                     b.Property<DateTime?>("FechaAdjunto")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("FechaValidacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("NombreArchivo")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("ObservacionesValidacion")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
                     b.Property<string>("RutaArchivo")
+                        .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<long>("TamañoArchivo")
+                        .HasColumnType("bigint");
+
                     b.Property<int>("TipoDocumento")
+                        .HasMaxLength(30)
                         .HasColumnType("int");
 
                     b.Property<int?>("UsuarioAdjuntoID")
                         .HasColumnType("int");
 
+                    b.Property<int?>("UsuarioValidadorID")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("Validado")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.HasKey("DocumentoID");
 
                     b.HasIndex("ExpedienteID");
 
+                    b.HasIndex("ExpedienteID1");
+
+                    b.HasIndex("ExpedienteLegalID");
+
+                    b.HasIndex("FechaAdjunto");
+
+                    b.HasIndex("TipoDocumento");
+
                     b.HasIndex("UsuarioAdjuntoID");
 
-                    b.ToTable("DocumentosLegales");
+                    b.HasIndex("UsuarioValidadorID");
+
+                    b.ToTable("DocumentosLegales", (string)null);
                 });
 
             modelBuilder.Entity("SisMortuorio.Data.Entities.Expediente", b =>
@@ -492,18 +988,24 @@ namespace SisMortuorio.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<int?>("BandejaActualID")
+                        .HasColumnType("int");
+
                     b.Property<string>("CodigoExpediente")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("CodigoQR")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("DiagnosticoFinal")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("DocumentacionCompleta")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("Eliminado")
                         .HasColumnType("bit");
@@ -531,6 +1033,9 @@ namespace SisMortuorio.Migrations
                     b.Property<DateTime>("FechaNacimiento")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("FechaValidacionAdmision")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("HC")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -546,9 +1051,17 @@ namespace SisMortuorio.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("MedicoExternoCMP")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("MedicoExternoNombre")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<string>("MedicoRNE")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
 
                     b.Property<string>("MotivoEliminacion")
                         .HasMaxLength(500)
@@ -574,8 +1087,11 @@ namespace SisMortuorio.Migrations
 
                     b.Property<string>("NumeroDocumento")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<bool>("RequiereIntervencionLegal")
+                        .HasColumnType("bit");
 
                     b.Property<string>("ServicioFallecimiento")
                         .IsRequired()
@@ -587,8 +1103,10 @@ namespace SisMortuorio.Migrations
                         .HasMaxLength(1)
                         .HasColumnType("nvarchar(1)");
 
-                    b.Property<int>("TipoDocumento")
-                        .HasColumnType("int");
+                    b.Property<string>("TipoDocumento")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
 
                     b.Property<string>("TipoExpediente")
                         .IsRequired()
@@ -597,13 +1115,18 @@ namespace SisMortuorio.Migrations
 
                     b.Property<string>("TipoSeguro")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int?>("UsuarioAdmisionID")
+                        .HasColumnType("int");
 
                     b.Property<int>("UsuarioCreadorID")
                         .HasColumnType("int");
 
                     b.HasKey("ExpedienteID");
+
+                    b.HasIndex("BandejaActualID");
 
                     b.HasIndex("CodigoExpediente")
                         .IsUnique();
@@ -620,57 +1143,118 @@ namespace SisMortuorio.Migrations
 
                     b.HasIndex("NumeroDocumento");
 
+                    b.HasIndex("UsuarioAdmisionID");
+
                     b.HasIndex("UsuarioCreadorID");
 
                     b.ToTable("Expedientes");
                 });
 
-            modelBuilder.Entity("SisMortuorio.Data.Entities.OcupacionBandeja", b =>
+            modelBuilder.Entity("SisMortuorio.Data.Entities.ExpedienteLegal", b =>
                 {
-                    b.Property<int>("OcupacionID")
+                    b.Property<int>("ExpedienteLegalID")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("OcupacionID"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ExpedienteLegalID"));
 
-                    b.Property<string>("Accion")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
+                    b.Property<bool>("AutorizadoJefeGuardia")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
 
-                    b.Property<int>("BandejaID")
-                        .HasColumnType("int");
+                    b.Property<string>("Comisaria")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Destino")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("Estado")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
 
                     b.Property<int>("ExpedienteID")
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("FechaHoraIngreso")
+                    b.Property<int?>("ExpedienteID1")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("FechaAutorizacion")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime?>("FechaHoraSalida")
+                    b.Property<DateTime>("FechaCreacion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETDATE()");
+
+                    b.Property<DateTime?>("FechaUltimaActualizacion")
                         .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("FechaValidacionAdmision")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Fiscalia")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int?>("JefeGuardiaID")
+                        .HasColumnType("int");
+
+                    b.Property<string>("NumeroOficioPNP")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("Observaciones")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
-                    b.Property<int>("UsuarioAsignadorID")
+                    b.Property<string>("ObservacionesAdmision")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("ObservacionesJefeGuardia")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int?>("UsuarioActualizacionID")
                         .HasColumnType("int");
 
-                    b.Property<int?>("UsuarioLiberaID")
+                    b.Property<int?>("UsuarioAdmisionID")
                         .HasColumnType("int");
 
-                    b.HasKey("OcupacionID");
+                    b.Property<int>("UsuarioRegistroID")
+                        .HasColumnType("int");
 
-                    b.HasIndex("ExpedienteID");
+                    b.Property<bool>("ValidadoAdmision")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
 
-                    b.HasIndex("UsuarioAsignadorID");
+                    b.HasKey("ExpedienteLegalID");
 
-                    b.HasIndex("UsuarioLiberaID");
+                    b.HasIndex("Estado");
 
-                    b.HasIndex("BandejaID", "FechaHoraSalida");
+                    b.HasIndex("ExpedienteID")
+                        .IsUnique();
 
-                    b.ToTable("OcupacionesBandejas");
+                    b.HasIndex("ExpedienteID1")
+                        .IsUnique()
+                        .HasFilter("[ExpedienteID1] IS NOT NULL");
+
+                    b.HasIndex("FechaCreacion");
+
+                    b.HasIndex("JefeGuardiaID");
+
+                    b.HasIndex("UsuarioActualizacionID");
+
+                    b.HasIndex("UsuarioAdmisionID");
+
+                    b.HasIndex("UsuarioRegistroID");
+
+                    b.ToTable("ExpedientesLegales", (string)null);
                 });
 
             modelBuilder.Entity("SisMortuorio.Data.Entities.Pertenencia", b =>
@@ -754,9 +1338,23 @@ namespace SisMortuorio.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SalidaID"));
 
+                    b.Property<int?>("ActaRetiroID")
+                        .HasColumnType("int");
+
+                    b.Property<string>("AyudanteFuneraria")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int?>("BandejaLiberadaID")
+                        .HasColumnType("int");
+
                     b.Property<string>("ConductorFuneraria")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("DNIAyudante")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("DNIConductor")
                         .HasMaxLength(20)
@@ -770,40 +1368,44 @@ namespace SisMortuorio.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
-                    b.Property<bool>("DocumentacionVerificada")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("EntidadAutorizante")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
                     b.Property<int>("ExpedienteID")
                         .HasColumnType("int");
 
+                    b.Property<int?>("ExpedienteID1")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ExpedienteLegalID")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("FechaHoraSalida")
-                        .HasColumnType("datetime2");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETDATE()");
+
+                    b.Property<string>("FunerariaRUC")
+                        .HasMaxLength(11)
+                        .HasColumnType("nvarchar(11)");
+
+                    b.Property<string>("FunerariaTelefono")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<bool>("IncidenteRegistrado")
-                        .HasColumnType("bit");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
 
                     b.Property<string>("NombreFuneraria")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<string>("NumeroAutorizacion")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("NumeroRecibo")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                    b.Property<string>("NumeroOficio")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
 
                     b.Property<string>("Observaciones")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
-
-                    b.Property<bool>("PagoRealizado")
-                        .HasColumnType("bit");
 
                     b.Property<string>("PlacaVehiculo")
                         .HasMaxLength(20)
@@ -832,18 +1434,30 @@ namespace SisMortuorio.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.Property<string>("TipoSalida")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
+                    b.Property<TimeSpan?>("TiempoPermanencia")
+                        .HasColumnType("time");
+
+                    b.Property<int>("TipoSalida")
+                        .HasColumnType("int");
 
                     b.Property<int>("VigilanteID")
                         .HasColumnType("int");
 
                     b.HasKey("SalidaID");
 
-                    b.HasIndex("ExpedienteID")
-                        .IsUnique();
+                    b.HasIndex("ActaRetiroID")
+                        .IsUnique()
+                        .HasFilter("[ActaRetiroID] IS NOT NULL");
+
+                    b.HasIndex("BandejaLiberadaID");
+
+                    b.HasIndex("ExpedienteID");
+
+                    b.HasIndex("ExpedienteID1")
+                        .IsUnique()
+                        .HasFilter("[ExpedienteID1] IS NOT NULL");
+
+                    b.HasIndex("ExpedienteLegalID");
 
                     b.HasIndex("FechaHoraSalida");
 
@@ -853,7 +1467,7 @@ namespace SisMortuorio.Migrations
 
                     b.HasIndex("VigilanteID");
 
-                    b.ToTable("SalidasMortuorio");
+                    b.ToTable("SalidasMortuorio", (string)null);
                 });
 
             modelBuilder.Entity("SisMortuorio.Data.Entities.SolicitudCorreccionExpediente", b =>
@@ -1047,6 +1661,9 @@ namespace SisMortuorio.Migrations
                     b.Property<bool>("Aprobada")
                         .HasColumnType("bit");
 
+                    b.Property<int?>("BandejaAsignadaID")
+                        .HasColumnType("int");
+
                     b.Property<string>("CodigoExpedienteBrazalete")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -1114,7 +1731,10 @@ namespace SisMortuorio.Migrations
 
                     b.HasKey("VerificacionID");
 
-                    b.HasIndex("ExpedienteID");
+                    b.HasIndex("BandejaAsignadaID");
+
+                    b.HasIndex("ExpedienteID")
+                        .IsUnique();
 
                     b.HasIndex("FechaHoraVerificacion");
 
@@ -1178,6 +1798,36 @@ namespace SisMortuorio.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("SisMortuorio.Data.Entities.ActaRetiro", b =>
+                {
+                    b.HasOne("SisMortuorio.Data.Entities.Expediente", "Expediente")
+                        .WithOne()
+                        .HasForeignKey("SisMortuorio.Data.Entities.ActaRetiro", "ExpedienteID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SisMortuorio.Data.Entities.Expediente", null)
+                        .WithOne("ActaRetiro")
+                        .HasForeignKey("SisMortuorio.Data.Entities.ActaRetiro", "ExpedienteID1");
+
+                    b.HasOne("SisMortuorio.Data.Entities.Usuario", "UsuarioAdmision")
+                        .WithMany()
+                        .HasForeignKey("UsuarioAdmisionID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SisMortuorio.Data.Entities.Usuario", "UsuarioSubidaPDF")
+                        .WithMany()
+                        .HasForeignKey("UsuarioSubidaPDFID")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Expediente");
+
+                    b.Navigation("UsuarioAdmision");
+
+                    b.Navigation("UsuarioSubidaPDF");
+                });
+
             modelBuilder.Entity("SisMortuorio.Data.Entities.AuditLog", b =>
                 {
                     b.HasOne("SisMortuorio.Data.Entities.Expediente", "Expediente")
@@ -1204,6 +1854,15 @@ namespace SisMortuorio.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("SisMortuorio.Data.Entities.Expediente", null)
+                        .WithMany("AutoridadesExternas")
+                        .HasForeignKey("ExpedienteID1");
+
+                    b.HasOne("SisMortuorio.Data.Entities.ExpedienteLegal", "ExpedienteLegal")
+                        .WithMany("Autoridades")
+                        .HasForeignKey("ExpedienteLegalID")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("SisMortuorio.Data.Entities.Usuario", "UsuarioRegistro")
                         .WithMany()
                         .HasForeignKey("UsuarioRegistroID")
@@ -1211,6 +1870,8 @@ namespace SisMortuorio.Migrations
                         .IsRequired();
 
                     b.Navigation("Expediente");
+
+                    b.Navigation("ExpedienteLegal");
 
                     b.Navigation("UsuarioRegistro");
                 });
@@ -1235,6 +1896,40 @@ namespace SisMortuorio.Migrations
                     b.Navigation("Expediente");
 
                     b.Navigation("UsuarioAsigna");
+
+                    b.Navigation("UsuarioLibera");
+                });
+
+            modelBuilder.Entity("SisMortuorio.Data.Entities.BandejaHistorial", b =>
+                {
+                    b.HasOne("SisMortuorio.Data.Entities.Bandeja", "Bandeja")
+                        .WithMany("Historial")
+                        .HasForeignKey("BandejaID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SisMortuorio.Data.Entities.Expediente", "Expediente")
+                        .WithMany("HistorialBandejas")
+                        .HasForeignKey("ExpedienteID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SisMortuorio.Data.Entities.Usuario", "UsuarioAsignador")
+                        .WithMany()
+                        .HasForeignKey("UsuarioAsignadorID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SisMortuorio.Data.Entities.Usuario", "UsuarioLibera")
+                        .WithMany()
+                        .HasForeignKey("UsuarioLiberaID")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Bandeja");
+
+                    b.Navigation("Expediente");
+
+                    b.Navigation("UsuarioAsignador");
 
                     b.Navigation("UsuarioLibera");
                 });
@@ -1268,9 +1963,14 @@ namespace SisMortuorio.Migrations
 
             modelBuilder.Entity("SisMortuorio.Data.Entities.DeudaEconomica", b =>
                 {
-                    b.HasOne("SisMortuorio.Data.Entities.Expediente", "Expediente")
+                    b.HasOne("SisMortuorio.Data.Entities.Usuario", "AsistentaSocial")
                         .WithMany()
-                        .HasForeignKey("ExpedienteID")
+                        .HasForeignKey("AsistentaSocialID")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SisMortuorio.Data.Entities.Expediente", "Expediente")
+                        .WithOne("DeudaEconomica")
+                        .HasForeignKey("SisMortuorio.Data.Entities.DeudaEconomica", "ExpedienteID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1284,6 +1984,8 @@ namespace SisMortuorio.Migrations
                         .HasForeignKey("UsuarioRegistroID")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("AsistentaSocial");
 
                     b.Navigation("Expediente");
 
@@ -1295,10 +1997,15 @@ namespace SisMortuorio.Migrations
             modelBuilder.Entity("SisMortuorio.Data.Entities.DeudaSangre", b =>
                 {
                     b.HasOne("SisMortuorio.Data.Entities.Expediente", "Expediente")
-                        .WithMany()
-                        .HasForeignKey("ExpedienteID")
+                        .WithOne("DeudaSangre")
+                        .HasForeignKey("SisMortuorio.Data.Entities.DeudaSangre", "ExpedienteID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("SisMortuorio.Data.Entities.Usuario", "MedicoAnula")
+                        .WithMany()
+                        .HasForeignKey("MedicoAnulaID")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("SisMortuorio.Data.Entities.Usuario", "UsuarioActualizacion")
                         .WithMany()
@@ -1312,6 +2019,8 @@ namespace SisMortuorio.Migrations
                         .IsRequired();
 
                     b.Navigation("Expediente");
+
+                    b.Navigation("MedicoAnula");
 
                     b.Navigation("UsuarioActualizacion");
 
@@ -1326,59 +2035,101 @@ namespace SisMortuorio.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("SisMortuorio.Data.Entities.Expediente", null)
+                        .WithMany("DocumentosLegales")
+                        .HasForeignKey("ExpedienteID1");
+
+                    b.HasOne("SisMortuorio.Data.Entities.ExpedienteLegal", "ExpedienteLegal")
+                        .WithMany("Documentos")
+                        .HasForeignKey("ExpedienteLegalID")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("SisMortuorio.Data.Entities.Usuario", "UsuarioAdjunto")
                         .WithMany()
                         .HasForeignKey("UsuarioAdjuntoID")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("SisMortuorio.Data.Entities.Usuario", "UsuarioValidador")
+                        .WithMany()
+                        .HasForeignKey("UsuarioValidadorID")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Expediente");
 
+                    b.Navigation("ExpedienteLegal");
+
                     b.Navigation("UsuarioAdjunto");
+
+                    b.Navigation("UsuarioValidador");
                 });
 
             modelBuilder.Entity("SisMortuorio.Data.Entities.Expediente", b =>
                 {
+                    b.HasOne("SisMortuorio.Data.Entities.Bandeja", "BandejaActual")
+                        .WithMany()
+                        .HasForeignKey("BandejaActualID")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SisMortuorio.Data.Entities.Usuario", "UsuarioAdmision")
+                        .WithMany()
+                        .HasForeignKey("UsuarioAdmisionID")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("SisMortuorio.Data.Entities.Usuario", "UsuarioCreador")
                         .WithMany()
                         .HasForeignKey("UsuarioCreadorID")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.Navigation("BandejaActual");
+
+                    b.Navigation("UsuarioAdmision");
+
                     b.Navigation("UsuarioCreador");
                 });
 
-            modelBuilder.Entity("SisMortuorio.Data.Entities.OcupacionBandeja", b =>
+            modelBuilder.Entity("SisMortuorio.Data.Entities.ExpedienteLegal", b =>
                 {
-                    b.HasOne("SisMortuorio.Data.Entities.Bandeja", "Bandeja")
-                        .WithMany()
-                        .HasForeignKey("BandejaID")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("SisMortuorio.Data.Entities.Expediente", "Expediente")
-                        .WithMany()
-                        .HasForeignKey("ExpedienteID")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .WithOne()
+                        .HasForeignKey("SisMortuorio.Data.Entities.ExpedienteLegal", "ExpedienteID")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("SisMortuorio.Data.Entities.Usuario", "UsuarioAsignador")
-                        .WithMany()
-                        .HasForeignKey("UsuarioAsignadorID")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                    b.HasOne("SisMortuorio.Data.Entities.Expediente", null)
+                        .WithOne("ExpedienteLegal")
+                        .HasForeignKey("SisMortuorio.Data.Entities.ExpedienteLegal", "ExpedienteID1");
 
-                    b.HasOne("SisMortuorio.Data.Entities.Usuario", "UsuarioLibera")
+                    b.HasOne("SisMortuorio.Data.Entities.Usuario", "JefeGuardia")
                         .WithMany()
-                        .HasForeignKey("UsuarioLiberaID")
+                        .HasForeignKey("JefeGuardiaID")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.Navigation("Bandeja");
+                    b.HasOne("SisMortuorio.Data.Entities.Usuario", "UsuarioActualizacion")
+                        .WithMany()
+                        .HasForeignKey("UsuarioActualizacionID")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SisMortuorio.Data.Entities.Usuario", "UsuarioAdmision")
+                        .WithMany()
+                        .HasForeignKey("UsuarioAdmisionID")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SisMortuorio.Data.Entities.Usuario", "UsuarioRegistro")
+                        .WithMany()
+                        .HasForeignKey("UsuarioRegistroID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("Expediente");
 
-                    b.Navigation("UsuarioAsignador");
+                    b.Navigation("JefeGuardia");
 
-                    b.Navigation("UsuarioLibera");
+                    b.Navigation("UsuarioActualizacion");
+
+                    b.Navigation("UsuarioAdmision");
+
+                    b.Navigation("UsuarioRegistro");
                 });
 
             modelBuilder.Entity("SisMortuorio.Data.Entities.Pertenencia", b =>
@@ -1394,11 +2145,30 @@ namespace SisMortuorio.Migrations
 
             modelBuilder.Entity("SisMortuorio.Data.Entities.SalidaMortuorio", b =>
                 {
+                    b.HasOne("SisMortuorio.Data.Entities.ActaRetiro", "ActaRetiro")
+                        .WithOne("SalidaMortuorio")
+                        .HasForeignKey("SisMortuorio.Data.Entities.SalidaMortuorio", "ActaRetiroID")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SisMortuorio.Data.Entities.Bandeja", "BandejaLiberada")
+                        .WithMany()
+                        .HasForeignKey("BandejaLiberadaID")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("SisMortuorio.Data.Entities.Expediente", "Expediente")
                         .WithMany()
                         .HasForeignKey("ExpedienteID")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("SisMortuorio.Data.Entities.Expediente", null)
+                        .WithOne("SalidaMortuorio")
+                        .HasForeignKey("SisMortuorio.Data.Entities.SalidaMortuorio", "ExpedienteID1");
+
+                    b.HasOne("SisMortuorio.Data.Entities.ExpedienteLegal", "ExpedienteLegal")
+                        .WithMany()
+                        .HasForeignKey("ExpedienteLegalID")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("SisMortuorio.Data.Entities.Usuario", "Vigilante")
                         .WithMany()
@@ -1406,7 +2176,13 @@ namespace SisMortuorio.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.Navigation("ActaRetiro");
+
+                    b.Navigation("BandejaLiberada");
+
                     b.Navigation("Expediente");
+
+                    b.Navigation("ExpedienteLegal");
 
                     b.Navigation("Vigilante");
                 });
@@ -1451,9 +2227,14 @@ namespace SisMortuorio.Migrations
 
             modelBuilder.Entity("SisMortuorio.Data.Entities.VerificacionMortuorio", b =>
                 {
-                    b.HasOne("SisMortuorio.Data.Entities.Expediente", "Expediente")
+                    b.HasOne("SisMortuorio.Data.Entities.Bandeja", "BandejaAsignada")
                         .WithMany()
-                        .HasForeignKey("ExpedienteID")
+                        .HasForeignKey("BandejaAsignadaID")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SisMortuorio.Data.Entities.Expediente", "Expediente")
+                        .WithOne("VerificacionMortuorio")
+                        .HasForeignKey("SisMortuorio.Data.Entities.VerificacionMortuorio", "ExpedienteID")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -1469,6 +2250,8 @@ namespace SisMortuorio.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.Navigation("BandejaAsignada");
+
                     b.Navigation("Expediente");
 
                     b.Navigation("TecnicoAmbulancia");
@@ -1476,11 +2259,46 @@ namespace SisMortuorio.Migrations
                     b.Navigation("Vigilante");
                 });
 
+            modelBuilder.Entity("SisMortuorio.Data.Entities.ActaRetiro", b =>
+                {
+                    b.Navigation("SalidaMortuorio");
+                });
+
+            modelBuilder.Entity("SisMortuorio.Data.Entities.Bandeja", b =>
+                {
+                    b.Navigation("Historial");
+                });
+
             modelBuilder.Entity("SisMortuorio.Data.Entities.Expediente", b =>
                 {
+                    b.Navigation("ActaRetiro");
+
+                    b.Navigation("AutoridadesExternas");
+
                     b.Navigation("CustodiaTransferencias");
 
+                    b.Navigation("DeudaEconomica");
+
+                    b.Navigation("DeudaSangre");
+
+                    b.Navigation("DocumentosLegales");
+
+                    b.Navigation("ExpedienteLegal");
+
+                    b.Navigation("HistorialBandejas");
+
                     b.Navigation("Pertenencias");
+
+                    b.Navigation("SalidaMortuorio");
+
+                    b.Navigation("VerificacionMortuorio");
+                });
+
+            modelBuilder.Entity("SisMortuorio.Data.Entities.ExpedienteLegal", b =>
+                {
+                    b.Navigation("Autoridades");
+
+                    b.Navigation("Documentos");
                 });
 
             modelBuilder.Entity("SisMortuorio.Data.Entities.Rol", b =>
