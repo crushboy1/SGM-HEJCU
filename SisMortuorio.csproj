@@ -24,6 +24,7 @@
   <ItemGroup>
     <Folder Include="sgm-frontend\src\app\NewFolder1\" />
     <Folder Include="sgm-frontend\src\app\NewFolder\" />
+    <Folder Include="sgm-frontend\src\app\pages\deudas\" />
   </ItemGroup>
 
 </Project>

@@ -20,6 +20,8 @@ namespace SisMortuorio.Data.Repositories
                 .Include(e => e.UsuarioCreador)
                 .Include(e => e.Pertenencias)
                 .Include(e => e.CustodiaTransferencias)
+                .Include(e => e.BandejaActual)
+               
                 .FirstOrDefaultAsync(e => e.ExpedienteID == id && !e.Eliminado);
         }
 
@@ -43,6 +45,7 @@ namespace SisMortuorio.Data.Repositories
             return await _context.Expedientes
                 .Include(e => e.UsuarioCreador)
                 .Include(e => e.Pertenencias)
+                .Include(e => e.BandejaActual)
                 .Where(e => !e.Eliminado)
                 .OrderByDescending(e => e.FechaCreacion)
                 .ToListAsync();
@@ -59,6 +62,7 @@ namespace SisMortuorio.Data.Repositories
             var query = _context.Expedientes
                 .Include(e => e.UsuarioCreador)
                 .Include(e => e.Pertenencias)
+                .Include(e => e.BandejaActual)
                 .Where(e => !e.Eliminado)
                 .AsQueryable();
 
@@ -138,7 +142,62 @@ namespace SisMortuorio.Data.Repositories
             return await _context.Expedientes
                 .Include(e => e.UsuarioCreador)
                 .Include(e => e.Pertenencias)
+                .Include(e => e.BandejaActual)
                 .FirstOrDefaultAsync(e => e.CodigoQR == codigoQR && !e.Eliminado);
         }
+        public async Task<List<Expediente>> GetPendientesValidacionAdmisionAsync()
+        {
+            return await _context.Expedientes
+                .Include(e => e.UsuarioCreador)
+                .Include(e => e.Pertenencias)
+                .Include(e => e.BandejaActual)
+                .Where(e => !e.Eliminado &&
+                            (e.EstadoActual == EstadoExpediente.EnBandeja ||
+                             e.EstadoActual == EstadoExpediente.PendienteRetiro ||
+                             e.EstadoActual == EstadoExpediente.Retirado))
+                .OrderByDescending(e => e.FechaCreacion)
+                .ToListAsync();
+        }
+        public async Task<List<Expediente>> GetPendientesRecojoAsync()
+        {
+            return await _context.Expedientes
+                .Include(e => e.UsuarioCreador)
+                .Include(e => e.DeudaSangre)
+                .Include(e => e.DeudaEconomica)
+                .Include(e => e.BandejaActual)
+                .Where(e =>
+                    e.EstadoActual == EstadoExpediente.EnPiso ||
+                    e.EstadoActual == EstadoExpediente.PendienteDeRecojo ||
+                    e.EstadoActual == EstadoExpediente.EnTrasladoMortuorio ||
+                    e.EstadoActual == EstadoExpediente.PendienteAsignacionBandeja) 
+                .OrderBy(e => e.FechaHoraFallecimiento)
+                .ToListAsync();
+        }
+        // ===================================================================
+        // BÚSQUEDA SIMPLE (para módulos de deudas)
+        // ===================================================================
+
+        public async Task<Expediente?> GetByHCMasRecienteAsync(string hc)
+        {
+            return await _context.Expedientes
+                .Include(e => e.UsuarioCreador)
+                .Include(e => e.Pertenencias)
+                .Include(e => e.BandejaActual)
+                .Where(e => e.HC == hc && !e.Eliminado)
+                .OrderByDescending(e => e.FechaCreacion)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<Expediente?> GetByDNIMasRecienteAsync(string dni)
+        {
+            return await _context.Expedientes
+                .Include(e => e.UsuarioCreador)
+                .Include(e => e.Pertenencias)
+                .Include(e => e.BandejaActual)
+                .Where(e => e.NumeroDocumento == dni && !e.Eliminado)
+                .OrderByDescending(e => e.FechaCreacion)
+                .FirstOrDefaultAsync();
+        }
     }
+
 }

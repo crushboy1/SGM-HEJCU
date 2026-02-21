@@ -1,181 +1,250 @@
-<div class="min-h-screen bg-gray-100 pb-24">
-  <!-- Padding extra abajo para botones flotantes -->
+<div class="min-h-screen bg-hospital-bg">
+
   <!-- ===================================================================
-       HEADER TABLET (Estilo Mockup Ambulancia - Morado/Vibrante)
+       HEADER MODERNO (Optimizado para Tablet)
        =================================================================== -->
-  <div class="bg-gradient-to-r from-purple-800 to-indigo-700 text-white p-6 shadow-lg sticky top-0 z-30">
-    <div class="max-w-6xl mx-auto">
-      <div class="flex justify-between items-center">
+  <div class="bg-gradient-to-r from-hospital-cyan to-cyan-700 border-b border-cyan-800 px-6 py-5 sticky top-0 z-10 shadow-lg">
+    <div class="max-w-6xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <div class="p-3 bg-white/20 backdrop-blur-sm rounded-xl shadow-md text-white">
+          <app-icon name="truck" [size]="32"></app-icon>
+        </div>
         <div>
-          <h1 class="text-2xl md:text-3xl font-bold flex items-center gap-3 tracking-tight">
-            <div class="p-2 bg-white/10 rounded-lg backdrop-blur-sm">
-              <app-icon name="truck" [size]="28"></app-icon>
-            </div>
-            Mis Traslados
-          </h1>
-          <p class="text-purple-200 text-sm mt-1 ml-1 flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
-            Unidad Móvil Activa • {{ userName }}
-          </p>
+          <h1 class="text-2xl font-bold text-white">Mis Traslados</h1>
+          <p class="text-sm text-cyan-100">Unidad Móvil Activa • {{ userName }}</p>
         </div>
-
-        <button (click)="cargarDatos()"
-                [disabled]="isLoading"
-                class="bg-white/20 hover:bg-white/30 text-white p-3 rounded-full transition-all active:scale-95">
-          <app-icon name="refresh-cw" [size]="24" [className]="isLoading ? 'animate-spin' : ''"></app-icon>
-        </button>
       </div>
 
-      <!-- KPIs TÁCTILES (Estilo Bloque Sólido) -->
-      <div class="grid grid-cols-2 gap-4 mt-6">
-
-        <!-- Botón KPI: Pendientes -->
-        <div (click)="cambiarTab('pendientes')"
-             class="relative overflow-hidden rounded-xl p-4 cursor-pointer transition-all transform active:scale-95 border-2"
-             [class.bg-white]="activeTab === 'pendientes'"
-             [class.text-purple-900]="activeTab === 'pendientes'"
-             [class.border-white]="activeTab === 'pendientes'"
-             [class.bg-white /10] ="activeTab !== 'pendientes'"
-             [class.text-white]="activeTab !== 'pendientes'"
-             [class.border-transparent]="activeTab !== 'pendientes'">
-
-          <div class="flex justify-between items-start relative z-10">
-            <div>
-              <div class="text-3xl font-bold">{{ kpiPendientes }}</div>
-              <div class="text-xs uppercase font-bold tracking-wider opacity-80 mt-1">Pendientes</div>
-            </div>
-            <app-icon name="bell" [size]="24" [className]="activeTab === 'pendientes' ? 'text-purple-600' : 'text-white/60'"></app-icon>
-          </div>
-          <!-- Indicador visual de selección -->
-          <div *ngIf="activeTab === 'pendientes'" class="absolute bottom-0 left-0 w-full h-1 bg-purple-600"></div>
-        </div>
-
-        <!-- Botón KPI: En Custodia -->
-        <div (click)="cambiarTab('custodia')"
-             class="relative overflow-hidden rounded-xl p-4 cursor-pointer transition-all transform active:scale-95 border-2"
-             [class.bg-white]="activeTab === 'custodia'"
-             [class.text-purple-900]="activeTab === 'custodia'"
-             [class.border-white]="activeTab === 'custodia'"
-             [class.bg-white /10] ="activeTab !== 'custodia'"
-             [class.text-white]="activeTab !== 'custodia'"
-             [class.border-transparent]="activeTab !== 'custodia'">
-
-          <div class="flex justify-between items-start relative z-10">
-            <div>
-              <div class="text-3xl font-bold">{{ kpiEnCustodia }}</div>
-              <div class="text-xs uppercase font-bold tracking-wider opacity-80 mt-1">En Tránsito</div>
-            </div>
-            <app-icon name="user" [size]="24" [className]="activeTab === 'custodia' ? 'text-purple-600' : 'text-white/60'"></app-icon>
-          </div>
-          <div *ngIf="activeTab === 'custodia'" class="absolute bottom-0 left-0 w-full h-1 bg-purple-600"></div>
-        </div>
-
-      </div>
+      <!-- Botón recargar -->
+      <button (click)="cargarDatos()"
+              [disabled]="isLoading"
+              class="p-3 text-white hover:bg-white/20 rounded-lg transition-all hover:scale-110
+                     disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Actualizar tareas">
+        <app-icon name="refresh-cw" [size]="24" [className]="isLoading ? 'animate-spin' : ''"></app-icon>
+      </button>
     </div>
   </div>
 
   <!-- ===================================================================
-       CONTENIDO PRINCIPAL (Grid de Tarjetas Sólidas)
+       CONTENIDO PRINCIPAL (Grid para Tablet)
        =================================================================== -->
-  <div class="max-w-6xl mx-auto p-4 md:p-6">
+  <div class="max-w-6xl mx-auto p-6 space-y-6">
 
-    <!-- LOADING STATE -->
-    <div *ngIf="isLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
-      <div *ngFor="let i of [1,2,3]" class="h-72 bg-gray-200 rounded-2xl"></div>
-    </div>
+    <!-- ===================================================================
+         KPIs TABS (Más grandes para tablet)
+         =================================================================== -->
+    <div class="grid grid-cols-2 gap-6">
 
-    <!-- EMPTY STATE -->
-    <div *ngIf="!isLoading && tareasFiltradas.length === 0" class="text-center py-20 animate-fade-in">
-      <div class="inline-block p-8 bg-white rounded-full shadow-sm mb-4">
-        <app-icon name="check-circle" [size]="64" className="text-green-500"></app-icon>
-      </div>
-      <h3 class="text-xl font-bold text-gray-700">Todo despejado</h3>
-      <p class="text-gray-500 mt-1">No hay tareas en esta bandeja por ahora.</p>
-    </div>
+      <!-- Tab: Pendientes -->
+      <button (click)="cambiarTab('pendientes')"
+              [class.bg-white]="activeTab === 'pendientes'"
+              [class.border-hospital-cyan]="activeTab === 'pendientes'"
+              [class.shadow-lg]="activeTab === 'pendientes'"
+              [class.bg-gray-50]="activeTab !== 'pendientes'"
+              [class.border-gray-200]="activeTab !== 'pendientes'"
+              class="relative p-6 rounded-2xl shadow-md border-2 transition-all hover:shadow-xl text-left">
 
-    <!-- GRID DE TARJETAS -->
-    <div *ngIf="!isLoading && tareasFiltradas.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in-up">
+        <!-- Badge Notificación -->
+        <div *ngIf="kpiPendientes > 0 && activeTab !== 'pendientes'"
+             class="absolute -top-3 -right-3 bg-red-500 text-white text-sm font-bold w-10 h-10
+                    rounded-full flex items-center justify-center animate-pulse shadow-lg border-4 border-white">
+          {{ kpiPendientes }}
+        </div>
 
-      <div *ngFor="let item of tareasFiltradas"
-           class="bg-white rounded-2xl shadow-md overflow-hidden flex flex-col border border-gray-200 group hover:shadow-xl transition-all duration-300">
-
-        <!-- 1. HEADER DE TARJETA (Color Sólido) -->
-        <div class="p-4 flex justify-between items-center" [ngClass]="getHeaderClass(item.estado)">
-          <div class="flex items-center gap-2">
-            <span class="bg-white/20 p-1 rounded text-xs font-mono">{{ item.id }}</span>
-            <span class="font-bold text-sm uppercase tracking-wide opacity-90">
-              {{ item.estado === 'EnTrasladoMortuorio' ? 'En Tránsito' : 'Solicitud' }}
-            </span>
+        <div class="flex items-center justify-between mb-3">
+          <div class="p-4 rounded-xl"
+               [class.bg-cyan-100]="activeTab === 'pendientes'"
+               [class.text-hospital-cyan]="activeTab === 'pendientes'"
+               [class.bg-gray-100]="activeTab !== 'pendientes'"
+               [class.text-gray-500]="activeTab !== 'pendientes'">
+            <app-icon name="bell" [size]="32"></app-icon>
           </div>
-          <!-- Tiempo -->
-          <div class="flex items-center gap-1 text-xs font-bold bg-black/20 px-2 py-1 rounded-lg backdrop-blur-sm">
-            <app-icon name="clock" [size]="12"></app-icon>
-            <span>{{ formatearTiempo(item.tiempoTranscurrido) }}</span>
+          <div class="text-right">
+            <p class="text-5xl font-bold"
+               [class.text-hospital-cyan]="activeTab === 'pendientes'"
+               [class.text-gray-600]="activeTab !== 'pendientes'">
+              {{ kpiPendientes }}
+            </p>
           </div>
         </div>
 
-        <!-- 2. CUERPO DE TARJETA -->
-        <div class="p-5 flex-1">
-          <!-- Info Paciente -->
-          <div class="flex gap-4 mb-4">
-            <!-- Icono Grande -->
-            <div class="w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0 border-2"
-                 [ngClass]="getIconContainerClass(item.estado)">
-              <app-icon *ngIf="item.estado === 'EnTrasladoMortuorio'" name="truck" [size]="32"></app-icon>
-              <app-icon *ngIf="item.estado !== 'EnTrasladoMortuorio'" name="user" [size]="32"></app-icon>
-            </div>
+        <p class="text-sm font-bold uppercase tracking-wide"
+           [class.text-hospital-cyan]="activeTab === 'pendientes'"
+           [class.text-gray-600]="activeTab !== 'pendientes'">
+          Pendientes
+        </p>
+      </button>
 
-            <div class="flex-1 min-w-0">
-              <h3 class="text-lg font-bold text-gray-800 leading-tight line-clamp-2 mb-1">
-                {{ item.nombreCompleto }}
-              </h3>
-              <div class="flex items-center gap-1 text-gray-500 text-sm">
-                <app-icon name="credit-card" [size]="14"></app-icon>
-                <span class="font-mono">{{ item.numeroDocumento || 'S/N' }}</span>
+      <!-- Tab: En Tránsito -->
+      <button (click)="cambiarTab('custodia')"
+              [class.bg-white]="activeTab === 'custodia'"
+              [class.border-green-500]="activeTab === 'custodia'"
+              [class.shadow-lg]="activeTab === 'custodia'"
+              [class.bg-gray-50]="activeTab !== 'custodia'"
+              [class.border-gray-200]="activeTab !== 'custodia'"
+              class="relative p-6 rounded-2xl shadow-md border-2 transition-all hover:shadow-xl text-left">
+
+        <!-- Badge Notificación -->
+        <div *ngIf="kpiEnCustodia > 0 && activeTab !== 'custodia'"
+             class="absolute -top-3 -right-3 bg-green-500 text-white text-sm font-bold w-10 h-10
+                    rounded-full flex items-center justify-center shadow-lg border-4 border-white">
+          {{ kpiEnCustodia }}
+        </div>
+
+        <div class="flex items-center justify-between mb-3">
+          <div class="p-4 rounded-xl"
+               [class.bg-green-100]="activeTab === 'custodia'"
+               [class.text-green-600]="activeTab === 'custodia'"
+               [class.bg-gray-100]="activeTab !== 'custodia'"
+               [class.text-gray-500]="activeTab !== 'custodia'">
+            <app-icon name="user" [size]="32"></app-icon>
+          </div>
+          <div class="text-right">
+            <p class="text-5xl font-bold"
+               [class.text-green-600]="activeTab === 'custodia'"
+               [class.text-gray-600]="activeTab !== 'custodia'">
+              {{ kpiEnCustodia }}
+            </p>
+          </div>
+        </div>
+
+        <p class="text-sm font-bold uppercase tracking-wide"
+           [class.text-green-600]="activeTab === 'custodia'"
+           [class.text-gray-600]="activeTab !== 'custodia'">
+          En Tránsito
+        </p>
+      </button>
+
+    </div>
+
+    <!-- ===================================================================
+         LISTA DE TAREAS (Grid 2 columnas para Tablet)
+         =================================================================== -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <!-- Loading State -->
+      <div *ngIf="isLoading" class="lg:col-span-2 bg-white rounded-2xl shadow-md border border-gray-200">
+        <div class="p-20 text-center">
+          <div class="flex flex-col items-center gap-4">
+            <div class="animate-spin text-hospital-cyan">
+              <app-icon name="refresh-cw" [size]="56"></app-icon>
+            </div>
+            <span class="text-gray-600 font-medium text-lg">Cargando traslados...</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div *ngIf="!isLoading && tareasFiltradas.length === 0"
+           class="lg:col-span-2 bg-white rounded-2xl shadow-md border border-gray-200">
+        <div class="p-20 text-center">
+          <div class="flex flex-col items-center gap-4">
+            <div class="text-gray-300">
+              <app-icon name="inbox" [size]="80"></app-icon>
+            </div>
+            <div>
+              <p class="text-xl font-semibold text-gray-700">
+                {{ activeTab === 'pendientes' ? 'Sin traslados pendientes' : 'Sin traslados en curso' }}
+              </p>
+              <p class="text-base text-gray-500 mt-2">
+                {{
+ activeTab === 'pendientes'
+                   ? 'Las nuevas solicitudes aparecerán aquí'
+                   : 'Escanea un QR para iniciar un traslado'
+                }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cards de Tareas (Grid 2 columnas) -->
+      <div *ngFor="let tarea of tareasFiltradas"
+           class="bg-white rounded-2xl shadow-md border-2 hover:shadow-xl transition-all overflow-hidden"
+           [class.border-hospital-cyan]="activeTab === 'pendientes'"
+           [class.border-green-500]="activeTab === 'custodia'">
+
+        <!-- Header de la Card -->
+        <div class="px-6 py-4 flex items-center justify-between"
+             [class.bg-gradient-to-r]="true"
+             [class.from-cyan-50]="activeTab === 'pendientes'"
+             [class.to-cyan-100]="activeTab === 'pendientes'"
+             [class.from-green-50]="activeTab === 'custodia'"
+             [class.to-green-100]="activeTab === 'custodia'">
+
+          <div class="flex items-center gap-3">
+            <span class="px-4 py-1.5 rounded-full text-sm font-bold text-white"
+                  [class.bg-hospital-cyan]="activeTab === 'pendientes'"
+                  [class.bg-green-600]="activeTab === 'custodia'">
+              {{ tarea.codigoExpediente }}
+            </span>
+            <span class="text-sm font-medium text-gray-600">SOLICITUD</span>
+          </div>
+
+          <div class="flex items-center gap-2 text-sm font-medium"
+               [class.text-hospital-cyan]="activeTab === 'pendientes'"
+               [class.text-green-600]="activeTab === 'custodia'">
+            <app-icon name="clock" [size]="16"></app-icon>
+            <span>{{ formatearTiempo(tarea.tiempoTranscurrido) }}</span>
+          </div>
+        </div>
+
+        <!-- Body de la Card -->
+        <div class="p-6">
+
+          <!-- Paciente -->
+          <div class="flex items-start gap-4 mb-5">
+            <div class="p-4 rounded-xl flex-shrink-0"
+                 [class.bg-cyan-100]="activeTab === 'pendientes'"
+                 [class.text-hospital-cyan]="activeTab === 'pendientes'"
+                 [class.bg-green-100]="activeTab === 'custodia'"
+                 [class.text-green-600]="activeTab === 'custodia'">
+              <app-icon name="user" [size]="32"></app-icon>
+            </div>
+            <div class="flex-1">
+              <p class="font-bold text-gray-800 text-xl leading-tight mb-2">
+                {{ tarea.nombreCompleto }}
+              </p>
+              <div class="flex items-center gap-2 text-base text-gray-600">
+                <app-icon name="file-text" [size]="16"></app-icon>
+                <span class="font-mono">{{ tarea.hc || 'N/A' }}</span>
               </div>
             </div>
           </div>
 
-          <!-- Detalles de Ubicación -->
-          <div class="bg-gray-50 rounded-xl p-3 space-y-2 border border-gray-100">
-            <div class="flex justify-between text-sm">
-              <span class="text-gray-500">Origen</span>
-              <span class="font-bold text-gray-800 truncate max-w-[60%] text-right">{{ item.servicio }}</span>
+          <!-- Detalles: Origen y Destino -->
+          <div class="grid grid-cols-2 gap-4 mb-5">
+            <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+              <p class="text-xs text-gray-500 font-medium mb-1">Origen</p>
+              <p class="text-base font-semibold text-gray-800">{{ tarea.servicio || 'N/A' }}</p>
             </div>
-            <div class="flex justify-between text-sm">
-              <span class="text-gray-500">Destino</span>
-              <span class="font-bold text-gray-800">Mortuorio Central</span>
+            <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+              <p class="text-xs text-gray-500 font-medium mb-1">Destino</p>
+              <p class="text-base font-semibold text-gray-800">Mortuorio</p>
             </div>
           </div>
-        </div>
 
-        <!-- 3. FOOTER CON ACCIÓN (Botón Grande) -->
-        <div class="p-4 pt-0 mt-auto">
-
-          <!-- CASO 1: PENDIENTE (Botón Escanear) -->
+          <!-- Botón de Acción (Más grande para tablet) -->
           <button *ngIf="activeTab === 'pendientes'"
                   (click)="escanearQR()"
-                  class="w-full py-4 bg-hospital-cyan text-white rounded-xl font-bold shadow-md
-                         hover:bg-cyan-600 active:scale-95 transition-transform flex items-center justify-center gap-2 uppercase tracking-wide">
+                  class="w-full py-4 bg-hospital-cyan text-white rounded-xl font-bold text-base
+                         hover:bg-cyan-700 transition-colors flex items-center justify-center gap-3
+                         shadow-md hover:shadow-lg">
             <app-icon name="qr-code" [size]="24"></app-icon>
-            Escanear y Recoger
+            <span>ESCANEAR Y RECOGER</span>
           </button>
 
-          <!-- CASO 2: EN CUSTODIA (Botón Mapa) -->
-          <div *ngIf="activeTab === 'custodia'" class="space-y-3">
-            <div class="w-full py-3 bg-purple-50 text-purple-700 rounded-xl border-2 border-purple-100 font-bold text-center text-sm flex items-center justify-center gap-2 animate-pulse-soft">
-              <app-icon name="truck" [size]="18"></app-icon>
-              Traslado en curso...
-            </div>
-            <button (click)="irAMapa()"
-                    class="w-full py-3 bg-white border-2 border-purple-600 text-purple-700 rounded-xl font-bold
-                           hover:bg-purple-50 active:scale-95 transition-all flex items-center justify-center gap-2 text-sm uppercase">
-              <app-icon name="map-pin" [size]="18"></app-icon>
-              Ver Mapa Mortuorio
-            </button>
-          </div>
-
+          <button *ngIf="activeTab === 'custodia'"
+                  (click)="irAAsignarBandeja(tarea)"
+                  class="w-full py-4 bg-green-600 text-white rounded-xl font-bold text-base
+               hover:bg-green-700 transition-colors flex items-center justify-center gap-3
+               shadow-md hover:shadow-lg">
+            <app-icon name="map-pin" [size]="20"></app-icon>
+            <span>ASIGNAR BANDEJA</span>
+          </button>
         </div>
+
       </div>
 
     </div>
@@ -183,12 +252,14 @@
   </div>
 
   <!-- ===================================================================
-       FAB (Botón Flotante Móvil)
+       FAB (Botón Flotante - Solo si hay tareas pendientes)
        =================================================================== -->
   <button *ngIf="activeTab === 'pendientes' && tareasFiltradas.length > 0"
           (click)="escanearQR()"
-          class="fixed bottom-6 right-6 md:hidden h-16 w-16 bg-hospital-cyan text-white rounded-full shadow-2xl flex items-center justify-center z-40 animate-bounce-gentle border-4 border-white">
-    <app-icon name="qr-code" [size]="32"></app-icon>
+          class="fixed bottom-8 right-8 h-20 w-20 bg-hospital-cyan text-white rounded-full
+                 shadow-2xl flex items-center justify-center z-40 hover:scale-110 transition-transform
+                 border-4 border-white animate-pulse">
+    <app-icon name="qr-code" [size]="24"></app-icon>
   </button>
 
 </div>

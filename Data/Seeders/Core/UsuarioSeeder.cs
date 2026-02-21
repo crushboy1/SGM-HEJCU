@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using SisMortuorio.Data.Entities;
+using SisMortuorio.Data.Entities.Enums;
 
 namespace SisMortuorio.Data.Seeders.Core
 {

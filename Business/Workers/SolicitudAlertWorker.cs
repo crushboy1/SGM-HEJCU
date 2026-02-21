@@ -135,6 +135,7 @@ namespace SisMortuorio.Business.Workers
                     Titulo = "Solicitudes de Corrección Vencidas",
                     Mensaje = $"{solicitudesVencidas.Count} solicitud(es) de corrección llevan más de {HorasAlerta} horas sin resolver. Requiere atención inmediata.",
                     Tipo = "error",
+                    CategoriaNotificacion = "solicitud_correccion_vencida",
                     RolesDestino = RolDestino,
                     RequiereAccion = true,
                     AccionSugerida = "Revisar Solicitudes",

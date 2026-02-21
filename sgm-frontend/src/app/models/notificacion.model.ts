@@ -79,11 +79,58 @@ export interface BandejaDTO {
   codigoExpediente?: string;
   nombrePaciente?: string;
   usuarioAsignaNombre?: string;
+  fechaHoraLiberacion?: Date;
   fechaHoraAsignacion?: Date;
   tiempoOcupada?: string;
   tieneAlerta?: boolean;
 }
 
+
+export interface BandejaDisponibleDTO {
+  bandejaID: number;
+  codigo: string;
+}
+export interface AsignarBandejaDTO {
+  bandejaID: number;
+  expedienteID: number;
+  observaciones?: string;
+}
+/**
+ * DTO para liberar bandeja manualmente (emergencia)
+ */
+export interface LiberarBandejaManualDTO {
+  bandejaID: number;
+  motivoLiberacion: string; // Mínimo 3 caracteres
+  observaciones: string; // Mínimo 20 caracteres
+  usuarioLiberaID: number;
+}
+// ========================================
+// INTERFACES DEUDAS (para SignalR events)
+// ========================================
+
+export interface DeudaCreada {
+  expedienteID: number;
+  codigoExpediente: string;
+  tipoDeuda: 'Sangre' | 'Economica';
+  monto?: number;
+  unidades?: number;
+}
+
+export interface DeudaResuelta {
+  expedienteID: number;
+  codigoExpediente: string;
+  tipoDeuda: 'Sangre' | 'Economica';
+  formaResolucion: 'Liquidado' | 'Anulado' | 'Exonerado';
+}
+/**
+ * Enum de motivos comunes (sugerencias para frontend)
+ */
+export enum MotivoLiberacionManual {
+  ErrorSistema = 'Error en sistema de registro',
+  SalidaNoAutorizada = 'Salida sin completar trámites',
+  Correccion = 'Corrección de asignación incorrecta',
+  Emergencia = 'Emergencia o evacuación'
+}
 /**
  * Solicitud de corrección de expediente.
  * Debe coincidir con SolicitudCorreccionDTO.cs

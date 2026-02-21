@@ -9,8 +9,6 @@
         public int TotalSalidas { get; set; }
         public int SalidasFamiliar { get; set; }
         public int SalidasAutoridadLegal { get; set; }
-        public int SalidasTrasladoHospital { get; set; }
-        public int SalidasOtro { get; set; }
         public int ConIncidentes { get; set; }
         public int ConFuneraria { get; set; }
         public double PorcentajeIncidentes { get; set; }

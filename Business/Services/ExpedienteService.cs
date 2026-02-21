@@ -1,10 +1,12 @@
-﻿using Microsoft.AspNetCore.SignalR; // ⭐ SignalR
+﻿using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using SisMortuorio.Business.DTOs;
-using SisMortuorio.Business.DTOs.Notificacion; // ⭐ DTO Notificacion
-using SisMortuorio.Business.Hubs; // ⭐ Hubs
+using SisMortuorio.Business.DTOs.Notificacion;
+using SisMortuorio.Business.Hubs; 
 using SisMortuorio.Data.Entities;
 using SisMortuorio.Data.Entities.Enums;
 using SisMortuorio.Data.Repositories;
+using Stateless;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,15 +19,24 @@ namespace SisMortuorio.Business.Services
         private readonly IExpedienteRepository _expedienteRepository;
         private readonly IExpedienteMapperService _mapper;
         private readonly IHubContext<SgmHub, ISgmClient> _hubContext; // 1. Inyectar Hub
+        private readonly IStateMachineService _stateMachine;
+        private readonly IDeudaSangreService _deudaSangreService; 
+        private readonly IDeudaEconomicaService _deudaEconomicaService;
 
         public ExpedienteService(
             IExpedienteRepository expedienteRepository,
             IExpedienteMapperService mapper,
-            IHubContext<SgmHub, ISgmClient> hubContext) //  2. Recibir en constructor
+            IHubContext<SgmHub, ISgmClient> hubContext, //  2. Recibir en constructor
+            IStateMachineService stateMachine,
+            IDeudaSangreService deudaSangreService,         
+            IDeudaEconomicaService deudaEconomicaService)     
         {
             _expedienteRepository = expedienteRepository;
             _mapper = mapper;
             _hubContext = hubContext;
+            _stateMachine = stateMachine;
+            _deudaSangreService = deudaSangreService;
+            _deudaEconomicaService = deudaEconomicaService;
         }
 
         public async Task<ExpedienteDTO?> GetByIdAsync(int id)
@@ -73,7 +84,7 @@ namespace SisMortuorio.Business.Services
                 CodigoExpediente = codigoExpediente,
                 TipoExpediente = dto.TipoExpediente,
                 HC = dto.HC,
-                TipoDocumento = (TipoDocumentoIdentidad)dto.TipoDocumento, // Asegúrate que el DTO tenga el tipo correcto (int)
+                TipoDocumento = (TipoDocumentoIdentidad)dto.TipoDocumento,
                 NumeroDocumento = dto.NumeroDocumento,
                 ApellidoPaterno = dto.ApellidoPaterno,
                 ApellidoMaterno = dto.ApellidoMaterno,
@@ -206,6 +217,141 @@ namespace SisMortuorio.Business.Services
             }
 
             return codigoPropuesto;
+        }
+        public async Task<ExpedienteDTO> ValidarDocumentacionAdmisionAsync(
+    int expedienteId,
+    int usuarioAdmisionId)
+        {
+            // 1. Obtener expediente
+            var expediente = await _expedienteRepository.GetByIdAsync(expedienteId);
+            if (expediente == null)
+                throw new KeyNotFoundException($"Expediente con ID {expedienteId} no encontrado");
+
+            // 2. Validar estado actual
+            if (expediente.EstadoActual != EstadoExpediente.EnBandeja)
+            {
+                throw new InvalidOperationException(
+                    $"Solo se puede validar documentación cuando el expediente está en bandeja. " +
+                    $"Estado actual: {expediente.EstadoActual}"
+                );
+            }
+
+            // 3. Validar que no esté ya validado
+            if (expediente.DocumentacionCompleta)
+            {
+                throw new InvalidOperationException(
+                    "La documentación ya fue validada anteriormente"
+                );
+            }
+
+            //  4. NUEVO: Validar deudas pendientes
+            var bloqueaSangre = await _deudaSangreService.BloqueaRetiroAsync(expedienteId);
+            var bloqueaEconomica = await _deudaEconomicaService.BloqueaRetiroAsync(expedienteId);
+
+            if (bloqueaSangre || bloqueaEconomica)
+            {
+                var deudas = new List<string>();
+                if (bloqueaSangre) deudas.Add("Deuda de Sangre");
+                if (bloqueaEconomica) deudas.Add("Deuda Económica");
+
+                throw new InvalidOperationException(
+                    $"No se puede validar la documentación. Existen deudas pendientes: {string.Join(", ", deudas)}. " +
+                    $"El familiar debe regularizar su situación en {(bloqueaSangre ? "Banco de Sangre" : "")} " +
+                    $"{(bloqueaSangre && bloqueaEconomica ? "y " : "")}" +
+                    $"{(bloqueaEconomica ? "Caja/Servicio Social" : "")} antes de proceder."
+                );
+            }
+
+            // 5. Marcar documentación como completa
+            expediente.DocumentacionCompleta = true;
+            expediente.FechaValidacionAdmision = DateTime.Now;
+            expediente.UsuarioAdmisionID = usuarioAdmisionId;
+
+            // 6. Disparar trigger AutorizarRetiro (EnBandeja → PendienteRetiro)
+            await _stateMachine.FireAsync(expediente, TriggerExpediente.AutorizarRetiro);
+
+            // 7. Guardar cambios
+            await _expedienteRepository.UpdateAsync(expediente);
+
+            // 8. Notificar via SignalR
+            try
+            {
+                var notificacion = new NotificacionDTO
+                {
+                    Titulo = "Documentación Validada",
+                    Mensaje = $"El expediente {expediente.CodigoExpediente} está listo para retiro.",
+                    Tipo = "success",
+                    CodigoExpediente = expediente.CodigoExpediente,
+                    ExpedienteId = expediente.ExpedienteID,
+                    RolesDestino = "VigilanteSupervisor,VigilanciaMortuorio,Administrador",
+                    RequiereAccion = true,
+                    AccionSugerida = "Registrar Salida",
+                    UrlNavegacion = "/salidas/registrar"
+                };
+
+                await _hubContext.Clients
+                    .Groups(["VigilanteSupervisor", "VigilanciaMortuorio", "Administrador"])
+                    .RecibirNotificacion(notificacion);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error SignalR: {ex.Message}");
+            }
+
+            return _mapper.MapToExpedienteDTO(expediente)!;
+        }
+
+        public async Task<List<ExpedienteDTO>> GetPendientesValidacionAdmisionAsync()
+        {
+            var expedientes = await _expedienteRepository.GetPendientesValidacionAdmisionAsync();
+            return expedientes
+                .Select(_mapper.MapToExpedienteDTO)
+                .Where(dto => dto != null)
+                .Select(dto => dto!)
+                .ToList();
+        }
+        public async Task<List<ExpedienteDTO>> GetPendientesRecojoAsync()
+        {
+            var expedientes = await _expedienteRepository.GetPendientesRecojoAsync(); // ⭐ Usar repository
+
+            return expedientes
+                .Select(_mapper.MapToExpedienteDTO) // ⭐ Usar mapper service
+                .Where(dto => dto != null)
+                .Select(dto => dto!)
+                .ToList();
+        }
+        // ===================================================================
+        // BÚSQUEDA SIMPLE (para módulos de deudas)
+        // ===================================================================
+
+        public async Task<ExpedienteDTO?> BuscarPorHCAsync(string hc)
+        {
+            var expediente = await _expedienteRepository.GetByHCMasRecienteAsync(hc);
+
+            if (expediente == null)
+                return null;
+
+            return _mapper.MapToExpedienteDTO(expediente);
+        }
+
+        public async Task<ExpedienteDTO?> BuscarPorDNIAsync(string dni)
+        {
+            var expediente = await _expedienteRepository.GetByDNIMasRecienteAsync(dni);
+
+            if (expediente == null)
+                return null;
+
+            return _mapper.MapToExpedienteDTO(expediente);
+        }
+
+        public async Task<ExpedienteDTO?> BuscarPorCodigoAsync(string codigoExpediente)
+        {
+            var expediente = await _expedienteRepository.GetByCodigoAsync(codigoExpediente);
+
+            if (expediente == null)
+                return null;
+
+            return _mapper.MapToExpedienteDTO(expediente);
         }
     }
 }

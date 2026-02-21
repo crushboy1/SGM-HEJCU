@@ -119,14 +119,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.userName = this.authService.getUserName();
     this.userRole = this.authService.getUserRole();
 
-    // Cargar datos iniciales
+    // Cargar datos iniciales (con deudas si aplica)
     this.cargarKPIs();
     this.cargarExpedientes();
 
-    // Configurar el mecanismo de recarga inteligente (espera 500ms de silencio)
     this.configurarRecargaInteligente();
-
-    // SUSCRIBIRSE A ALERTAS Y ESTADO DE SIGNALR
     this.suscribirseAAlertasSignalR();
     this.suscribirseAEstadoConexion();
   }
@@ -144,10 +141,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
       .subscribe(conectado => {
         this.conexionSignalREstablecida = conectado;
         if (conectado) {
-          console.log('✅ Dashboard: Conexión SignalR activa');
+          console.log('Dashboard: Conexión SignalR activa');
           this.ultimaActualizacionSignalR = new Date();
         } else {
-          console.warn('⚠️ Dashboard: Conexión SignalR perdida o reconectando...');
+          console.warn('Dashboard: Conexión SignalR perdida o reconectando...');
         }
       });
   }
@@ -163,7 +160,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         debounceTime(500) // Espera 500ms tras el último evento
       )
       .subscribe(() => {
-        console.log('🔄 Dashboard: Ejecutando recarga inteligente de datos...');
+        console.log(' Dashboard: Ejecutando recarga inteligente de datos...');
         this.cargarKPIs();
       });
   }
@@ -177,7 +174,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.notificacionService.onAlertaOcupacion
       .pipe(takeUntil(this.destroy$))
       .subscribe((estadisticas: EstadisticasBandejaDTO) => {
-        console.log('⚠️ Dashboard: Alerta de ocupación recibida', estadisticas);
+        console.log(' Dashboard: Alerta de ocupación recibida', estadisticas);
 
         // Actualizar KPIs con datos en tiempo real (Actualización Optimista)
         if (this.kpis) {
@@ -206,7 +203,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.notificacionService.onAlertaPermanencia
       .pipe(takeUntil(this.destroy$))
       .subscribe((bandejas) => {
-        console.log('⏱️ Dashboard: Alerta de permanencia recibida', bandejas);
+        console.log(' Dashboard: Alerta de permanencia recibida', bandejas);
 
         // Actualizar contador de alertas
         if (this.kpis) {
@@ -289,25 +286,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
    *   this.dashboardService.getKPIsVigilancia().subscribe(...);
    * }
    */
-  cargarKPIs(): void {
+  private cargarKPIs(): void {
     this.isLoadingKPIs = true;
     this.errorKPIs = null;
 
-    this.dashboardService.getDashboardKPIs().subscribe({
-      next: (data) => {
-        this.kpis = data;
+    const incluirDeudas = this.esRolDeudas();
+
+    this.dashboardService.getDashboardKPIs(incluirDeudas).subscribe({
+      next: (kpis) => {
+        this.kpis = kpis;
         this.isLoadingKPIs = false;
-
-        // Verificar si hay alerta de ocupación
-        this.alertaOcupacionActiva = data.bandejas.porcentajeOcupacion > 70;
-
-        // Calcular estilos una sola vez tras cargar datos
         this.calcularEstadoVisual();
-
-        console.log('✅ KPIs cargados:', data);
       },
       error: (err) => {
-        console.error('❌ Error cargando KPIs:', err);
+        console.error('Error al cargar KPIs:', err);
         this.errorKPIs = 'No se pudieron cargar las estadísticas';
         this.isLoadingKPIs = false;
       }
@@ -352,8 +344,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       title: 'Dashboard actualizado',
       toast: true,
       position: 'top-end',
-      showConfirmButton: false,
-      timer: 2000
+      showConfirmButton: true,
+      
     });
   }
 
@@ -556,9 +548,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.router.navigate([route]);
   }
 
+  /**
+ * Verifica si el usuario tiene rol que debe ver estadísticas de deudas
+ */
+  private esRolDeudas(): boolean {
+    const rolesConDeudas = [
+      'BancoSangre',
+      'ServicioSocial',
+      'CuentasPacientes',
+      'VigilanteSupervisor',
+      'Administrador'
+    ];
+    return rolesConDeudas.includes(this.userRole);
+  }
+
   verExpediente(expedienteId: number | undefined): void {
     if (!expedienteId) {
-      console.warn('⚠️ ID de expediente inválido');
+      console.warn(' ID de expediente inválido');
       return;
     }
     this.router.navigate(['/expediente', expedienteId]);

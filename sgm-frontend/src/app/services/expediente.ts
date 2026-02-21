@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
+import { Observable, map } from 'rxjs';
 
 // ===================================================================
 // INTERFACES
@@ -19,6 +19,14 @@ export interface Expediente {
   diagnosticoFinal?: string;
   tipoDocumento?: string;
   numeroDocumento?: string;
+  tipoExpediente?: string;
+  documentacionCompleta: boolean;
+  fechaValidacionAdmision?: string;
+  usuarioAdmisionNombre?: string;
+  codigoBandeja?: string;
+  numeroCertificadoSINADEF?: string;
+  medicoCertificaCMP?: string;
+  medicoCertificaRNE?: string;
 }
 
 export interface CreateExpedienteDTO {
@@ -67,10 +75,48 @@ export class ExpedienteService {
   }
 
   /**
-   * Obtiene un expediente por ID (Para ver detalles o editar)
-   */
+ * Obtiene un expediente por ID (Para ver detalles o editar)
+ */
   getById(id: number): Observable<Expediente> {
-    return this.http.get<Expediente>(`${this.apiUrl}/Expedientes/${id}`);
+    return this.http.get<any>(`${this.apiUrl}/Expedientes/${id}`).pipe(
+      map(response => ({
+        ...response,
+        medicoCertificaCMP: response.medicoCMP || response.medicoCertificaCMP,
+        medicoCertificaRNE: response.medicoRNE || response.medicoCertificaRNE
+      } as Expediente))
+    );
+  }
+  /**
+ * Busca expedientes usando filtros (HC, DNI, etc.)
+ * Se usa para que Banco de Sangre/Cuentas encuentren al paciente por sus datos históricos.
+ */
+  buscarExpedientes(filtros: { hc?: string, dni?: string, estado?: string }): Observable<Expediente[]> {
+    let params = new HttpParams();
+
+    if (filtros.hc) params = params.set('hc', filtros.hc);
+    if (filtros.dni) params = params.set('dni', filtros.dni);
+    if (filtros.estado) params = params.set('estado', filtros.estado);
+
+    // Asumiendo que tu Controller expone el GetByFiltrosAsync en la raíz con query params
+    // GET /api/Expedientes?hc=12345&dni=...
+    return this.http.get<Expediente[]>(`${this.apiUrl}/Expedientes`, { params });
+  }
+  /**
+ * Búsqueda simple por HC, DNI o Código
+ * Retorna UN SOLO expediente
+ */
+  buscarSimple(filtros: {
+    hc?: string;
+    dni?: string;
+    codigoExpediente?: string;
+  }): Observable<Expediente> {
+    let params = new HttpParams();
+
+    if (filtros.hc) params = params.set('hc', filtros.hc);
+    if (filtros.dni) params = params.set('dni', filtros.dni);
+    if (filtros.codigoExpediente) params = params.set('codigoExpediente', filtros.codigoExpediente);
+
+    return this.http.get<Expediente>(`${this.apiUrl}/expedientes/buscar-simple`, { params });
   }
 
   /**
@@ -105,6 +151,29 @@ export class ExpedienteService {
     return this.http.get(
       `${this.apiUrl}/QR/${expedienteId}/reimprimir-brazalete`,
       { responseType: 'blob' }
+    );
+  }
+  validarDocumentacion(expedienteId: number): Observable<Expediente> {
+    return this.http.post<Expediente>(
+      `${this.apiUrl}/Expedientes/${expedienteId}/validar-documentacion`,
+      {}
+    );
+  }
+
+  /**
+   * Obtiene expedientes pendientes de validación por Admisión.
+   * Estado: EnBandeja y DocumentacionCompleta = false
+   */
+  getPendientesValidacionAdmision(): Observable<Expediente[]> {
+    return this.http.get<any[]>(
+      `${this.apiUrl}/Expedientes/pendientes-validacion-admision`
+    ).pipe(
+      map(expedientes => expedientes.map(exp => ({
+        ...exp,
+        // Mapear campos del backend con nombres diferentes
+        medicoCertificaCMP: exp.medicoCMP || exp.medicoCertificaCMP,
+        medicoCertificaRNE: exp.medicoRNE || exp.medicoCertificaRNE
+      } as Expediente)))
     );
   }
 }

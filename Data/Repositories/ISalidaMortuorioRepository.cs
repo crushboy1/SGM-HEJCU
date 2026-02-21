@@ -1,4 +1,5 @@
-﻿using SisMortuorio.Data.Entities;
+﻿using SisMortuorio.Business.DTOs.Salida;
+using SisMortuorio.Data.Entities;
 using SisMortuorio.Data.Entities.Enums;
 
 namespace SisMortuorio.Data.Repositories
@@ -58,6 +59,17 @@ namespace SisMortuorio.Data.Repositories
         /// Obtiene estadísticas de salidas (por tipo, incidentes, etc.).
         /// </summary>
         Task<SalidaEstadisticas> GetEstadisticasAsync(DateTime? fechaInicio = null, DateTime? fechaFin = null);
+        /// <summary>
+        /// Obtiene salidas que excedieron 48 horas de permanencia
+        /// </summary>
+        Task<List<SalidaMortuorio>> GetSalidasExcedieronLimiteAsync(DateTime? fechaInicio, DateTime? fechaFin);
+
+        /// <summary>
+        /// Obtiene salidas por tipo específico
+        /// </summary>
+        Task<List<SalidaMortuorio>> GetSalidasPorTipoAsync(TipoSalida tipo, DateTime? fechaInicio, DateTime? fechaFin);
+
+        Task<DatosPreLlenadoSalidaDTO?> GetDatosParaPrellenarAsync(int expedienteId);
     }
 
     /// <summary>

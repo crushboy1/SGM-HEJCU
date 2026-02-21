@@ -16,6 +16,7 @@ export interface LoginResponse {
   username: string;
   nombreCompleto: string;
   rol: string;
+  userId?: number;
   errorMessage?: string;
 }
 
@@ -47,16 +48,48 @@ export class AuthService {
     return this.http.post<LoginResponse>(`${this.apiUrl}/Auth/login`, credentials).pipe(
       tap(response => {
         if (response.success && response.token) {
-          // Guardamos datos en localStorage
+          // Guardar datos básicos
           localStorage.setItem(this.tokenKey, response.token);
           localStorage.setItem(this.userKey, response.username);
           localStorage.setItem(this.roleKey, response.rol);
           localStorage.setItem(this.nameKey, response.nombreCompleto);
+
+          // Extraer UserID del JWT (siempre)
+          this.extraerUserIdDelToken(response.token);
         }
       })
     );
   }
+  /**
+ * Extrae el UserID del token JWT y lo guarda en localStorage
+ */
+  private extraerUserIdDelToken(token: string): void {
+    try {
+      const parts = token.split('.');
 
+      if (parts.length !== 3) {
+        console.error('[AuthService] Token JWT inválido');
+        return;
+      }
+
+      const payload = JSON.parse(atob(parts[1]));
+
+      // Buscar UserID en múltiples claims posibles
+      const userId =
+        payload.nameid ||
+        payload.sub ||
+        payload.userId ||
+        payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'];
+
+      if (userId) {
+        localStorage.setItem('sgm_user_id', userId.toString());
+      } else {
+        console.error('[AuthService] No se pudo extraer UserID del token');
+      }
+    } catch (error) {
+      console.error('[AuthService] Error al decodificar token JWT:', error);
+    }
+  }
   /**
    * Logout del usuario
    */
@@ -65,6 +98,7 @@ export class AuthService {
     localStorage.removeItem(this.userKey);
     localStorage.removeItem(this.roleKey);
     localStorage.removeItem(this.nameKey);
+    localStorage.removeItem('sgm_user_id');
   }
 
   /**
@@ -100,7 +134,23 @@ export class AuthService {
       rol
     };
   }
+  getUserId(): number {
+    const userIdStr = localStorage.getItem('sgm_user_id');
 
+    if (!userIdStr) {
+      console.error('[AuthService] No se encontró sgm_user_id en localStorage');
+      throw new Error('Usuario no autenticado o UserID no disponible');
+    }
+
+    const userId = parseInt(userIdStr, 10);
+
+    if (isNaN(userId) || userId <= 0) {
+      console.error('[AuthService] UserID inválido:', userIdStr);
+      throw new Error('UserID inválido en localStorage');
+    }
+
+    return userId;
+  }
   /**
    * Obtener nombre del usuario
    */

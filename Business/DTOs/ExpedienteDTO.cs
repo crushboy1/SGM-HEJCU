@@ -25,6 +25,9 @@
         public string? MedicoRNE { get; set; }
         public string? NumeroCertificadoSINADEF { get; set; }
         public string? DiagnosticoFinal { get; set; }
+        public bool DocumentacionCompleta { get; set; }
+        public DateTime? FechaValidacionAdmision { get; set; }
+        public string? UsuarioAdmisionNombre { get; set; }
 
         // Estado y QR
         public string EstadoActual { get; set; } = string.Empty;
@@ -36,7 +39,7 @@
         public DateTime FechaCreacion { get; set; }
         public DateTime? FechaModificacion { get; set; }
 
-        // Pertenencias (opcional)
+        // Pertenencias
         public List<PertenenciaDTO>? Pertenencias { get; set; }
         /// <summary>
         /// Código de la bandeja donde está ubicado el cuerpo actualmente.
@@ -47,6 +50,7 @@
         /// ID de la bandeja ocupada.
         /// </summary>
         public int? BandejaID { get; set; }
+        public int? BandejaActualID { get; set; }
     }
 
     public class PertenenciaDTO

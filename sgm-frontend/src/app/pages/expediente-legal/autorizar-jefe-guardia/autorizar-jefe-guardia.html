@@ -1,0 +1,168 @@
+<div class="container mx-auto px-4 py-6 max-w-7xl">
+
+  <!-- Header -->
+  <div class="mb-6">
+    <h1 class="text-2xl font-bold text-gray-800 mb-2">
+      Autorización de Levantamientos - Jefe de Guardia
+    </h1>
+    <p class="text-sm text-gray-600">
+      Expedientes legales validados por Admisión pendientes de autorización
+    </p>
+  </div>
+
+  <!-- Estado: Cargando -->
+  <div *ngIf="loading" class="flex items-center justify-center py-12">
+    <div class="flex flex-col items-center gap-3">
+      <app-icon name="loader" [size]="32" class="animate-spin text-hospital-cyan"></app-icon>
+      <span class="text-gray-600">Cargando expedientes pendientes...</span>
+    </div>
+  </div>
+
+  <!-- Estado: Error -->
+  <div *ngIf="!loading && error"
+       class="bg-red-50 border-2 border-red-200 rounded-lg p-6 text-center">
+    <app-icon name="alert-circle" [size]="48" class="text-red-500 mx-auto mb-3"></app-icon>
+    <p class="text-red-800 font-medium">{{ error }}</p>
+    <button (click)="cargarPendientes()"
+            class="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
+      Reintentar
+    </button>
+  </div>
+
+  <!-- Estado: Sin expedientes -->
+  <div *ngIf="!loading && !error && expedientes.length === 0"
+       class="bg-green-50 border-2 border-green-200 rounded-lg p-8 text-center">
+    <app-icon name="check-circle" [size]="64" class="text-green-500 mx-auto mb-4"></app-icon>
+    <h3 class="text-lg font-semibold text-green-900 mb-2">
+      No hay expedientes pendientes
+    </h3>
+    <p class="text-green-700">
+      Todos los expedientes legales han sido autorizados
+    </p>
+  </div>
+
+  <!-- Lista de expedientes -->
+  <div *ngIf="!loading && !error && expedientes.length > 0"
+       class="space-y-4">
+
+    <div *ngFor="let expediente of expedientes"
+         class="bg-white rounded-lg shadow-card border-2 border-gray-200 hover:border-hospital-cyan transition-all">
+
+      <div class="p-5">
+
+        <!-- Header -->
+        <div class="flex items-start justify-between mb-4">
+          <div class="flex-1">
+            <div class="flex items-center gap-3 mb-2">
+              <h3 class="text-lg font-bold text-gray-800">
+                {{ expediente.nombrePaciente }}
+              </h3>
+              <span [class]="getEstadoBadge(expediente.estado)">
+                {{ helper.getEstadoLabel(expediente.estado) }}
+              </span>
+            </div>
+
+            <div class="flex items-center gap-4 text-sm text-gray-600">
+              <span class="flex items-center gap-1">
+                <app-icon name="file-text" [size]="16"></app-icon>
+                {{ expediente.codigoExpediente }}
+              </span>
+              <span class="flex items-center gap-1">
+                <app-icon name="clipboard" [size]="16"></app-icon>
+                HC: {{ expediente.hc }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Información del Caso Legal -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 p-3 bg-gray-50 rounded-lg">
+          <div>
+            <span class="text-xs text-gray-500 block mb-1">Comisaría</span>
+            <span class="text-sm font-medium text-gray-800">
+              {{ expediente.comisaria || 'N/A' }}
+            </span>
+          </div>
+          <div>
+            <span class="text-xs text-gray-500 block mb-1">N° Oficio PNP</span>
+            <span class="text-sm font-medium text-gray-800">
+              {{ expediente.numeroOficioPNP || 'N/A' }}
+            </span>
+          </div>
+          <div>
+            <span class="text-xs text-gray-500 block mb-1">Fiscalía</span>
+            <span class="text-sm font-medium text-gray-800">
+              {{ expediente.fiscalia || 'N/A' }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Validación de Admisión -->
+        <div class="bg-blue-50 rounded-lg p-3 mb-4">
+          <div class="flex items-start gap-2">
+            <app-icon name="check-circle" [size]="16" class="text-blue-600 mt-0.5"></app-icon>
+            <div class="flex-1">
+              <p class="text-xs font-semibold text-blue-900 mb-1">
+                Validado por Admisión
+              </p>
+              <p class="text-xs text-blue-800">
+                {{ expediente.fechaValidacionAdmision | date:'dd/MM/yyyy HH:mm' }}
+                <span *ngIf="expediente.usuarioAdmisionNombre" class="ml-2">
+                  por {{ expediente.usuarioAdmisionNombre }}
+                </span>
+              </p>
+              <p *ngIf="expediente.observacionesAdmision"
+                 class="text-xs text-blue-700 mt-1 italic">
+                "{{ expediente.observacionesAdmision }}"
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Resumen de Autoridades y Documentos -->
+        <div class="grid grid-cols-2 gap-3 mb-4">
+          <div class="flex items-center gap-2 p-2 bg-cyan-50 rounded-lg">
+            <app-icon name="users" [size]="18" class="text-cyan-600"></app-icon>
+            <div>
+              <p class="text-xs text-gray-500">Autoridades</p>
+              <p class="text-sm font-bold text-gray-800">
+                {{ expediente.cantidadAutoridades }} registradas
+              </p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 p-2 bg-yellow-50 rounded-lg">
+            <app-icon name="paperclip" [size]="18" class="text-yellow-600"></app-icon>
+            <div>
+              <p class="text-xs text-gray-500">Documentos</p>
+              <p class="text-sm font-bold text-gray-800">
+                {{ expediente.cantidadDocumentos }} archivos
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Acciones -->
+        <div class="flex items-center gap-3">
+          <button (click)="autorizar(expediente)"
+                  [disabled]="procesando === expediente.expedienteLegalID"
+                  class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed font-medium">
+            <app-icon [name]="procesando === expediente.expedienteLegalID ? 'loader' : 'check-circle'"
+                      [size]="18"
+                      [class]="procesando === expediente.expedienteLegalID ? 'animate-spin' : ''">
+            </app-icon>
+            <span>
+              {{ procesando === expediente.expedienteLegalID ? 'Autorizando...' : 'Autorizar Levantamiento' }}
+            </span>
+          </button>
+
+          <button (click)="verDetalle(expediente.expedienteLegalID)"
+                  class="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition font-medium">
+            Ver Detalle
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>

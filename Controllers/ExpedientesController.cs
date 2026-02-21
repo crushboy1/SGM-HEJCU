@@ -97,7 +97,81 @@ namespace SisMortuorio.Controllers
                 return StatusCode(500, new { message = "Error interno del servidor" });
             }
         }
+        /// <summary>
+        /// Búsqueda simple por HC, DNI o Código de Expediente
+        /// Retorna UN SOLO expediente (el más reciente si hay múltiples coincidencias)
+        /// Usado por: Módulos de Deudas (Cuentas Pacientes, Banco Sangre, Servicio Social)
+        /// </summary>
+        [HttpGet("buscar-simple")]
+        [ProducesResponseType(typeof(ExpedienteDTO), 200)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(400)]
+        public async Task<IActionResult> BuscarSimple(
+            [FromQuery] string? hc = null,
+            [FromQuery] string? dni = null,
+            [FromQuery] string? codigoExpediente = null)
+        {
+            try
+            {
+                // Validar que se envió al menos un parámetro
+                if (string.IsNullOrWhiteSpace(hc) &&
+                    string.IsNullOrWhiteSpace(dni) &&
+                    string.IsNullOrWhiteSpace(codigoExpediente))
+                {
+                    return BadRequest(new { message = "Debe proporcionar al menos un criterio de búsqueda (hc, dni o codigoExpediente)" });
+                }
 
+                // Validar que solo se envió UN parámetro
+                int parametrosEnviados =
+                    (!string.IsNullOrWhiteSpace(hc) ? 1 : 0) +
+                    (!string.IsNullOrWhiteSpace(dni) ? 1 : 0) +
+                    (!string.IsNullOrWhiteSpace(codigoExpediente) ? 1 : 0);
+
+                if (parametrosEnviados > 1)
+                {
+                    return BadRequest(new { message = "Solo puede buscar por un criterio a la vez (hc, dni o codigoExpediente)" });
+                }
+
+                ExpedienteDTO? expediente = null;
+
+                // Buscar por HC
+                if (!string.IsNullOrWhiteSpace(hc))
+                {
+                    expediente = await _expedienteService.BuscarPorHCAsync(hc);
+                }
+                // Buscar por DNI
+                else if (!string.IsNullOrWhiteSpace(dni))
+                {
+                    expediente = await _expedienteService.BuscarPorDNIAsync(dni);
+                }
+                // Buscar por Código Expediente
+                else if (!string.IsNullOrWhiteSpace(codigoExpediente))
+                {
+                    expediente = await _expedienteService.BuscarPorCodigoAsync(codigoExpediente);
+                }
+
+                if (expediente == null)
+                {
+                    var criterio = !string.IsNullOrWhiteSpace(hc) ? $"HC {hc}" :
+                                  !string.IsNullOrWhiteSpace(dni) ? $"DNI {dni}" :
+                                  $"Código {codigoExpediente}";
+
+                    return NotFound(new { message = $"No se encontró expediente con {criterio}" });
+                }
+
+                _logger.LogInformation(
+                    "Búsqueda simple exitosa. Criterio: {Criterio}, Expediente: {CodigoExpediente}",
+                    hc ?? dni ?? codigoExpediente,
+                    expediente.CodigoExpediente);
+
+                return Ok(expediente);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en búsqueda simple");
+                return StatusCode(500, new { message = "Error interno del servidor" });
+            }
+        }
         /// <summary>
         /// Crear nuevo expediente (solo Enfermería)
         /// </summary>
@@ -212,6 +286,96 @@ namespace SisMortuorio.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al validar certificado SINADEF {Certificado}", certificado);
+                return StatusCode(500, new { message = "Error interno del servidor" });
+            }
+        }
+        /// <summary>
+        /// Validar documentación completa por Admisión (3 juegos de copias + deudas)
+        /// Transición: EnBandeja → PendienteRetiro
+        /// </summary>
+        [HttpPost("{id}/validar-documentacion")]
+        [Authorize(Roles = "Admision,Administrador")]
+        [ProducesResponseType(typeof(ExpedienteDTO), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> ValidarDocumentacion(int id)
+        {
+            try
+            {
+                // Obtener ID del usuario autenticado
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim))
+                    return Unauthorized(new { message = "Usuario no autenticado" });
+
+                var userId = int.Parse(userIdClaim);
+
+                var expediente = await _expedienteService.ValidarDocumentacionAdmisionAsync(id, userId);
+
+                _logger.LogInformation(
+                    "Documentación validada para Expediente {ExpedienteId} por Usuario {UserId}",
+                    id, userId);
+
+                return Ok(expediente);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                _logger.LogWarning(ex, "Expediente no encontrado: {ExpedienteId}", id);
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Validación fallida para Expediente {ExpedienteId}", id);
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al validar documentación del Expediente {ExpedienteId}", id);
+                return StatusCode(500, new { message = "Error interno del servidor" });
+            }
+        }
+
+        /// <summary>
+        /// Obtener expedientes pendientes de validación por Admisión
+        /// Estado: EnBandeja y DocumentacionCompleta = false
+        /// </summary>
+        [HttpGet("pendientes-validacion-admision")]
+        [Authorize(Roles = "Admision,Administrador")]
+        [ProducesResponseType(typeof(List<ExpedienteDTO>), 200)]
+        public async Task<IActionResult> GetPendientesValidacionAdmision()
+        {
+            try
+            {
+                var expedientes = await _expedienteService.GetPendientesValidacionAdmisionAsync();
+                return Ok(expedientes);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener expedientes pendientes de validación");
+                return StatusCode(500, new { message = "Error interno del servidor" });
+            }
+        }
+        /// <summary>
+        /// Obtener expedientes pendientes de recojo por Ambulancia
+        /// Estados: EnPiso, PendienteDeRecojo
+        /// </summary>
+        [HttpGet("pendientes-recojo")]
+        [Authorize(Roles = "Ambulancia,Administrador")]
+        [ProducesResponseType(typeof(List<ExpedienteDTO>), 200)]
+        public async Task<IActionResult> GetPendientesRecojo()
+        {
+            try
+            {
+                var expedientes = await _expedienteService.GetPendientesRecojoAsync();
+
+                _logger.LogInformation(
+                    "Expedientes pendientes de recojo consultados. Total: {Total}",
+                    expedientes.Count);
+
+                return Ok(expedientes);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener expedientes pendientes de recojo");
                 return StatusCode(500, new { message = "Error interno del servidor" });
             }
         }

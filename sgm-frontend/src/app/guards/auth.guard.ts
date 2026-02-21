@@ -11,6 +11,9 @@ export const authGuard: CanActivateFn = (route, state) => {
     return true;
   }
 
+  // Opcional: Log para debugging
+  console.warn('[AuthGuard] Acceso denegado - Redirigiendo a login');
+
   // Si no tiene token, redirigir al login
   return router.createUrlTree(['/login']);
 };

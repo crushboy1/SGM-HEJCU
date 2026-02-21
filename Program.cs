@@ -113,10 +113,18 @@ builder.Services.AddScoped<ICustodiaRepository, CustodiaRepository>();
 
 // Repositorios Entrada-Salida Mortuorio-SolicitudDeCorrecion
 builder.Services.AddScoped<IBandejaRepository, BandejaRepository>();
-builder.Services.AddScoped<IOcupacionBandejaRepository, OcupacionBandejaRepository>();
+builder.Services.AddScoped<IBandejaHistorialRepository, BandejaHistorialRepository>();
 builder.Services.AddScoped<IVerificacionMortuorioRepository, VerificacionMortuorioRepository>();
 builder.Services.AddScoped<ISalidaMortuorioRepository, SalidaMortuorioRepository>();
 builder.Services.AddScoped<ISolicitudCorreccionRepository, SolicitudCorreccionRepository>();
+builder.Services.AddScoped<IDocumentoLegalRepository, DocumentoLegalRepository>();
+builder.Services.AddScoped<IExpedienteLegalRepository, ExpedienteLegalRepository>();
+builder.Services.AddScoped<IAutoridadExternaRepository, AutoridadExternaRepository>();
+builder.Services.AddScoped<IActaRetiroRepository, ActaRetiroRepository>();
+
+// Repositories - Deudas
+builder.Services.AddScoped<IDeudaSangreRepository, DeudaSangreRepository>();
+builder.Services.AddScoped<IDeudaEconomicaRepository, DeudaEconomicaRepository>();
 
 // Servicios FASE 4.5
 builder.Services.AddScoped<IVerificacionService, VerificacionService>();
@@ -139,6 +147,25 @@ builder.Services.AddScoped<IExpedienteMapperService, ExpedienteMapperService>();
 // Singleton = una sola instancia compartida en toda la aplicación
 builder.Services.AddSingleton<IConnectionTrackerService, ConnectionTrackerService>();
 
+// Servicios de negocio - Deudas
+builder.Services.AddScoped<IDeudaSangreService, DeudaSangreService>();
+builder.Services.AddScoped<IDeudaEconomicaService, DeudaEconomicaService>();
+
+// Servicios de negocio - Expedientes Legales
+builder.Services.AddScoped<IExpedienteLegalService, ExpedienteLegalService>();
+// Servicio de negocio - Acta de Retiro
+builder.Services.AddScoped<IActaRetiroService, ActaRetiroService>();
+// Servicio de almacenamiento de archivos
+builder.Services.AddScoped<ILocalFileStorageService, LocalFileStorageService>();
+
+// Servicio centralizado de notificaciones de deudas
+builder.Services.AddScoped<INotificacionDeudaService, NotificacionDeudaService>();
+
+// Servicio centralizado de notificaciones de bandejas
+builder.Services.AddScoped<INotificacionBandejaService, NotificacionBandejaService>();
+
+// Servicio Para Generar PDF
+builder.Services.AddScoped<IPdfGeneratorService, PdfGeneratorService>();
 // ===================================================================
 // 5. CONFIGURAR Controllers
 // ===================================================================
@@ -244,7 +271,7 @@ builder.Services.AddCors(options =>
                 )
                 .AllowAnyMethod()
                 .AllowAnyHeader()
-                .AllowCredentials(); // ⭐ CRÍTICO para SignalR WebSockets
+                .AllowCredentials(); //CRÍTICO para SignalR WebSockets
         });
 
     // Política permisiva solo para desarrollo

@@ -198,8 +198,7 @@ export class MisTareasComponent implements OnInit, OnDestroy {
           title: '¡Custodia Aceptada!',
           html: `Has recibido el cuerpo de:<br><strong>${res.nombreCompleto}</strong>`,
           icon: 'success',
-          timer: 2500,
-          showConfirmButton: false
+          showConfirmButton: true
         });
         // Cambiar automáticamente a la pestaña de "En Custodia" para ver el item
         this.activeTab = 'custodia';
@@ -220,23 +219,33 @@ export class MisTareasComponent implements OnInit, OnDestroy {
   /**
    * Navegar al mapa para la entrega final en mortuorio
    */
-  irAMapa() {
-    this.router.navigate(['/mapa-mortuorio']);
+  irAAsignarBandeja(tarea: BandejaItem) {
+    // Usar directamente el expedienteID de la BD
+    const expedienteId = tarea.expedienteID;
+
+    if (!expedienteId) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'No se pudo identificar el expediente. Faltan datos.',
+        confirmButtonColor: '#0891B2'
+      });
+      console.error('❌ BandejaItem sin expedienteID:', tarea);
+      return;
+    }
+
+    console.log(' Navegando a mapa mortuorio con expedienteID:', expedienteId);
+    console.log(' Código expediente:', tarea.codigoExpediente);
+
+    // Navegar con el expedienteId correcto
+    this.router.navigate(['/mapa-mortuorio'], {
+      queryParams: { expedienteId: expedienteId }
+    });
   }
 
   // ===================================================================
-  // HELPERS VISUALES (Para estilos dinámicos en HTML)
+  // HELPERS VISUALES
   // ===================================================================
-
-  getHeaderClass(estado: string): string {
-    if (estado === 'EnTrasladoMortuorio') return 'bg-purple-600 text-white'; // Morado para tránsito
-    return 'bg-hospital-cyan text-white'; // Azul para pendientes
-  }
-
-  getIconContainerClass(estado: string): string {
-    if (estado === 'EnTrasladoMortuorio') return 'bg-purple-100 text-purple-600 border-purple-200';
-    return 'bg-cyan-50 text-hospital-cyan border-cyan-200';
-  }
 
   formatearTiempo(horas: number | undefined): string {
     if (!horas) return 'Reciente';

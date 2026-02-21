@@ -19,7 +19,7 @@
 
         /// <summary>
         /// Vigilante verifica y aprueba el ingreso al mortuorio
-        /// Transición: EnTrasladoMortuorio → EnMortuorio
+        /// Transición: EnTrasladoMortuorio → PendienteAsignacionBandeja
         /// </summary>
         VerificarIngresoMortuorio = 3,
 
@@ -37,12 +37,13 @@
 
         /// <summary>
         /// Técnico asigna bandeja en el mortuorio
-        /// Nota: NO cambia estado, solo actualiza ubicación
+        /// Transición: PendienteAsignacionBandeja → EnBandeja
+        /// NOTA: Crea registro en BandejaHistorial al ejecutarse
         /// </summary>
         AsignarBandeja = 6,
 
         /// <summary>
-        /// Familiar es autorizado y se marca como pendiente de retiro
+        /// Admisión autoriza retiro y se marca como pendiente de retiro
         /// Transición: EnBandeja → PendienteRetiro
         /// </summary>
         AutorizarRetiro = 7,
@@ -50,6 +51,7 @@
         /// <summary>
         /// Vigilante registra la salida física del cuerpo
         /// Transición: PendienteRetiro → Retirado
+        /// NOTA: Actualiza BandejaHistorial (FechaHoraSalida) y libera Bandeja
         /// </summary>
         RegistrarSalida = 8
     }

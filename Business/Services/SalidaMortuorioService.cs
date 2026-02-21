@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.SignalR;
-using Microsoft.Extensions.Logging;
 using SisMortuorio.Business.DTOs.Notificacion;
 using SisMortuorio.Business.DTOs.Salida;
 using SisMortuorio.Business.Hubs;
@@ -7,229 +6,321 @@ using SisMortuorio.Data.Entities;
 using SisMortuorio.Data.Entities.Enums;
 using SisMortuorio.Data.Repositories;
 
+namespace SisMortuorio.Business.Services;
 
-namespace SisMortuorio.Business.Services
+/// <summary>
+/// Implementación del servicio de Salida de Mortuorio.
+/// Gestiona el registro de salida de cuerpos (casos internos y externos) y la liberación automática de bandejas.
+/// 
+/// Responsabilidades:
+/// - Registrar salida según tipo (Familiar con ActaRetiro, AutoridadLegal con ExpedienteLegal)
+/// - Validar documentación completa (validada por Admisión)
+/// - Validar referencias polimórficas según tipo de salida
+/// - Transicionar estado del expediente (PendienteRetiro → Retirado)
+/// - Calcular tiempo de permanencia en mortuorio
+/// - Liberar bandeja automáticamente (RN-34)
+/// - Notificar cambios vía SignalR
+/// </summary>
+public class SalidaMortuorioService(
+    ISalidaMortuorioRepository salidaRepo,
+    IExpedienteRepository expedienteRepo,
+    IBandejaService bandejaService,
+    IStateMachineService stateMachine,
+    IHubContext<SgmHub, ISgmClient> hubContext,
+    ILogger<SalidaMortuorioService> logger) : ISalidaMortuorioService
 {
-    /// <summary>
-    /// Implementación del servicio de Salida de Mortuorio.
-    /// Gestiona el registro de salida de cuerpos y la liberación automática de bandejas.
-    /// 
-    /// Responsabilidades:
-    /// - Registrar salida según tipo (Familiar, Autoridad Legal, Traslado Hospital, Otro)
-    /// - Validar documentación y pagos
-    /// - Transicionar estado del expediente (PendienteRetiro → Retirado)
-    /// - Liberar bandeja automáticamente (RN-34)
-    /// - Notificar cambios vía SignalR
-    /// </summary>
-    public class SalidaMortuorioService : ISalidaMortuorioService
+    // ═══════════════════════════════════════════════════════════
+    // REGISTRO DE SALIDA
+    // ═══════════════════════════════════════════════════════════
+
+    public async Task<SalidaDTO> RegistrarSalidaAsync(RegistrarSalidaDTO dto, int vigilanteId)
     {
-        private readonly ISalidaMortuorioRepository _salidaRepo;
-        private readonly IExpedienteRepository _expedienteRepo;
-        private readonly IBandejaService _bandejaService;
-        private readonly IStateMachineService _stateMachine;
-        private readonly IHubContext<SgmHub> _hubContext;
-        private readonly ILogger<SalidaMortuorioService> _logger;
+        // 1. Validar expediente existe
+        var expediente = await expedienteRepo.GetByIdAsync(dto.ExpedienteID)
+            ?? throw new KeyNotFoundException($"Expediente ID {dto.ExpedienteID} no encontrado");
 
-        public SalidaMortuorioService(
-            ISalidaMortuorioRepository salidaRepo,
-            IExpedienteRepository expedienteRepo,
-            IBandejaService bandejaService,
-            IStateMachineService stateMachine,
-            IHubContext<SgmHub> hubContext,
-            ILogger<SalidaMortuorioService> logger)
+        // 2. Validar estado PendienteRetiro
+        if (expediente.EstadoActual != EstadoExpediente.PendienteRetiro)
         {
-            _salidaRepo = salidaRepo;
-            _expedienteRepo = expedienteRepo;
-            _bandejaService = bandejaService;
-            _stateMachine = stateMachine;
-            _hubContext = hubContext;
-            _logger = logger;
-        }
-
-        /// <summary>
-        /// Registra la salida de un cuerpo del mortuorio.
-        /// Incluye liberación automática de bandeja y notificación SignalR.
-        /// </summary>
-        public async Task<SalidaDTO> RegistrarSalidaAsync(RegistrarSalidaDTO dto, int vigilanteId)
-        {
-            // 1. Validar Entidades
-            var expediente = await _expedienteRepo.GetByIdAsync(dto.ExpedienteID);
-            if (expediente == null)
-                throw new InvalidOperationException($"Expediente ID {dto.ExpedienteID} no encontrado.");
-
-            // 2. Validación explícita de estado (debe estar en PendienteRetiro)
-            if (expediente.EstadoActual != EstadoExpediente.PendienteRetiro)
-            {
-                throw new InvalidOperationException(
-                    $"El expediente {expediente.CodigoExpediente} debe estar en estado 'Pendiente Retiro'. " +
-                    $"Estado actual: {expediente.EstadoActual}"
-                );
-            }
-
-            // 3. Validar Máquina de Estados
-            if (!_stateMachine.CanFire(expediente, TriggerExpediente.RegistrarSalida))
-            {
-                throw new InvalidOperationException(
-                    $"Acción no permitida. El expediente {expediente.CodigoExpediente} está en estado '{expediente.EstadoActual}' " +
-                    $"y no puede registrarse su salida."
-                );
-            }
-
-            var estadoAnterior = expediente.EstadoActual;
-
-            // 4. Mapear DTO a Entidad
-            var salida = new SalidaMortuorio
-            {
-                ExpedienteID = dto.ExpedienteID,
-                VigilanteID = vigilanteId,
-                FechaHoraSalida = DateTime.Now,
-                TipoSalida = dto.TipoSalida,
-                ResponsableNombre = dto.ResponsableNombre,
-                ResponsableTipoDocumento = dto.ResponsableTipoDocumento,
-                ResponsableNumeroDocumento = dto.ResponsableNumeroDocumento,
-                ResponsableParentesco = dto.ResponsableParentesco,
-                ResponsableTelefono = dto.ResponsableTelefono,
-                NumeroAutorizacion = dto.NumeroAutorizacion,
-                EntidadAutorizante = dto.EntidadAutorizante,
-                DocumentacionVerificada = dto.DocumentacionVerificada,
-                PagoRealizado = dto.PagoRealizado,
-                NumeroRecibo = dto.NumeroRecibo,
-                NombreFuneraria = dto.NombreFuneraria,
-                ConductorFuneraria = dto.ConductorFuneraria,
-                DNIConductor = dto.DNIConductor,
-                PlacaVehiculo = dto.PlacaVehiculo,
-                Destino = dto.Destino,
-                Observaciones = dto.Observaciones,
-                IncidenteRegistrado = false // Por defecto
-            };
-
-            // 5. Guardar registro de salida
-            var salidaCreada = await _salidaRepo.CreateAsync(salida);
-
-            // 6. Disparar State Machine (PendienteRetiro → Retirado)
-            await _stateMachine.FireAsync(expediente, TriggerExpediente.RegistrarSalida);
-            await _expedienteRepo.UpdateAsync(expediente);
-
-            // 7. Liberar la bandeja automáticamente (RN-34)
-            await _bandejaService.LiberarBandejaAsync(expediente.ExpedienteID, vigilanteId);
-
-            _logger.LogInformation(
-                "Salida registrada para Expediente {CodigoExpediente} por Usuario ID {UsuarioID}. " +
-                "Estado: {EstadoAnterior} -> {EstadoNuevo}. Bandeja liberada.",
-                expediente.CodigoExpediente, vigilanteId, estadoAnterior, expediente.EstadoActual
+            throw new InvalidOperationException(
+                $"El expediente {expediente.CodigoExpediente} debe estar en estado 'Pendiente Retiro'. " +
+                $"Estado actual: {expediente.EstadoActual}"
             );
-
-            // 8. Notificar cambio de estado vía SignalR
-            await NotificarSalidaRegistradaAsync(expediente, estadoAnterior);
-
-            // 9. Devolver DTO de respuesta
-            return MapToSalidaDTO(salidaCreada);
         }
 
-        public async Task<SalidaDTO?> GetByExpedienteIdAsync(int expedienteId)
+        // 3. Validar documentación completa (validada por Admisión)
+        if (!expediente.DocumentacionCompleta)
         {
-            var salida = await _salidaRepo.GetByExpedienteIdAsync(expedienteId);
-            if (salida == null) return null;
-
-            return MapToSalidaDTO(salida);
+            throw new InvalidOperationException(
+                $"Admisión debe completar la documentación antes del retiro. " +
+                $"Expediente: {expediente.CodigoExpediente}"
+            );
         }
 
-        public async Task<EstadisticasSalidaDTO> GetEstadisticasAsync(DateTime? fechaInicio, DateTime? fechaFin)
+        // 4. Validar transición en State Machine
+        if (!stateMachine.CanFire(expediente, TriggerExpediente.RegistrarSalida))
         {
-            var stats = await _salidaRepo.GetEstadisticasAsync(fechaInicio, fechaFin);
+            throw new InvalidOperationException(
+                $"Acción no permitida. El expediente {expediente.CodigoExpediente} está en estado '{expediente.EstadoActual}' " +
+                $"y no puede registrarse su salida"
+            );
+        }
 
-            // Mapeo 1:1
-            return new EstadisticasSalidaDTO
+        // 5. Crear entidad y validar referencias polimórficas
+        var salida = new SalidaMortuorio
+        {
+            ExpedienteID = dto.ExpedienteID,
+            ActaRetiroID = dto.ActaRetiroID,
+            ExpedienteLegalID = dto.ExpedienteLegalID,
+            VigilanteID = vigilanteId,
+            FechaHoraSalida = DateTime.Now,
+            TipoSalida = dto.TipoSalida,
+            ResponsableNombre = dto.ResponsableNombre,
+            ResponsableTipoDocumento = dto.ResponsableTipoDocumento,
+            ResponsableNumeroDocumento = dto.ResponsableNumeroDocumento,
+            ResponsableParentesco = dto.ResponsableParentesco,
+            ResponsableTelefono = dto.ResponsableTelefono,
+            NumeroOficio = dto.NumeroOficio,
+            NombreFuneraria = dto.NombreFuneraria,
+            ConductorFuneraria = dto.ConductorFuneraria,
+            DNIConductor = dto.DNIConductor,
+            AyudanteFuneraria = dto.AyudanteFuneraria,
+            DNIAyudante = dto.DNIAyudante,
+            PlacaVehiculo = dto.PlacaVehiculo,
+            Destino = dto.Destino,
+            Observaciones = dto.Observaciones,
+            IncidenteRegistrado = false
+        };
+
+        // 6. Validar referencias polimórficas
+        var validacionReferencias = salida.ValidarReferencias();
+        if (validacionReferencias != "OK")
+        {
+            throw new InvalidOperationException(validacionReferencias);
+        }
+
+        // 7. Validar documentación según tipo
+        var validacionDocumentacion = salida.ValidarDocumentacion();
+        if (validacionDocumentacion != "Documentación completa")
+        {
+            throw new InvalidOperationException(validacionDocumentacion);
+        }
+
+        // 8. Calcular tiempo de permanencia
+        var fechaIngresoMortuorio = await ObtenerFechaIngresoMortuorioAsync(expediente.ExpedienteID);
+        salida.CalcularTiempoPermanencia(fechaIngresoMortuorio);
+
+        // 9. Guardar registro de salida
+        var salidaCreada = await salidaRepo.CreateAsync(salida);
+
+        var estadoAnterior = expediente.EstadoActual;
+
+        // 10. Disparar State Machine (PendienteRetiro → Retirado)
+        await stateMachine.FireAsync(expediente, TriggerExpediente.RegistrarSalida);
+        await expedienteRepo.UpdateAsync(expediente);
+
+        // 11. Liberar bandeja automáticamente (RN-34)
+        await bandejaService.LiberarBandejaAsync(expediente.ExpedienteID, vigilanteId);
+
+        logger.LogInformation(
+            "Salida registrada para Expediente {CodigoExpediente} (Tipo: {TipoSalida}) por Usuario ID {UsuarioID}. " +
+            "Estado: {EstadoAnterior} → {EstadoNuevo}. Tiempo permanencia: {TiempoPermanencia}. Bandeja liberada.",
+            expediente.CodigoExpediente, dto.TipoSalida, vigilanteId, estadoAnterior, expediente.EstadoActual, salida.TiempoPermanencia
+        );
+
+        // 12. Notificar cambio de estado vía SignalR
+        await NotificarSalidaRegistradaAsync(expediente, estadoAnterior, dto.TipoSalida);
+
+        return MapToSalidaDTO(salidaCreada);
+    }
+    // ═══════════════════════════════════════════════════════════
+    // PRE-LLENADO DE FORMULARIO
+    // ═══════════════════════════════════════════════════════════
+
+    public async Task<DatosPreLlenadoSalidaDTO?> GetDatosParaPrellenarAsync(int expedienteId)
+    {
+        // 1. Obtener datos desde el repositorio
+        var datos = await salidaRepo.GetDatosParaPrellenarAsync(expedienteId);
+
+        if (datos == null)
+        {
+            logger.LogWarning(
+                "No se pudieron obtener datos de pre-llenado para expediente {ExpedienteID}. " +
+                "Posibles causas: expediente no existe, no está en PendienteRetiro, o no tiene acta firmada.",
+                expedienteId
+            );
+            return null;
+        }
+
+        logger.LogInformation(
+            "Datos de pre-llenado obtenidos para expediente {CodigoExpediente}. " +
+            "Tipo Salida: {TipoSalida}, DocumentosOK: {DocumentosOK}, PagosOK: {PagosOK}",
+            datos.CodigoExpediente, datos.TipoSalida, datos.DocumentosOK, datos.PagosOK
+        );
+
+        return datos;
+    }
+    // ═══════════════════════════════════════════════════════════
+    // CONSULTAS
+    // ═══════════════════════════════════════════════════════════
+
+    public async Task<SalidaDTO?> GetByExpedienteIdAsync(int expedienteId)
+    {
+        var salida = await salidaRepo.GetByExpedienteIdAsync(expedienteId);
+        return salida is not null ? MapToSalidaDTO(salida) : null;
+    }
+
+    public async Task<EstadisticasSalidaDTO> GetEstadisticasAsync(DateTime? fechaInicio, DateTime? fechaFin)
+    {
+        var stats = await salidaRepo.GetEstadisticasAsync(fechaInicio, fechaFin);
+
+        return new EstadisticasSalidaDTO
+        {
+            TotalSalidas = stats.TotalSalidas,
+            SalidasFamiliar = stats.SalidasFamiliar,
+            SalidasAutoridadLegal = stats.SalidasAutoridadLegal,
+            ConIncidentes = stats.ConIncidentes,
+            ConFuneraria = stats.ConFuneraria,
+            PorcentajeIncidentes = stats.PorcentajeIncidentes
+        };
+    }
+
+    public async Task<List<SalidaDTO>> GetSalidasPorRangoFechasAsync(DateTime fechaInicio, DateTime fechaFin)
+    {
+        var salidas = await salidaRepo.GetSalidasPorRangoFechasAsync(fechaInicio, fechaFin);
+        return salidas.Select(MapToSalidaDTO).ToList();
+    }
+
+    public async Task<List<SalidaDTO>> GetSalidasExcedieronLimiteAsync(DateTime? fechaInicio, DateTime? fechaFin)
+    {
+        var salidas = await salidaRepo.GetSalidasExcedieronLimiteAsync(fechaInicio, fechaFin);
+        return salidas.Select(MapToSalidaDTO).ToList();
+    }
+
+    public async Task<List<SalidaDTO>> GetSalidasPorTipoAsync(TipoSalida tipo, DateTime? fechaInicio, DateTime? fechaFin)
+    {
+        var salidas = await salidaRepo.GetSalidasPorTipoAsync(tipo, fechaInicio, fechaFin);
+        return salidas.Select(MapToSalidaDTO).ToList();
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // MÉTODOS PRIVADOS
+    // ═══════════════════════════════════════════════════════════
+
+    private async Task NotificarSalidaRegistradaAsync(Expediente expediente, EstadoExpediente estadoAnterior, TipoSalida tipoSalida)
+    {
+        try
+        {
+            var mensaje = tipoSalida switch
             {
-                TotalSalidas = stats.TotalSalidas,
-                SalidasFamiliar = stats.SalidasFamiliar,
-                SalidasAutoridadLegal = stats.SalidasAutoridadLegal,
-                SalidasTrasladoHospital = stats.SalidasTrasladoHospital,
-                SalidasOtro = stats.SalidasOtro,
-                ConIncidentes = stats.ConIncidentes,
-                ConFuneraria = stats.ConFuneraria,
-                PorcentajeIncidentes = stats.PorcentajeIncidentes
+                TipoSalida.Familiar => $"Expediente {expediente.CodigoExpediente} retirado por familiar. Destino: Funeraria",
+                TipoSalida.AutoridadLegal => $"Expediente {expediente.CodigoExpediente} retirado por autoridades. Destino: Morgue Central",
+                _ => $"Expediente {expediente.CodigoExpediente} retirado del mortuorio"
             };
-        }
 
-        public async Task<List<SalidaDTO>> GetSalidasPorRangoFechasAsync(DateTime fechaInicio, DateTime fechaFin)
-        {
-            var salidas = await _salidaRepo.GetSalidasPorRangoFechasAsync(fechaInicio, fechaFin);
-            return salidas.Select(MapToSalidaDTO).ToList();
-        }
-
-        // ===================================================================
-        // MÉTODOS PRIVADOS
-        // ===================================================================
-
-        /// <summary>
-        /// Notifica vía SignalR que se registró una salida del mortuorio.
-        /// Envía notificación al dashboard y a roles relevantes (Jefatura, Vigilancia).
-        /// </summary>
-        private async Task NotificarSalidaRegistradaAsync(Expediente expediente, EstadoExpediente estadoAnterior)
-        {
-            try
+            var notificacion = new NotificacionDTO
             {
-                var notificacion = new NotificacionDTO
-                {
-                    Titulo = "Salida Registrada",
-                    Mensaje = $"El expediente {expediente.CodigoExpediente} ha sido retirado del mortuorio.",
-                    Tipo = "success",
-                    CategoriaNotificacion = "expediente_actualizado",
-                    ExpedienteId = expediente.ExpedienteID,
-                    CodigoExpediente = expediente.CodigoExpediente,
-                    EstadoAnterior = estadoAnterior.ToString(),
-                    EstadoNuevo = expediente.EstadoActual.ToString(),
-                    RolesDestino = "JefeGuardia,VigilanteSupervisor",
-                    RequiereAccion = false,
-                    FechaExpiracion = DateTime.Now.AddHours(24)
-                };
-
-                // Enviar a grupo específico
-                await _hubContext.Clients
-                    .Group("JefeGuardia")
-                    .SendAsync("RecibirNotificacion", notificacion);
-
-                await _hubContext.Clients
-                    .Group("VigilanteSupervisor")
-                    .SendAsync("RecibirNotificacion", notificacion);
-
-                _logger.LogInformation(
-                    "Notificación SignalR enviada: Salida registrada para expediente {CodigoExpediente}",
-                    expediente.CodigoExpediente
-                );
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "Error al enviar notificación SignalR para salida del expediente {CodigoExpediente}",
-                    expediente.CodigoExpediente
-                );
-                // No lanzar excepción - la notificación es opcional
-            }
-        }
-
-        /// <summary>
-        /// Mapea una entidad SalidaMortuorio a su DTO correspondiente.
-        /// </summary>
-        private SalidaDTO MapToSalidaDTO(SalidaMortuorio salida)
-        {
-            return new SalidaDTO
-            {
-                SalidaID = salida.SalidaID,
-                ExpedienteID = salida.ExpedienteID,
-                CodigoExpediente = salida.Expediente?.CodigoExpediente ?? "N/A",
-                NombrePaciente = salida.Expediente?.NombreCompleto ?? "N/A",
-                FechaHoraSalida = salida.FechaHoraSalida,
-                TipoSalida = salida.TipoSalida.ToString(),
-                ResponsableNombre = salida.ResponsableNombre,
-                ResponsableDocumento = $"{salida.ResponsableTipoDocumento ?? "N/A"} {salida.ResponsableNumeroDocumento ?? "N/A"}",
-                VigilanteNombre = salida.Vigilante?.NombreCompleto ?? "N/A",
-                NombreFuneraria = salida.NombreFuneraria,
-                Destino = salida.Destino,
-                IncidenteRegistrado = salida.IncidenteRegistrado,
-                DetalleIncidente = salida.DetalleIncidente
+                Id = Guid.NewGuid().ToString(),
+                Titulo = "Salida Registrada",
+                Mensaje = mensaje,
+                Tipo = "success",
+                CategoriaNotificacion = "salida_mortuorio",
+                FechaHora = DateTime.Now,
+                RolesDestino = "JefeGuardia,VigilanteSupervisor",
+                ExpedienteId = expediente.ExpedienteID,
+                CodigoExpediente = expediente.CodigoExpediente,
+                EstadoAnterior = estadoAnterior.ToString(),
+                EstadoNuevo = expediente.EstadoActual.ToString(),
+                AccionSugerida = "Ver Estadísticas",
+                UrlNavegacion = $"/salidas-mortuorio",
+                RequiereAccion = false,
+                FechaExpiracion = DateTime.Now.AddHours(24),
+                Leida = false
             };
+
+            await hubContext.Clients
+                .Groups(["JefeGuardia", "VigilanteSupervisor"])
+                .RecibirNotificacion(notificacion);
+
+            logger.LogDebug(
+                "Notificación SignalR enviada - Salida registrada: {CodigoExpediente} (Tipo: {TipoSalida})",
+                expediente.CodigoExpediente, tipoSalida
+            );
         }
+        catch (Exception ex)
+        {
+            logger.LogWarning(
+                ex,
+                "Error al enviar notificación SignalR para salida del expediente {CodigoExpediente}",
+                expediente.CodigoExpediente
+            );
+        }
+    }
+
+    private SalidaDTO MapToSalidaDTO(SalidaMortuorio salida)
+    {
+        string? tiempoLegible = null;
+        if (salida.TiempoPermanencia.HasValue)
+        {
+            var tiempo = salida.TiempoPermanencia.Value;
+            tiempoLegible = tiempo.TotalDays >= 1
+                ? $"{(int)tiempo.TotalDays} días {tiempo.Hours} horas"
+                : $"{tiempo.Hours} horas {tiempo.Minutes} minutos";
+        }
+
+        return new SalidaDTO
+        {
+            SalidaID = salida.SalidaID,
+            ExpedienteID = salida.ExpedienteID,
+            CodigoExpediente = salida.Expediente?.CodigoExpediente ?? "N/A",
+            NombrePaciente = salida.Expediente?.NombreCompleto ?? "N/A",
+            ActaRetiroID = salida.ActaRetiroID,
+            ExpedienteLegalID = salida.ExpedienteLegalID,
+            FechaHoraSalida = salida.FechaHoraSalida,
+            TipoSalida = salida.TipoSalida.ToString(),
+            ResponsableNombre = salida.ResponsableNombre,
+            ResponsableDocumento = $"{salida.ResponsableTipoDocumento} {salida.ResponsableNumeroDocumento}",
+            ResponsableParentesco = salida.ResponsableParentesco,
+            ResponsableTelefono = salida.ResponsableTelefono,
+            NumeroOficio = salida.NumeroOficio,
+            NombreFuneraria = salida.NombreFuneraria,
+            ConductorFuneraria = salida.ConductorFuneraria,
+            DNIConductor = salida.DNIConductor,
+            PlacaVehiculo = salida.PlacaVehiculo,
+            Destino = salida.Destino,
+            VigilanteNombre = salida.Vigilante?.NombreCompleto ?? "N/A",
+            Observaciones = salida.Observaciones,
+            IncidenteRegistrado = salida.IncidenteRegistrado,
+            DetalleIncidente = salida.DetalleIncidente,
+            TiempoPermanencia = salida.TiempoPermanencia,
+            TiempoPermanenciaLegible = tiempoLegible,
+            ExcedioLimite = salida.ExcedioLimitePermanencia()
+        };
+    }
+    /// <summary>
+    /// Obtiene la fecha/hora real de ingreso físico al mortuorio.
+    /// Usa FechaHoraAsignacion de la bandeja (momento en que el cuerpo es colocado físicamente).
+    /// Fallback: FechaCreacion del expediente si no tiene bandeja asignada.
+    /// </summary>
+    /// <param name="expedienteId">ID del expediente</param>
+    /// <returns>Fecha/hora de ingreso al mortuorio</returns>
+    private async Task<DateTime> ObtenerFechaIngresoMortuorioAsync(int expedienteId)
+    {
+        var expediente = await expedienteRepo.GetByIdAsync(expedienteId);
+
+        // Prioridad: Usar fecha de asignación de bandeja (momento real de ingreso físico)
+        if (expediente?.BandejaActual?.FechaHoraAsignacion is not null)
+        {
+            return (DateTime)expediente.BandejaActual.FechaHoraAsignacion;
+        }
+
+        // Fallback: Si aún no tiene bandeja, usar fecha de creación
+        // (Casos excepcionales donde se registra salida antes de asignar bandeja)
+        logger.LogWarning(
+            "Expediente {ExpedienteID} no tiene bandeja asignada. Usando FechaCreacion como aproximación.",
+            expedienteId
+        );
+
+        return expediente?.FechaCreacion ?? DateTime.Now;
     }
 }

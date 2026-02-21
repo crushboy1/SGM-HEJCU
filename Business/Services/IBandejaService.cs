@@ -54,5 +54,11 @@ namespace SisMortuorio.Business.Services
         /// Saca una bandeja de Mantenimiento y la pone Disponible.
         /// </summary>
         Task<BandejaDTO> FinalizarMantenimientoAsync(int bandejaId, int usuarioId);
+
+        /// <summary>
+        /// Libera manualmente una bandeja ocupada (emergencia/corrección).
+        /// Solo para roles: Administrador, JefeGuardia, VigilanteSupervisor.
+        /// </summary>
+        Task<BandejaDTO> LiberarManualmenteAsync(LiberarBandejaManualDTO dto);
     }
 }

@@ -1,76 +1,153 @@
 ﻿using SisMortuorio.Data.Entities.Enums;
 using System.ComponentModel.DataAnnotations;
 
-namespace SisMortuorio.Business.DTOs.Salida
+namespace SisMortuorio.Business.DTOs.Salida;
+
+/// <summary>
+/// DTO para registrar la salida de un cuerpo del mortuorio.
+/// Soporta tanto casos internos (Familiar) como externos (AutoridadLegal).
+/// 
+/// FLUJO:
+/// - Admisión registra todos los datos (ActaRetiro o ExpedienteLegal)
+/// - Vigilante solo confirma retiro físico y agrega observaciones si necesita
+/// </summary>
+public class RegistrarSalidaDTO
 {
+    // ═══════════════════════════════════════════════════════════
+    // IDENTIFICADORES
+    // ═══════════════════════════════════════════════════════════
+
+    [Required(ErrorMessage = "El ID del expediente es obligatorio")]
+    public int ExpedienteID { get; set; }
+
     /// <summary>
-    /// DTO de entrada (Input) con todos los datos necesarios
-    /// para registrar la salida física de un cuerpo del mortuorio.
+    /// ID del Acta de Retiro (OBLIGATORIO para TipoSalida = Familiar)
+    /// Registrado por Admisión
     /// </summary>
-    public class RegistrarSalidaDTO
-    {
-        [Required(ErrorMessage = "El ID del expediente es obligatorio")]
-        public int ExpedienteID { get; set; }
+    public int? ActaRetiroID { get; set; }
 
-        // El ID del Vigilante se tomará del Token (Claim)
+    /// <summary>
+    /// ID del Expediente Legal (OBLIGATORIO para TipoSalida = AutoridadLegal)
+    /// Registrado por Admisión
+    /// </summary>
+    public int? ExpedienteLegalID { get; set; }
 
-        [Required(ErrorMessage = "El tipo de salida es obligatorio")]
-        public TipoSalida TipoSalida { get; set; }
+    // ═══════════════════════════════════════════════════════════
+    // TIPO Y RESPONSABLE
+    // ═══════════════════════════════════════════════════════════
 
-        // --- Datos del Responsable ---
-        [Required(ErrorMessage = "El nombre del responsable es obligatorio")]
-        [StringLength(200)]
-        public string ResponsableNombre { get; set; } = string.Empty;
+    [Required(ErrorMessage = "El tipo de salida es obligatorio")]
+    public TipoSalida TipoSalida { get; set; }
 
-        [Required(ErrorMessage = "El tipo de documento del responsable es obligatorio")]
-        [StringLength(20)]
-        public string ResponsableTipoDocumento { get; set; } = "DNI";
+    [Required(ErrorMessage = "El nombre del responsable es obligatorio")]
+    [MaxLength(200, ErrorMessage = "El nombre no puede exceder 200 caracteres")]
+    public string ResponsableNombre { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "El número de documento del responsable es obligatorio")]
-        [StringLength(20)]
-        public string ResponsableNumeroDocumento { get; set; } = string.Empty;
+    [Required(ErrorMessage = "El tipo de documento es obligatorio")]
+    [MaxLength(20)]
+    public string ResponsableTipoDocumento { get; set; } = string.Empty;
 
-        [StringLength(50)]
-        public string? ResponsableParentesco { get; set; }
+    [Required(ErrorMessage = "El número de documento es obligatorio")]
+    [MaxLength(20)]
+    public string ResponsableNumeroDocumento { get; set; } = string.Empty;
 
-        [StringLength(20)]
-        public string? ResponsableTelefono { get; set; }
+    /// <summary>
+    /// Parentesco (OBLIGATORIO si TipoSalida = Familiar)
+    /// Registrado por Admisión en ActaRetiro
+    /// </summary>
+    [MaxLength(50)]
+    public string? ResponsableParentesco { get; set; }
 
-        // --- Autorización (si aplica) ---
-        [StringLength(100)]
-        public string? NumeroAutorizacion { get; set; } // Ej. Orden fiscal
+    [MaxLength(20)]
+    public string? ResponsableTelefono { get; set; }
 
-        [StringLength(200)]
-        public string? EntidadAutorizante { get; set; } // Ej. "Fiscalía Provincial"
+    // ═══════════════════════════════════════════════════════════
+    // AUTORIZACIÓN (SOLO CASOS EXTERNOS)
+    // ═══════════════════════════════════════════════════════════
 
-        // --- Verificación (Checklists del Vigilante) ---
-        [Required]
-        public bool DocumentacionVerificada { get; set; } = false;
+    /// <summary>
+    /// Número de oficio policial (OBLIGATORIO si TipoSalida = AutoridadLegal)
+    /// Ejemplo: "OFICIO N° 1262-2025-REG.POL-LIMA/DIVPOL-SUR-1-CSA-DEINPOL-SIAT"
+    /// Registrado por Admisión cuando sube el documento PDF
+    /// NULL para casos internos
+    /// </summary>
+    [MaxLength(150)]
+    public string? NumeroOficio { get; set; }
 
-        [Required]
-        public bool PagoRealizado { get; set; } = false; // Check si aplica (PARTICULAR)
+    // ═══════════════════════════════════════════════════════════
+    // FUNERARIA (SOLO CASOS INTERNOS)
+    // ═══════════════════════════════════════════════════════════
 
-        [StringLength(50)]
-        public string? NumeroRecibo { get; set; }
+    /// <summary>
+    /// Nombre de la funeraria (OBLIGATORIO si TipoSalida = Familiar)
+    /// Registrado por Admisión
+    /// NULL para casos externos
+    /// </summary>
+    [MaxLength(200)]
+    public string? NombreFuneraria { get; set; }
 
-        // --- Datos Funeraria (si aplica) ---
-        [StringLength(200)]
-        public string? NombreFuneraria { get; set; }
+    [MaxLength(11)]
+    public string? FunerariaRUC { get; set; }
 
-        [StringLength(200)]
-        public string? ConductorFuneraria { get; set; }
+    [MaxLength(20)]
+    public string? FunerariaTelefono { get; set; }
 
-        [StringLength(20)]
-        public string? DNIConductor { get; set; }
+    /// <summary>
+    /// Conductor de la funeraria (OBLIGATORIO si TipoSalida = Familiar)
+    /// Registrado por Admisión
+    /// </summary>
+    [MaxLength(200)]
+    public string? ConductorFuneraria { get; set; }
 
-        [StringLength(20)]
-        public string? PlacaVehiculo { get; set; }
+    /// <summary>
+    /// DNI del conductor (OBLIGATORIO si TipoSalida = Familiar)
+    /// Registrado por Admisión
+    /// </summary>
+    [MaxLength(20)]
+    public string? DNIConductor { get; set; }
 
-        // --- Destino y Cierre ---
-        [StringLength(200)]
-        public string? Destino { get; set; }
+    /// <summary>
+    /// Ayudante de la funeraria (opcional)
+    /// Registrado por Admisión
+    /// </summary>
+    [MaxLength(200)]
+    public string? AyudanteFuneraria { get; set; }
 
-        [StringLength(1000)]
-        public string? Observaciones { get; set; }
-    }
+    /// <summary>
+    /// DNI del ayudante (opcional)
+    /// Registrado por Admisión
+    /// </summary>
+    [MaxLength(20)]
+    public string? DNIAyudante { get; set; }
+
+    /// <summary>
+    /// Placa del vehículo (OBLIGATORIO para ambos tipos)
+    /// - Caso Interno: Placa de vehículo funerario
+    /// - Caso Externo: Placa de patrullero (desde AutoridadExterna-Policia)
+    /// Registrado por Admisión
+    /// Vigilante solo confirma visualmente
+    /// </summary>
+    [MaxLength(20)]
+    public string? PlacaVehiculo { get; set; }
+
+    // ═══════════════════════════════════════════════════════════
+    // DESTINO Y OBSERVACIONES
+    // ═══════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Destino final del cuerpo
+    /// - Caso Interno: Cementerio/Crematorio
+    /// - Caso Externo: "Morgue Central"
+    /// Registrado por Admisión
+    /// </summary>
+    [MaxLength(200)]
+    public string? Destino { get; set; }
+
+    /// <summary>
+    /// Observaciones adicionales
+    /// Puede ser agregado/modificado por Vigilante si detecta inconsistencias
+    /// Ejemplo: "Placa no coincide con registro", "Retiro urgente"
+    /// </summary>
+    [MaxLength(1000)]
+    public string? Observaciones { get; set; }
 }

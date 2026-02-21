@@ -38,6 +38,8 @@ namespace SisMortuorio.Business.Services
                 TipoSeguro = expediente.TipoSeguro,
                 ServicioFallecimiento = expediente.ServicioFallecimiento,
                 NumeroCama = expediente.NumeroCama,
+                BandejaActualID = expediente.BandejaActualID,
+                CodigoBandeja = expediente.BandejaActual?.Codigo,
                 FechaHoraFallecimiento = expediente.FechaHoraFallecimiento,
                 MedicoCertificaNombre = expediente.MedicoCertificaNombre,
                 MedicoCMP = expediente.MedicoCMP,
