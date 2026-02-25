@@ -6,8 +6,14 @@ namespace SisMortuorio.Data.Entities
 {
     /// <summary>
     /// Representa el registro de salida física de un cuerpo del mortuorio.
-    /// Documenta quién retira el cuerpo, con qué autorización y bajo qué condiciones.
-    /// Soporta tanto casos internos (Familiar) como externos (AutoridadLegal).
+    /// Documenta la funeraria, vehículo y personal que realiza el retiro.
+    /// 
+    /// RESPONSABILIDADES:
+    /// - Admisión: crea y firma ActaRetiro (datos del responsable familiar o autoridad legal)
+    /// - Vigilante: registra datos de la funeraria y confirma la salida física
+    /// 
+    /// El tipo de salida y datos del responsable se leen SIEMPRE desde ActaRetiro.
+    /// Esta entidad NO duplica esos datos.
     /// </summary>
     public class SalidaMortuorio
     {
@@ -29,16 +35,15 @@ namespace SisMortuorio.Data.Entities
         public virtual Expediente Expediente { get; set; } = null!;
 
         /// <summary>
-        /// ID del vigilante que autoriza y registra la salida física
-        /// Vigilante solo confirma el retiro, no valida documentación (ya lo hizo Admisión)
+        /// ID del usuario que registra la salida física.
+        /// Puede ser Vigilante, Administrador u otro rol autorizado.
+        /// Se obtiene del token JWT en el controller — nunca del frontend.
         /// </summary>
         [Required]
-        public int VigilanteID { get; set; }
+        public int RegistradoPorID { get; set; }
 
-        /// <summary>
-        /// Navegación al vigilante
-        /// </summary>
-        public virtual Usuario Vigilante { get; set; } = null!;
+        /// <summary>Navegación al usuario que registró la salida.</summary>
+        public virtual Usuario RegistradoPor { get; set; } = null!;
 
         /// <summary>
         /// Fecha y hora exacta de la salida física del cuerpo
@@ -46,37 +51,39 @@ namespace SisMortuorio.Data.Entities
         [Required]
         public DateTime FechaHoraSalida { get; set; } = DateTime.Now;
 
+        // ═══════════════════════════════════════════════════════════
+        // REFERENCIA AL ACTA DE RETIRO
+        // ═══════════════════════════════════════════════════════════
+
         /// <summary>
-        /// Tipo de salida (Familiar, AutoridadLegal, TrasladoHospital, Otro)
+        /// ID del Acta de Retiro generada por Admisión. OBLIGATORIO.
+        /// El acta maneja ambos tipos de salida (Familiar y AutoridadLegal).
+        /// Desde aquí se lee: TipoSalida, datos del responsable, datos de la autoridad.
+        /// No se puede registrar salida sin acta firmada.
         /// </summary>
         [Required]
-        public TipoSalida TipoSalida { get; set; }
-
-        // ═══════════════════════════════════════════════════════════
-        // REFERENCIAS POLIMÓRFICAS (TIPO DE SALIDA)
-        // ═══════════════════════════════════════════════════════════
-
-        /// <summary>
-        /// ID del Acta de Retiro (OBLIGATORIO si TipoSalida = Familiar)
-        /// Relación con documento tripartito generado por Admisión
-        /// Se usa para pre-cargar datos del familiar autorizado
-        /// </summary>
-        public int? ActaRetiroID { get; set; }
+        public int ActaRetiroID { get; set; }
 
         /// <summary>
         /// Navegación al Acta de Retiro
         /// </summary>
-        public virtual ActaRetiro? ActaRetiro { get; set; }
+        public virtual ActaRetiro ActaRetiro { get; set; } = null!;
+
+        // ═══════════════════════════════════════════════════════════
+        // REFERENCIA AL EXPEDIENTE LEGAL (OPCIONAL - VIGILANCIA)
+        // ═══════════════════════════════════════════════════════════
 
         /// <summary>
-        /// ID del Expediente Legal (OBLIGATORIO si TipoSalida = AutoridadLegal)
-        /// Relación con expediente de caso externo (muerte < 24/48h)
-        /// Se usa para pre-cargar datos de autoridades y documentos legales
+        /// ID del Expediente Legal Digital. OPCIONAL.
+        /// Referencia al archivador digital de Vigilancia que contiene documentos
+        /// como oficios PNP, actas de levantamiento, epicrisis de casos externos.
+        /// No tiene relación con el flujo de validación del Acta de Retiro.
+        /// Su uso depende de decisión futura sobre el módulo ExpedienteLegal.
         /// </summary>
         public int? ExpedienteLegalID { get; set; }
 
         /// <summary>
-        /// Navegación al Expediente Legal
+        /// Navegación al Expediente Legal (opcional)
         /// </summary>
         public virtual ExpedienteLegal? ExpedienteLegal { get; set; }
 
@@ -85,9 +92,9 @@ namespace SisMortuorio.Data.Entities
         // ═══════════════════════════════════════════════════════════
 
         /// <summary>
-        /// Bandeja que se liberó al registrar esta salida
-        /// Permite rastrear historial de ocupación
-        /// Se libera automáticamente al confirmar la salida
+        /// Bandeja que se liberó al registrar esta salida.
+        /// Se libera automáticamente al confirmar el retiro.
+        /// Permite rastrear historial de ocupación de bandejas.
         /// </summary>
         public int? BandejaLiberadaID { get; set; }
 
@@ -97,253 +104,149 @@ namespace SisMortuorio.Data.Entities
         public virtual Bandeja? BandejaLiberada { get; set; }
 
         /// <summary>
-        /// Tiempo total que el cuerpo permaneció en el mortuorio
-        /// Se calcula automáticamente: FechaHoraSalida - FechaHoraIngresoMortuorio
-        /// Métrica crítica para:
-        /// - Alertas >24hrs
-        /// - Reportes de permanencia promedio
-        /// - Auditorías DIRESA
+        /// Tiempo total de permanencia en el mortuorio expresado en minutos.
+        /// Se calcula: FechaHoraSalida - FechaHoraIngresoMortuorio.
+        /// Guardado como int (minutos) para evitar overflow del tipo TIME de SQL Server.
+        /// Métrica crítica para alertas >24h, reportes DIRESA y auditorías.
         /// </summary>
-        public TimeSpan? TiempoPermanencia { get; set; }
+        public int? TiempoPermanenciaMinutos { get; set; }
+
+        // Propiedad calculada — NO mapeada a BD
+        [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+        public TimeSpan? TiempoPermanencia =>
+            TiempoPermanenciaMinutos.HasValue
+                ? TimeSpan.FromMinutes(TiempoPermanenciaMinutos.Value)
+                : null;
 
         // ═══════════════════════════════════════════════════════════
-        // DATOS DEL RESPONSABLE QUE RETIRA EL CUERPO
-        // ═══════════════════════════════════════════════════════════
-
-        /// <summary>
-        /// Nombre completo del responsable que retira el cuerpo
-        /// - Caso Interno: Familiar (desde ActaRetiro)
-        /// - Caso Externo: Médico Legista (desde ExpedienteLegal)
-        /// Registrado por Admisión, solo lectura para Vigilante
-        /// </summary>
-        [Required]
-        [MaxLength(200)]
-        public string ResponsableNombre { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Tipo de documento del responsable
-        /// Siempre DNI en Perú (8 dígitos)
-        /// Excepción: Pasaporte o CE para extranjeros (hasta 12 dígitos)
-        /// </summary>
-        [Required]
-        [MaxLength(20)]
-        public string ResponsableTipoDocumento { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Número de documento del responsable
-        /// - DNI: 8 dígitos
-        /// - Pasaporte/CE: hasta 12 caracteres alfanuméricos
-        /// </summary>
-        [Required]
-        [MaxLength(20)]
-        public string ResponsableNumeroDocumento { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Relación con el fallecido (Hijo/a, Esposo/a, Padre/Madre, Hermano/a, etc.)
-        /// OBLIGATORIO si TipoSalida = Familiar
-        /// NULL si TipoSalida = AutoridadLegal
-        /// Registrado por Admisión en ActaRetiro
-        /// </summary>
-        [MaxLength(50)]
-        public string? ResponsableParentesco { get; set; }
-
-        /// <summary>
-        /// Teléfono de contacto del responsable
-        /// Registrado por Admisión
-        /// </summary>
-        [MaxLength(20)]
-        public string? ResponsableTelefono { get; set; }
-
-        // ═══════════════════════════════════════════════════════════
-        // AUTORIZACIÓN (SOLO CASOS EXTERNOS)
+        // DATOS DEL SERVICIO FUNERARIO
+        // Capturados por el Vigilante al momento del retiro físico.
+        // Aplica para TipoSalida = Familiar.
+        // Para AutoridadLegal estos campos son opcionales (vehículo policial).
         // ═══════════════════════════════════════════════════════════
 
         /// <summary>
-        /// Número de oficio policial (OBLIGATORIO para TipoSalida = AutoridadLegal)
-        /// Ejemplo: "OFICIO N° 1262-2025-REG.POL-LIMA/DIVPOL-SUR-1-CSA-DEINPOL-SIAT"
-        /// Registrado por Admisión cuando sube el documento PDF
-        /// Firmado por Jefe de Guardia (campo AutorizadoJefeGuardia en ExpedienteLegal)
-        /// NULL para casos internos (Familiar)
-        /// </summary>
-        [MaxLength(150)]
-        public string? NumeroOficio { get; set; }
-
-        // ═══════════════════════════════════════════════════════════
-        // DATOS DEL SERVICIO FUNERARIO (SOLO CASOS INTERNOS)
-        // ═══════════════════════════════════════════════════════════
-
-        /// <summary>
-        /// Nombre de la funeraria que retira el cuerpo
-        /// OBLIGATORIO si TipoSalida = Familiar
-        /// Registrado por Admisión
-        /// NULL para casos externos (AutoridadLegal)
+        /// Nombre de la funeraria que retira el cuerpo.
+        /// Obligatorio si TipoSalida = Familiar.
         /// </summary>
         [MaxLength(200)]
         public string? NombreFuneraria { get; set; }
 
         /// <summary>
-        /// RUC de la funeraria
-        /// Opcional (solo si la funeraria es empresa formal)
-        /// Registrado por Admisión desde ActaRetiro
-        /// Formato: 11 dígitos numéricos
+        /// RUC de la funeraria (11 dígitos). Opcional.
         /// </summary>
         [MaxLength(11)]
         public string? FunerariaRUC { get; set; }
 
         /// <summary>
-        /// Teléfono de contacto de la funeraria
-        /// Opcional
-        /// Registrado por Admisión desde ActaRetiro
+        /// Teléfono de contacto de la funeraria. Opcional.
         /// </summary>
         [MaxLength(20)]
         public string? FunerariaTelefono { get; set; }
+
         /// <summary>
-        /// Nombre del conductor/representante de la funeraria
-        /// OBLIGATORIO si TipoSalida = Familiar
-        /// Registrado por Admisión
+        /// Nombre completo del conductor que retira el cuerpo.
+        /// Obligatorio si TipoSalida = Familiar.
         /// </summary>
         [MaxLength(200)]
         public string? ConductorFuneraria { get; set; }
 
         /// <summary>
-        /// DNI del conductor de la funeraria
-        /// OBLIGATORIO si TipoSalida = Familiar
-        /// Registrado por Admisión
+        /// DNI del conductor. Obligatorio si TipoSalida = Familiar.
         /// </summary>
         [MaxLength(20)]
         public string? DNIConductor { get; set; }
 
         /// <summary>
-        /// Nombre completo del ayudante de la funeraria
-        /// Opcional
-        /// Registrado por Admisión
+        /// Nombre completo del ayudante. Opcional.
         /// </summary>
         [MaxLength(200)]
         public string? AyudanteFuneraria { get; set; }
 
         /// <summary>
-        /// DNI del ayudante de la funeraria
-        /// Opcional
-        /// Registrado por Admisión
+        /// DNI del ayudante. Opcional.
         /// </summary>
         [MaxLength(20)]
         public string? DNIAyudante { get; set; }
 
         /// <summary>
-        /// Placa del vehículo
-        /// - Caso Interno: Placa de vehículo funerario (OBLIGATORIO)
-        /// - Caso Externo: Placa de patrullero (OBLIGATORIO)
-        /// Registrado por Admisión desde:
-        /// - ActaRetiro (interno)
-        /// - AutoridadExterna-Policia (externo)
-        /// Vigilante solo confirma visualmente
+        /// Placa del vehículo.
+        /// - Familiar: placa del vehículo funerario (obligatorio)
+        /// - AutoridadLegal: placa del patrullero o vehículo oficial (obligatorio)
         /// </summary>
         [MaxLength(20)]
         public string? PlacaVehiculo { get; set; }
 
         // ═══════════════════════════════════════════════════════════
-        // DESTINO Y OBSERVACIONES
+        // DESTINO E INCIDENTES
         // ═══════════════════════════════════════════════════════════
 
         /// <summary>
-        /// Destino final del cuerpo
-        /// - Caso Interno: Cementerio/Crematorio
-        /// - Caso Externo: "Morgue Central"
-        /// Registrado por Admisión
+        /// Destino final del cuerpo.
+        /// Ejemplos: "Cementerio El Ángel", "Crematorio", "Morgue Central"
         /// </summary>
         [MaxLength(200)]
         public string? Destino { get; set; }
 
         /// <summary>
-        /// Observaciones adicionales sobre la salida
-        /// Puede ser agregado/modificado por Vigilante si detecta alguna inconsistencia
-        /// Ej: "Placa del vehículo no coincide con registro", "Retiro urgente autorizado"
+        /// Observaciones adicionales registradas por el Vigilante.
+        /// Ejemplos: "Placa no coincide con registro", "Retiro urgente autorizado"
         /// </summary>
         [MaxLength(1000)]
         public string? Observaciones { get; set; }
 
         /// <summary>
-        /// Indica si hubo alguna irregularidad o incidente durante la salida
-        /// Vigilante puede marcar esto al momento del retiro físico
+        /// Indica si hubo alguna irregularidad durante la salida física.
+        /// Marcado por el Vigilante.
         /// </summary>
         public bool IncidenteRegistrado { get; set; } = false;
 
         /// <summary>
-        /// Descripción del incidente (si aplica)
-        /// Registrado por Vigilante
+        /// Descripción del incidente registrado por el Vigilante.
+        /// Requerido si IncidenteRegistrado = true.
         /// </summary>
         [MaxLength(1000)]
         public string? DetalleIncidente { get; set; }
 
         // ═══════════════════════════════════════════════════════════
-        // MÉTODOS DE VALIDACIÓN Y LÓGICA DE NEGOCIO
+        // MÉTODOS DE LÓGICA DE NEGOCIO
         // ═══════════════════════════════════════════════════════════
 
         /// <summary>
-        /// Valida que las referencias polimórficas sean consistentes con el tipo de salida
+        /// Valida que el Acta de Retiro esté firmada antes de permitir la salida.
+        /// El tipo de salida se lee desde ActaRetiro, no se duplica aquí.
         /// </summary>
         public string ValidarReferencias()
         {
-            if (TipoSalida == TipoSalida.Familiar)
-            {
-                if (ActaRetiroID is null)
-                    return "Salida tipo Familiar requiere referencia a Acta de Retiro";
+            if (ActaRetiroID == 0)
+                return "Se requiere un Acta de Retiro para registrar la salida";
 
-                if (ExpedienteLegalID is not null)
-                    return "Salida tipo Familiar no debe tener Expediente Legal asociado";
+            if (ActaRetiro is not null && string.IsNullOrWhiteSpace(ActaRetiro.RutaPDFFirmado))
+                return "El Acta de Retiro debe estar firmada antes de registrar la salida";
 
-                return "OK";
-            }
-
-            if (TipoSalida == TipoSalida.AutoridadLegal)
-            {
-                if (ExpedienteLegalID is null)
-                    return "Salida tipo Autoridad Legal requiere referencia a Expediente Legal";
-
-                if (ActaRetiroID is not null)
-                    return "Salida tipo Autoridad Legal no debe tener Acta de Retiro asociada";
-
-                return "OK";
-            }
-
-            // Tipo "Otro" puede o no tener referencias
             return "OK";
         }
 
         /// <summary>
-        /// Verifica si la salida está completa (todos los campos requeridos llenos)
+        /// Verifica si el registro de salida está completo.
+        /// Los datos del responsable no se validan aquí — viven en ActaRetiro.
         /// </summary>
         public bool EstaCompleta()
         {
-            // Validar referencias polimórficas primero
-            var validacionReferencias = ValidarReferencias();
-            if (validacionReferencias != "OK")
-                return false;
+            if (ActaRetiroID == 0) return false;
+            if (string.IsNullOrWhiteSpace(PlacaVehiculo)) return false;
 
-            bool camposBasicosCompletos = !string.IsNullOrWhiteSpace(ResponsableNombre) &&
-                                          !string.IsNullOrWhiteSpace(ResponsableTipoDocumento) &&
-                                          !string.IsNullOrWhiteSpace(ResponsableNumeroDocumento);
+            // Para Familiar se requieren datos de funeraria
+            if (ActaRetiro?.TipoSalida == TipoSalida.Familiar)
+                return TieneDatosFunerariaCompletos();
 
-            // Validación específica por tipo de salida
-            return TipoSalida switch
-            {
-                TipoSalida.Familiar => camposBasicosCompletos &&
-                                       !string.IsNullOrWhiteSpace(ResponsableParentesco) &&
-                                       !string.IsNullOrWhiteSpace(PlacaVehiculo) &&
-                                       ActaRetiroID is not null,
-
-                TipoSalida.AutoridadLegal => camposBasicosCompletos &&
-                                             !string.IsNullOrWhiteSpace(NumeroOficio) &&
-                                             !string.IsNullOrWhiteSpace(PlacaVehiculo) &&
-                                             ExpedienteLegalID is not null,
-
-                _ => camposBasicosCompletos
-            };
+            // Para AutoridadLegal solo se requiere placa (ya validada arriba)
+            return true;
         }
 
         /// <summary>
-        /// Verifica si los datos de la funeraria están completos
-        /// SOLO APLICA para TipoSalida = Familiar
+        /// Verifica si los datos de la funeraria están completos.
+        /// Solo aplica para TipoSalida = Familiar.
         /// </summary>
         public bool TieneDatosFunerariaCompletos()
         {
@@ -354,57 +257,64 @@ namespace SisMortuorio.Data.Entities
         }
 
         /// <summary>
-        /// Registra un incidente durante la salida
-        /// Usado por Vigilante al detectar irregularidades
+        /// Valida la documentación requerida según el tipo de salida.
+        /// Para AutoridadLegal, la placa se resuelve desde ActaRetiro si no viene del frontend.
+        /// </summary>
+        public string ValidarDocumentacion()
+        {
+            if (ActaRetiro is null)
+                return "No se encontró el Acta de Retiro asociada";
+
+            var placaEfectiva = ActaRetiro.TipoSalida == TipoSalida.AutoridadLegal
+                ? (!string.IsNullOrWhiteSpace(PlacaVehiculo)
+                    ? PlacaVehiculo
+                    : ActaRetiro.AutoridadPlacaVehiculo)
+                : PlacaVehiculo;
+
+            return ActaRetiro.TipoSalida switch
+            {
+                TipoSalida.Familiar when !TieneDatosFunerariaCompletos()
+                    => "Faltan datos completos de la funeraria",
+                TipoSalida.Familiar when string.IsNullOrWhiteSpace(PlacaVehiculo)
+                    => "Falta placa del vehículo funerario",
+                TipoSalida.AutoridadLegal when string.IsNullOrWhiteSpace(placaEfectiva)
+                    => "Falta placa del vehículo oficial en acta",
+                _ => "Documentación completa"
+            };
+        }
+
+        /// <summary>
+        /// Registra un incidente ocurrido durante la salida física.
+        /// Usado por el Vigilante al detectar irregularidades.
         /// </summary>
         public void RegistrarIncidente(string detalleIncidente)
         {
             if (string.IsNullOrWhiteSpace(detalleIncidente))
-                throw new ArgumentException("Debe proporcionar detalles del incidente", nameof(detalleIncidente));
+                throw new ArgumentException(
+                    "Debe proporcionar detalles del incidente",
+                    nameof(detalleIncidente));
 
             IncidenteRegistrado = true;
             DetalleIncidente = detalleIncidente;
         }
 
         /// <summary>
-        /// Valida que la documentación requerida esté completa según el tipo de salida
+        /// Calcula el tiempo de permanencia en el mortuorio.
         /// </summary>
-        public string ValidarDocumentacion()
-        {
-            return TipoSalida switch
-            {
-                TipoSalida.Familiar when string.IsNullOrWhiteSpace(ResponsableParentesco)
-                    => "Falta especificar el parentesco del familiar",
-
-                TipoSalida.Familiar when !TieneDatosFunerariaCompletos()
-                    => "Faltan datos completos de la funeraria",
-
-                TipoSalida.AutoridadLegal when string.IsNullOrWhiteSpace(NumeroOficio)
-                    => "Falta número de oficio policial",
-
-                TipoSalida.AutoridadLegal when string.IsNullOrWhiteSpace(PlacaVehiculo)
-                    => "Falta placa del vehículo policial",
-
-                _ => "Documentación completa"
-            };
-        }
-
-        /// <summary>
-        /// Calcula el tiempo de permanencia en el mortuorio
-        /// </summary>
-        /// <param name="fechaIngresoMortuorio">Fecha/hora de ingreso al mortuorio</param>
+        /// <param name="fechaIngresoMortuorio">Fecha y hora de ingreso al mortuorio</param>
         public void CalcularTiempoPermanencia(DateTime fechaIngresoMortuorio)
         {
-            TiempoPermanencia = FechaHoraSalida - fechaIngresoMortuorio;
+            var diferencia = FechaHoraSalida - fechaIngresoMortuorio;
+            TiempoPermanenciaMinutos = (int)diferencia.TotalMinutes;
         }
 
         /// <summary>
-        /// Verifica si excedió el límite de permanencia (48 horas)
+        /// Verifica si el cuerpo excedió el límite de permanencia de 48 horas.
         /// </summary>
         public bool ExcedioLimitePermanencia()
         {
-            if (TiempoPermanencia == null) return false;
-            return TiempoPermanencia.Value.TotalHours > 48;
+            if (!TiempoPermanenciaMinutos.HasValue) return false;
+            return TiempoPermanenciaMinutos.Value > 48 * 60;
         }
     }
 }

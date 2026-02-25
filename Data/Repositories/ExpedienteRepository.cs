@@ -21,7 +21,8 @@ namespace SisMortuorio.Data.Repositories
                 .Include(e => e.Pertenencias)
                 .Include(e => e.CustodiaTransferencias)
                 .Include(e => e.BandejaActual)
-               
+                .Include(e => e.Documentos)
+                .ThenInclude(d => d.UsuarioSubio)
                 .FirstOrDefaultAsync(e => e.ExpedienteID == id && !e.Eliminado);
         }
 
@@ -148,6 +149,8 @@ namespace SisMortuorio.Data.Repositories
         public async Task<List<Expediente>> GetPendientesValidacionAdmisionAsync()
         {
             return await _context.Expedientes
+                .Include(e => e.Documentos)
+                .ThenInclude(d => d.UsuarioSubio)
                 .Include(e => e.UsuarioCreador)
                 .Include(e => e.Pertenencias)
                 .Include(e => e.BandejaActual)

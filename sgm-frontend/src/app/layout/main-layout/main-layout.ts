@@ -137,6 +137,38 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         console.log('MainLayout: Notificaciones no leídas:', count);
       });
 
+    //  Retiro autorizado (Vigilancia recibe alerta)
+    this.notificacionService.onExpedienteListoParaRetiro
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((notif) => {
+        Swal.fire({
+          icon: 'success',
+          title: 'Retiro Autorizado',
+          text: notif.mensaje,
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 6000,
+          timerProgressBar: true
+        });
+      });
+
+    // Salida registrada (Admisión y JefeGuardia reciben confirmación)
+    this.notificacionService.onSalidaRegistrada
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((notif) => {
+        Swal.fire({
+          icon: 'info',
+          title: 'Cuerpo Retirado',
+          text: notif.mensaje,
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 5000,
+          timerProgressBar: true
+        });
+      });
+
     // Confirmaciones de acción (feedback instantáneo)
     this.notificacionService.onConfirmacionAccion
       .pipe(takeUntil(this.destroy$))

@@ -72,7 +72,21 @@ const estadosMap = new Map<string, BadgeConfig>([
     icon: 'circle-check',
     label: 'Retirado'
   }],
-
+  ['pendienteverificacion', {
+    theme: 'warning',
+    icon: 'clock',
+    label: 'Pendiente Verificación'
+  }],
+  ['verificado', {
+    theme: 'success',
+    icon: 'file-check',
+    label: 'Verificado'
+  }],
+  ['rechazado', {
+    theme: 'error',
+    icon: 'circle-x',
+    label: 'Rechazado'
+  }],
   // ===================================================================
   // ESTADOS DE BANDEJAS
   // ===================================================================

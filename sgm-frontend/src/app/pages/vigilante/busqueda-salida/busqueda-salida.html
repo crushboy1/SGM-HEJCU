@@ -1,254 +1,354 @@
 <div class="min-h-screen bg-hospital-bg">
-
   <div class="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-8">
 
-    <!-- ===================================================================
-         HEADER
-         =================================================================== -->
-    <div class="bg-gradient-to-r from-red-600 to-red-700 rounded-2xl shadow-xl p-5 md:p-6 mb-6 md:mb-8 text-white">
+    <!-- HEADER -->
+    <div class="bg-gradient-to-r from-hospital-blue to-hospital-blue-dark rounded-2xl
+                shadow-xl p-5 md:p-6 mb-6 text-white">
       <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3 md:gap-4 flex-1">
-          <div class="p-3 md:p-3.5 bg-white/10 rounded-xl backdrop-blur-sm">
-            <app-icon name="search" class="w-7 h-7 md:w-8 md:h-8"></app-icon>
+        <div class="flex items-center gap-3 flex-1">
+          <div class="p-2.5 bg-white/10 rounded-xl backdrop-blur-sm flex-shrink-0">
+            <app-icon name="search" class="w-6 h-6 md:w-7 md:h-7"></app-icon>
           </div>
-          <div class="flex-1">
-            <div class="text-2xl md:text-3xl font-bold mb-1">
-              Busqueda Manual de Expedientes
-            </div>
-            <p class="text-red-100 text-xs md:text-sm">
-              Expedientes disponibles para registro de salida
+          <div>
+            <h1 class="text-xl md:text-2xl font-bold leading-tight">
+              Búsqueda de Expedientes
+            </h1>
+            <p class="text-blue-100 text-xs md:text-sm mt-0.5">
+              Retiros pendientes · Solo lectura de acta firmada
             </p>
           </div>
         </div>
-
-        <!-- Boton Volver -->
         <button (click)="volver()"
-                class="ml-3 px-4 md:px-5 py-2 md:py-2.5 bg-white/10 hover:bg-white/20 rounded-xl
-                       transition-all backdrop-blur-sm flex items-center gap-2 text-sm md:text-base
-                       font-semibold border border-white/20">
+                class="ml-3 px-4 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl
+                       transition-all flex items-center gap-2 text-sm font-semibold
+                       border border-white/20 active:scale-95">
           <app-icon name="chevron-left" class="w-4 h-4 md:w-5 md:h-5"></app-icon>
           <span class="hidden sm:inline">Volver</span>
         </button>
       </div>
     </div>
 
-    <!-- ===================================================================
-         BUSCADOR
-         =================================================================== -->
-    <div class="bg-white rounded-2xl shadow-lg border-2 border-gray-200 p-5 md:p-6 mb-6 md:mb-8 animate-fade-in">
+    <!-- BUSCADOR -->
+    <div class="bg-white rounded-2xl shadow-lg border-2 border-gray-200
+                p-5 md:p-6 mb-6 animate-fade-in">
 
       <div class="flex items-center gap-2 mb-4">
-        <div class="p-2 bg-hospital-cyan/10 rounded-lg text-hospital-cyan">
-          <app-icon name="search" class="w-5 h-5"></app-icon>
+        <div class="p-1.5 bg-hospital-cyan/10 rounded-lg text-hospital-cyan">
+          <app-icon name="search" class="w-4 h-4 md:w-5 md:h-5"></app-icon>
         </div>
-        <div class="font-bold text-gray-800 text-base md:text-lg">
-          Filtrar Expedientes
-        </div>
+        <span class="font-bold text-gray-800 text-base md:text-lg">Filtrar</span>
+        <!-- Contador siempre visible -->
+        <span class="ml-auto text-xs font-semibold text-gray-500 bg-gray-100
+                     px-2.5 py-1 rounded-full">
+          {{ resultados.length }} pendiente{{ resultados.length !== 1 ? 's' : '' }}
+        </span>
       </div>
 
-      <div class="flex flex-col sm:flex-row gap-3 md:gap-4">
-        <!-- Input Busqueda -->
-        <div class="flex-1">
+      <div class="flex flex-col sm:flex-row gap-3">
+
+        <!-- Input -->
+        <div class="relative flex-1">
+          <app-icon name="search"
+                    class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5
+                           text-gray-400 pointer-events-none"></app-icon>
           <input type="text"
                  [(ngModel)]="textoBusqueda"
-                 (keyup.enter)="buscar()"
-                 placeholder="Buscar por HC, DNI o Nombre"
-                 class="w-full px-5 md:px-6 py-4 md:py-5 text-base md:text-lg border-2 border-gray-300
-                        rounded-xl focus:ring-4 focus:ring-hospital-cyan/20 focus:border-hospital-cyan
-                        outline-none transition-all placeholder:text-gray-400 font-medium">
+                 (ngModelChange)="filtrar()"
+                 placeholder="HC, DNI o Nombre del paciente..."
+                 class="w-full pl-11 pr-4 py-3.5 md:py-4 text-base border-2 border-gray-300
+                        rounded-xl focus:ring-4 focus:ring-hospital-cyan/20
+                        focus:border-hospital-cyan outline-none transition-all
+                        placeholder:text-gray-400 font-medium">
         </div>
 
-        <!-- Botones -->
-        <div class="flex gap-2 md:gap-3">
-          <!-- Buscar -->
-          <button (click)="buscar()"
-                  [disabled]="isLoading"
-                  class="flex-1 sm:flex-initial px-6 md:px-8 py-4 md:py-5 bg-hospital-cyan text-white
-                         rounded-xl font-bold text-base md:text-lg transition-all shadow-lg
-                         hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed
-                         flex items-center justify-center gap-2 md:gap-3 min-w-[140px]">
-            <app-icon *ngIf="isLoading" name="loader" class="w-5 h-5 md:w-6 md:h-6 animate-spin"></app-icon>
-            <app-icon *ngIf="!isLoading" name="search" class="w-5 h-5 md:w-6 md:h-6"></app-icon>
-            <span>{{ isLoading ? 'Buscando...' : 'Buscar' }}</span>
-          </button>
+        <!-- Limpiar — visible solo si hay texto -->
+        <button *ngIf="textoBusqueda"
+                (click)="limpiarFiltro()"
+                class="px-5 py-3.5 md:py-4 bg-gray-100 text-gray-700 hover:bg-gray-200
+                       rounded-xl font-semibold transition-all flex items-center gap-2
+                       active:scale-95 border-2 border-gray-200">
+          <app-icon name="x" class="w-4 h-4 md:w-5 md:h-5"></app-icon>
+          <span class="hidden sm:inline text-sm">Limpiar</span>
+        </button>
 
-          <!-- Limpiar -->
-          <button (click)="limpiarBusqueda()"
-                  *ngIf="textoBusqueda"
-                  class="px-5 md:px-6 py-4 md:py-5 bg-gray-100 text-gray-700 hover:bg-gray-200
-                         rounded-xl font-bold transition-all flex items-center gap-2">
-            <app-icon name="x" class="w-5 h-5 md:w-6 md:h-6"></app-icon>
-            <span class="hidden sm:inline">Limpiar</span>
-          </button>
-        </div>
+        <!-- Recargar -->
+        <button (click)="recargar()"
+                [disabled]="isLoading"
+                class="px-5 py-3.5 md:py-4 bg-white border-2 border-gray-300
+                       text-gray-600 hover:bg-gray-50 rounded-xl font-semibold
+                       transition-all flex items-center gap-2 active:scale-95
+                       disabled:opacity-50 disabled:cursor-not-allowed">
+          <app-icon name="refresh-cw"
+                    class="w-4 h-4 md:w-5 md:h-5"
+                    [class.animate-spin]="isLoading"></app-icon>
+          <span class="hidden sm:inline text-sm">Recargar</span>
+        </button>
+
       </div>
 
-      <!-- Ayuda -->
-      <div class="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3 md:p-4">
-        <div class="flex items-start gap-2 md:gap-3">
-          <app-icon name="info" class="w-4 h-4 md:w-5 md:h-5 text-blue-600 flex-shrink-0 mt-0.5"></app-icon>
-          <div class="text-xs md:text-sm text-blue-800">
-            <p class="font-semibold mb-1">Puede filtrar por:</p>
-            <ul class="list-disc list-inside space-y-0.5 text-blue-700">
-              <li><strong>HC:</strong> Historia Clinica (coincidencia exacta)</li>
-              <li><strong>DNI:</strong> Documento Nacional de Identidad (coincidencia exacta)</li>
-              <li><strong>Nombre:</strong> Nombre completo del paciente (coincidencia parcial)</li>
-            </ul>
-            <p class="mt-2 text-blue-600 font-medium">
-              💡 Deje el campo vacio y presione "Buscar" para ver todos los expedientes disponibles
-            </p>
-          </div>
-        </div>
+      <!-- Hint -->
+      <div class="mt-3 flex items-start gap-2 text-xs text-gray-500">
+        <app-icon name="info" class="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-gray-400">
+        </app-icon>
+        <span>
+          Número → búsqueda exacta por HC o DNI.
+          Texto → búsqueda parcial por nombre.
+          Solo se muestran expedientes con acta firmada listos para retiro.
+        </span>
       </div>
     </div>
 
-    <!-- ===================================================================
-         RESULTADOS
-         =================================================================== -->
-    <!-- Sin resultados -->
-    <div *ngIf="busquedaRealizada && !isLoading && resultados.length === 0"
-         class="bg-white rounded-2xl shadow-md border border-yellow-200 p-12 md:p-16 text-center animate-fade-in">
-      <div class="text-yellow-500 mb-4">
-        <app-icon name="alert-circle" class="w-16 h-16 md:w-20 md:h-20 mx-auto"></app-icon>
+    <!-- ══════════════════════════════════════════════════
+         ESTADO: CARGANDO
+         ══════════════════════════════════════════════════ -->
+    <div *ngIf="isLoading"
+         class="bg-white rounded-2xl shadow-md border-2 border-gray-200
+                p-16 text-center animate-fade-in">
+      <div class="p-4 bg-hospital-cyan/10 rounded-full inline-flex mb-4">
+        <app-icon name="loader"
+                  class="w-10 h-10 text-hospital-cyan animate-spin"></app-icon>
       </div>
-      <div class="text-xl md:text-2xl font-bold text-gray-800 mb-2">
-        No hay expedientes disponibles
-      </div>
-      <p class="text-gray-600 text-sm md:text-base">
-        No se encontraron expedientes en estado valido para registro de salida
+      <p class="font-bold text-gray-700 text-base">Cargando expedientes...</p>
+      <p class="text-sm text-gray-500 mt-1">
+        Verificando expedientes con acta firmada
       </p>
     </div>
 
-    <!-- Tabla de Resultados -->
-    <div *ngIf="resultados.length > 0"
-         class="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden animate-fade-in">
+    <!-- ══════════════════════════════════════════════════
+         ESTADO: SIN RESULTADOS
+         ══════════════════════════════════════════════════ -->
+    <div *ngIf="!isLoading && resultados.length === 0"
+         class="bg-white rounded-2xl shadow-md border-2 border-gray-200
+                p-12 md:p-16 text-center animate-fade-in">
+      <div class="p-4 bg-yellow-50 rounded-full inline-flex mb-4">
+        <app-icon name="inbox" class="w-12 h-12 text-yellow-500"></app-icon>
+      </div>
+      <p class="text-xl font-bold text-gray-800 mb-2">
+        {{ textoBusqueda ? 'Sin coincidencias' : 'Sin expedientes pendientes' }}
+      </p>
+      <p class="text-gray-500 text-sm md:text-base max-w-sm mx-auto">
+        {{
+ textoBusqueda
+           ? 'No se encontraron expedientes que coincidan con "' + textoBusqueda + '".'
+           : 'No hay expedientes en estado Pendiente de Retiro en este momento.'
+        }}
+      </p>
+      <button *ngIf="textoBusqueda"
+              (click)="limpiarFiltro()"
+              class="mt-4 px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700
+                     rounded-xl font-semibold text-sm transition-all inline-flex
+                     items-center gap-2 active:scale-95">
+        <app-icon name="x" class="w-4 h-4"></app-icon>
+        Limpiar filtro
+      </button>
+    </div>
 
-      <!-- Header Tabla -->
-      <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-5 md:px-6 py-4 border-b border-gray-200">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2 md:gap-3">
-            <div class="p-2 bg-green-100 rounded-lg text-green-700">
-              <app-icon name="check-circle" class="w-5 h-5 md:w-6 md:h-6"></app-icon>
-            </div>
-            <div>
-              <div class="font-bold text-gray-800 text-base md:text-lg">
-                Expedientes Disponibles
-              </div>
-              <p class="text-xs md:text-sm text-gray-600">
-                <span class="font-bold text-green-600">{{ resultados.length }}</span>
-                expediente{{ resultados.length !== 1 ? 's' : '' }} listo{{ resultados.length !== 1 ? 's' : '' }} para salida
-              </p>
-            </div>
+    <!-- ══════════════════════════════════════════════════
+         TABLA DE RESULTADOS
+         ══════════════════════════════════════════════════ -->
+    <div *ngIf="!isLoading && resultados.length > 0"
+         class="bg-white rounded-2xl shadow-lg border-2 border-gray-200
+                overflow-hidden animate-fade-in">
+
+      <!-- Header tabla -->
+      <div class="px-5 md:px-6 py-4 border-b-2 border-gray-200 bg-gray-50
+                  flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="p-1.5 bg-green-100 rounded-lg text-green-700">
+            <app-icon name="circle-check" class="w-4 h-4 md:w-5 md:h-5"></app-icon>
           </div>
+          <div>
+            <p class="font-bold text-gray-800 text-sm md:text-base">
+              Listos para Retiro
+            </p>
+            <p class="text-xs text-gray-500">
+              {{ resultados.length }}
+              expediente{{ resultados.length !== 1 ? 's' : '' }} · Acta firmada
+            </p>
+          </div>
+        </div>
+        <!-- Indicador filtro activo -->
+        <div *ngIf="textoBusqueda"
+             class="flex items-center gap-1.5 text-xs font-semibold text-hospital-cyan
+                    bg-cyan-50 border border-cyan-200 px-2.5 py-1 rounded-full">
+          <app-icon name="filter" class="w-3 h-3"></app-icon>
+          Filtro activo
         </div>
       </div>
 
-      <!-- Tabla Responsive -->
-      <div class="overflow-x-auto">
+      <!-- ─── DESKTOP: tabla ─── -->
+      <div class="hidden md:block overflow-x-auto">
         <table class="w-full">
           <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th class="px-4 md:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-bold text-gray-700 uppercase tracking-wider">
+              <th class="px-6 py-3.5 text-left text-xs font-bold text-gray-600
+                         uppercase tracking-wider">
                 Expediente
               </th>
-              <th class="px-4 md:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-bold text-gray-700 uppercase tracking-wider">
-                Paciente
+              <th class="px-6 py-3.5 text-left text-xs font-bold text-gray-600
+                         uppercase tracking-wider">
+                Paciente · Servicio
               </th>
-              <th class="px-4 md:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-bold text-gray-700 uppercase tracking-wider">
-                HC / DNI
+              <th class="px-6 py-3.5 text-left text-xs font-bold text-gray-600
+                         uppercase tracking-wider">
+                HC · DNI
               </th>
-              <th class="px-4 md:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-bold text-gray-700 uppercase tracking-wider">
+              <th class="px-6 py-3.5 text-left text-xs font-bold text-gray-600
+                         uppercase tracking-wider">
                 Estado
               </th>
-              <th class="px-4 md:px-6 py-3 md:py-4 text-center text-xs md:text-sm font-bold text-gray-700 uppercase tracking-wider">
-                Accion
+              <th class="px-6 py-3.5 text-center text-xs font-bold text-gray-600
+                         uppercase tracking-wider">
+                Acción
               </th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-200">
+          <tbody class="divide-y divide-gray-100">
             <tr *ngFor="let exp of resultados"
-                class="hover:bg-gray-50 transition-colors">
+                class="hover:bg-gray-50 transition-colors group">
 
-              <!-- Codigo Expediente -->
-              <td class="px-4 md:px-6 py-4 md:py-5">
+              <!-- Expediente -->
+              <td class="px-6 py-4">
                 <div class="flex items-center gap-2">
-                  <app-icon name="file-text" class="w-4 h-4 text-gray-400"></app-icon>
-                  <span class="font-mono text-sm md:text-base font-bold text-gray-800">
+                  <app-icon name="file-text"
+                            class="w-4 h-4 text-gray-400 flex-shrink-0"></app-icon>
+                  <span class="font-mono text-sm font-bold text-gray-800">
                     {{ exp.codigoExpediente }}
                   </span>
                 </div>
               </td>
 
-              <!-- Nombre Paciente -->
-              <td class="px-4 md:px-6 py-4 md:py-5">
-                <div class="font-semibold text-gray-800 text-sm md:text-base line-clamp-2">
+              <!-- Paciente + Servicio -->
+              <td class="px-6 py-4">
+                <p class="font-semibold text-gray-800 text-sm leading-tight">
                   {{ exp.nombreCompleto }}
-                </div>
-                <div class="text-xs md:text-sm text-gray-500 mt-1">
+                </p>
+                <p class="text-xs text-gray-500 mt-0.5">
                   {{ exp.servicioFallecimiento }}
-                </div>
+                </p>
               </td>
 
-              <!-- HC / DNI -->
-              <td class="px-4 md:px-6 py-4 md:py-5">
+              <!-- HC + DNI -->
+              <td class="px-6 py-4">
                 <div class="space-y-1">
-                  <div class="flex items-center gap-1.5 text-xs md:text-sm">
-                    <span class="text-gray-500">HC:</span>
-                    <span class="font-mono font-semibold text-gray-800">{{ exp.hc }}</span>
+                  <div class="flex items-center gap-1.5 text-xs">
+                    <span class="text-gray-400 font-medium w-6">HC</span>
+                    <span class="font-mono font-bold text-gray-800">{{ exp.hc }}</span>
                   </div>
-                  <div *ngIf="exp.numeroDocumento" class="flex items-center gap-1.5 text-xs md:text-sm">
-                    <span class="text-gray-500">DNI:</span>
-                    <span class="font-mono font-semibold text-gray-800">{{ exp.numeroDocumento }}</span>
+                  <div *ngIf="exp.numeroDocumento" class="flex items-center gap-1.5 text-xs">
+                    <span class="text-gray-400 font-medium w-6">DNI</span>
+                    <span class="font-mono font-bold text-gray-800">
+                      {{ exp.numeroDocumento }}
+                    </span>
                   </div>
                 </div>
               </td>
 
               <!-- Estado -->
-              <td class="px-4 md:px-6 py-4 md:py-5">
-                <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs md:text-sm font-bold
-                            border-2"
-                     [ngClass]="getEstadoBadgeClass(exp.estadoActual)">
-                  <div class="w-2 h-2 rounded-full"
-                       [ngClass]="{
-                         'bg-blue-500': exp.estadoActual === 'EnBandeja',
-                         'bg-green-500': exp.estadoActual === 'PendienteRetiro'
-                       }"></div>
-                  <span>{{ formatearEstado(exp.estadoActual) }}</span>
-                </div>
+              <td class="px-6 py-4">
+                <span [class]="getBadgeClasses(exp.estadoActual)"
+                      class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs">
+                  <app-icon [name]="getEstadoIcon(exp.estadoActual)"
+                            class="w-3 h-3 flex-shrink-0"></app-icon>
+                  {{ getEstadoLabel(exp.estadoActual) }}
+                </span>
               </td>
 
-              <!-- Accion -->
-              <td class="px-4 md:px-6 py-4 md:py-5 text-center">
-                <button (click)="seleccionarExpediente(exp)"
-                        class="px-5 md:px-6 py-2.5 md:py-3 bg-green-600 text-white rounded-xl
-                               font-bold text-sm md:text-base hover:bg-green-700 transition-all
-                               shadow-md hover:shadow-lg active:scale-95
-                               inline-flex items-center gap-2 md:gap-2.5">
-                  <app-icon name="log-out" class="w-4 h-4 md:w-5 md:h-5"></app-icon>
+              <!-- Acción -->
+              <td class="px-6 py-4 text-center">
+                <button (click)="abrirModal(exp)"
+                        class="px-5 py-2.5 bg-hospital-green text-white rounded-xl
+                               font-bold text-sm hover:bg-green-700 transition-all
+                               shadow-sm hover:shadow-md active:scale-95
+                               inline-flex items-center gap-2
+                               group-hover:shadow-lg">
+                  <app-icon name="file-check" class="w-4 h-4"></app-icon>
                   <span>Registrar Salida</span>
                 </button>
               </td>
+
             </tr>
           </tbody>
         </table>
       </div>
 
-      <!-- Footer Tabla -->
-      <div class="bg-gray-50 px-5 md:px-6 py-3 md:py-4 border-t border-gray-200">
-        <p class="text-xs md:text-sm text-gray-600 text-center">
-          Mostrando <strong>{{ resultados.length }}</strong> resultado{{ resultados.length !== 1 ? 's' : '' }}
+      <!-- ─── MÓVIL/TABLET: cards ─── -->
+      <div class="md:hidden divide-y divide-gray-100">
+        <div *ngFor="let exp of resultados"
+             class="p-4 hover:bg-gray-50 transition-colors">
+
+          <!-- Fila 1: código + estado -->
+          <div class="flex items-start justify-between gap-3 mb-2">
+            <div class="flex items-center gap-2">
+              <app-icon name="file-text" class="w-4 h-4 text-gray-400 flex-shrink-0">
+              </app-icon>
+              <span class="font-mono text-sm font-bold text-gray-800">
+                {{ exp.codigoExpediente }}
+              </span>
+            </div>
+            <span [class]="getBadgeClasses(exp.estadoActual)"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 text-xs flex-shrink-0">
+              <app-icon [name]="getEstadoIcon(exp.estadoActual)"
+                        class="w-3 h-3 flex-shrink-0"></app-icon>
+              {{ getEstadoLabel(exp.estadoActual) }}
+            </span>
+          </div>
+
+          <!-- Fila 2: nombre -->
+          <p class="font-semibold text-gray-800 text-sm leading-snug mb-1">
+            {{ exp.nombreCompleto }}
+          </p>
+
+          <!-- Fila 3: servicio + HC/DNI en línea -->
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs
+                      text-gray-500 mb-3">
+            <span class="flex items-center gap-1">
+              <app-icon name="building-2" class="w-3 h-3"></app-icon>
+              {{ exp.servicioFallecimiento }}
+            </span>
+            <span class="flex items-center gap-1">
+              <app-icon name="hash" class="w-3 h-3"></app-icon>
+              HC: <strong class="font-mono text-gray-700 ml-0.5">{{ exp.hc }}</strong>
+            </span>
+            <span *ngIf="exp.numeroDocumento" class="flex items-center gap-1">
+              DNI:
+              <strong class="font-mono text-gray-700 ml-0.5">
+                {{ exp.numeroDocumento }}
+              </strong>
+            </span>
+          </div>
+
+          <!-- Botón acción -->
+          <button (click)="abrirModal(exp)"
+                  class="w-full py-3 bg-hospital-green text-white rounded-xl
+                         font-bold text-sm hover:bg-green-700 transition-all
+                         active:scale-95 flex items-center justify-center gap-2 shadow-sm">
+            <app-icon name="file-check" class="w-4 h-4"></app-icon>
+            Registrar Salida
+          </button>
+
+        </div>
+      </div>
+
+      <!-- Footer tabla -->
+      <div class="px-5 md:px-6 py-3 bg-gray-50 border-t border-gray-200">
+        <p class="text-xs text-gray-500 text-center">
+          {{ resultados.length }}
+          expediente{{ resultados.length !== 1 ? 's' : '' }} pendiente{{ resultados.length !== 1 ? 's' : '' }} de retiro
+          <span *ngIf="textoBusqueda" class="text-hospital-cyan font-semibold">
+            · Filtrado por "{{ textoBusqueda }}"
+          </span>
         </p>
       </div>
+
     </div>
 
   </div>
 </div>
 
-<!-- ===================================================================
-     MODAL FORMULARIO SALIDA
-     =================================================================== -->
-<app-formulario-salida *ngIf="mostrarModalSalida"
+<!-- MODAL FORMULARIO SALIDA -->
+<app-formulario-salida *ngIf="mostrarModalSalida && expedienteSeleccionado"
                        [expediente]="expedienteSeleccionado"
                        (onSalidaRegistrada)="onSalidaCompletada($event)"
-                       (onCerrar)="cerrarModalSalida()">
+                       (onCerrar)="cerrarModal()">
 </app-formulario-salida>

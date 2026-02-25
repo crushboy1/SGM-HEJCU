@@ -335,6 +335,13 @@ public class ActaRetiro
     /// Fecha y hora en que firmó el Supervisor de Vigilancia
     /// </summary>
     public DateTime? FechaSupervisorVigilancia { get; set; }
+    /// <summary>
+    /// Estado general del acta en el flujo
+    /// Sincronizado con los campos de firma individuales
+    /// Borrador → Firmada (cuando TieneTodasLasFirmas()) → Anulada
+    /// </summary>
+    [Required]
+    public EstadoActaRetiro EstadoActa { get; set; } = EstadoActaRetiro.Borrador;
 
     // ===================================================================
     // ARCHIVOS PDF
@@ -535,6 +542,8 @@ public class ActaRetiro
         // Metadata de subida
         UsuarioSubidaPDFID = usuarioSubidaID;
         FechaSubidaPDF = DateTime.Now;
+
+        EstadoActa = EstadoActaRetiro.Firmada;
     }
 
     /// <summary>

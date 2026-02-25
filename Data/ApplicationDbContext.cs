@@ -28,8 +28,9 @@ namespace SisMortuorio.Data
         public DbSet<VerificacionMortuorio> VerificacionesMortuorio { get; set; }
         public DbSet<SalidaMortuorio> SalidasMortuorio { get; set; }
         public DbSet<ActaRetiro> ActasRetiro { get; set; } = null!;
+        public DbSet<DocumentoExpediente> DocumentosExpediente { get; set; } = null!;
         public DbSet<SolicitudCorreccionExpediente> SolicitudesCorreccion { get; set; }
-
+       
         // Casos Externos
         /// <summary>
         /// Expedientes legales (casos externos con intervención policial/fiscal).
@@ -162,7 +163,7 @@ namespace SisMortuorio.Data
                     .HasForeignKey(e => e.BandejaActualID)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                //  NUEVAS RELACIONES 1:1
+                //  RELACIONES 1:1
                 entity.HasOne(e => e.DeudaSangre)
                     .WithOne(d => d.Expediente)
                     .HasForeignKey<DeudaSangre>(d => d.ExpedienteID)
@@ -196,6 +197,12 @@ namespace SisMortuorio.Data
                 entity.HasMany(e => e.AutoridadesExternas)
                     .WithOne(ae => ae.Expediente)
                     .HasForeignKey(ae => ae.ExpedienteID)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // Relación 1:N con DocumentoExpediente
+                entity.HasMany(e => e.Documentos)
+                    .WithOne(d => d.Expediente)
+                    .HasForeignKey(d => d.ExpedienteID)
                     .OnDelete(DeleteBehavior.Cascade);
             });
 
@@ -445,7 +452,6 @@ namespace SisMortuorio.Data
             // ===================================================================
             // SALIDA MORTUORIO
             // ===================================================================
-
             modelBuilder.Entity<SalidaMortuorio>(entity =>
             {
                 entity.ToTable("SalidasMortuorio");
@@ -457,10 +463,10 @@ namespace SisMortuorio.Data
                     .HasForeignKey(s => s.ExpedienteID)
                     .OnDelete(DeleteBehavior.Cascade);
 
-                // Relación con Vigilante
-                entity.HasOne(s => s.Vigilante)
+                // Relación con usuario que registró la salida (Vigilante, Admin u otro rol autorizado)
+                entity.HasOne(s => s.RegistradoPor)
                     .WithMany()
-                    .HasForeignKey(s => s.VigilanteID)
+                    .HasForeignKey(s => s.RegistradoPorID)
                     .OnDelete(DeleteBehavior.Restrict);
 
                 // Relación con BandejaLiberada
@@ -469,7 +475,7 @@ namespace SisMortuorio.Data
                     .HasForeignKey(s => s.BandejaLiberadaID)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                // Relación opcional con ActaRetiro (1:1)
+                // Relación con ActaRetiro (1:1) — fuente de verdad para TipoSalida y responsable
                 entity.HasOne(s => s.ActaRetiro)
                     .WithOne(a => a.SalidaMortuorio)
                     .HasForeignKey<SalidaMortuorio>(s => s.ActaRetiroID)
@@ -481,25 +487,18 @@ namespace SisMortuorio.Data
                     .HasForeignKey(s => s.ExpedienteLegalID)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                // Conversión de Enum TipoSalida
-                entity.Property(s => s.TipoSalida)
-                    .HasConversion<int>()
-                    .IsRequired();
-
                 // Valores por defecto
                 entity.Property(s => s.FechaHoraSalida)
                     .HasDefaultValueSql("GETDATE()");
-
                 entity.Property(s => s.IncidenteRegistrado)
                     .HasDefaultValue(false);
 
                 // Índices
                 entity.HasIndex(s => s.ExpedienteID);
                 entity.HasIndex(s => s.FechaHoraSalida);
-                entity.HasIndex(s => s.TipoSalida);
-                entity.HasIndex(s => s.ResponsableNumeroDocumento);
                 entity.HasIndex(s => s.ActaRetiroID);
                 entity.HasIndex(s => s.ExpedienteLegalID);
+                entity.HasIndex(s => s.RegistradoPorID);
             });
 
             // ═══════════════════════════════════════════════════════════
@@ -707,6 +706,11 @@ namespace SisMortuorio.Data
                     .HasConversion<int?>()
                     .IsRequired(false);
 
+                // Estado del acta (Borrador → Firmada → Anulada)
+                entity.Property(a => a.EstadoActa)
+                    .HasConversion<int>()
+                    .IsRequired()
+                    .HasDefaultValue(EstadoActaRetiro.Borrador);
                 // ═══════════════════════════════════════════════════════════
                 // VALORES POR DEFECTO
                 // ═══════════════════════════════════════════════════════════
@@ -847,13 +851,61 @@ namespace SisMortuorio.Data
                 entity.HasIndex(d => d.TipoDocumento);
                 entity.HasIndex(d => d.FechaAdjunto);
             });
-            
 
-        // ═══════════════════════════════════════════════════════════
-        // CONFIGURACIÓN AUDITLOG
-        // ═══════════════════════════════════════════════════════════
+            // ═══════════════════════════════════════════════════════════
+            // CONFIGURACIÓN DOCUMENTOEXPEDIENTE
+            // ═══════════════════════════════════════════════════════════
 
-        modelBuilder.Entity<AuditLog>(entity =>
+            modelBuilder.Entity<DocumentoExpediente>(entity =>
+            {
+                entity.HasKey(d => d.DocumentoExpedienteID);
+
+                // Enums → Int
+                entity.Property(d => d.TipoDocumento)
+                    .HasConversion<int>()
+                    .IsRequired();
+
+                entity.Property(d => d.Estado)
+                    .HasConversion<int>()
+                    .IsRequired()
+                    .HasDefaultValue(EstadoDocumentoExpediente.PendienteVerificacion);
+
+                // Strings
+                entity.Property(d => d.RutaArchivo).HasMaxLength(500).IsRequired();
+                entity.Property(d => d.NombreArchivo).HasMaxLength(255).IsRequired();
+                entity.Property(d => d.ExtensionArchivo).HasMaxLength(10).IsRequired();
+                entity.Property(d => d.Observaciones).HasMaxLength(500);
+
+                // Valores por defecto
+                entity.Property(d => d.FechaHoraSubida)
+                    .HasDefaultValueSql("GETDATE()");
+
+                // Relación con UsuarioSubio
+                entity.HasOne(d => d.UsuarioSubio)
+                    .WithMany()
+                    .HasForeignKey(d => d.UsuarioSubioID)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // Relación con UsuarioVerifico (nullable)
+                entity.HasOne(d => d.UsuarioVerifico)
+                    .WithMany()
+                    .HasForeignKey(d => d.UsuarioVerificoID)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // Índices
+                entity.HasIndex(d => d.ExpedienteID);
+                entity.HasIndex(d => d.TipoDocumento);
+                entity.HasIndex(d => d.Estado);
+                entity.HasIndex(d => d.FechaHoraSubida);
+
+                // Índice compuesto — búsqueda frecuente: documentos de un expediente por tipo
+                entity.HasIndex(d => new { d.ExpedienteID, d.TipoDocumento });
+            });
+            // ═══════════════════════════════════════════════════════════
+            // CONFIGURACIÓN AUDITLOG
+            // ═══════════════════════════════════════════════════════════
+
+            modelBuilder.Entity<AuditLog>(entity =>
             {
                 entity.HasKey(a => a.LogID);
 

@@ -10,6 +10,9 @@ public class ActaRetiroService(
     IActaRetiroRepository actaRetiroRepository,
     IExpedienteRepository expedienteRepository,
     IPdfGeneratorService pdfGeneratorService,
+    IDocumentoExpedienteService documentoExpedienteService,
+    IStateMachineService stateMachineService,
+    INotificacionActaRetiroService notificacionService,
     ILogger<ActaRetiroService> logger) : IActaRetiroService
 {
     // ═══════════════════════════════════════════════════════════
@@ -110,6 +113,14 @@ public class ActaRetiroService(
         }
         // 3. Validar campos según tipo de salida
         ValidarCamposSegunTipo(dto);
+        // 3.1 Validar documentos como gate
+        var documentacionOK = await documentoExpedienteService
+            .VerificarDocumentacionCompletaAsync(dto.ExpedienteID);
+
+            if (!documentacionOK)
+            throw new InvalidOperationException(
+                "No se puede crear el Acta de Retiro sin documentación completa. " +
+                "Verifique que todos los documentos requeridos estén subidos y verificados.");
 
         // 4. Crear entidad
         var acta = new ActaRetiro
@@ -256,20 +267,33 @@ public class ActaRetiroService(
         acta.RutaPDFFirmado = dto.RutaPDFFirmado;
         acta.NombreArchivoPDFFirmado = dto.NombreArchivoPDFFirmado;
         acta.TamañoPDFFirmado = dto.TamañoPDFFirmado;
-
-        // Marcar como firmado completo (usa FirmadoResponsable internamente)
         acta.MarcarFirmadoCompleto(dto.UsuarioSubidaPDFID);
 
         if (!string.IsNullOrWhiteSpace(dto.Observaciones))
-        {
             acta.Observaciones = dto.Observaciones;
-        }
 
         await actaRetiroRepository.UpdateAsync(acta);
 
-        logger.LogInformation("PDF firmado subido exitosamente para Acta {ActaRetiroID}", dto.ActaRetiroID);
+        // ── Disparar transición EnBandeja → PendienteRetiro ──
+        var expediente = await expedienteRepository.GetByIdAsync(acta.ExpedienteID)
+            ?? throw new InvalidOperationException($"Expediente {acta.ExpedienteID} no encontrado");
 
-        // Recargar con navegaciones
+        if (expediente.EstadoActual == EstadoExpediente.EnBandeja)
+        {
+            await stateMachineService.FireAsync(expediente, TriggerExpediente.AutorizarRetiro);
+            expediente.FechaModificacion = DateTime.Now;
+            await expedienteRepository.UpdateAsync(expediente);
+
+            logger.LogInformation(
+                "Expediente {ExpedienteID} transitó a PendienteRetiro al subir PDF firmado",
+                expediente.ExpedienteID
+            );
+
+            // ── Notificar a Vigilancia via SignalR ──
+            // acta ya tiene los datos del responsable cargados en memoria
+            await notificacionService.NotificarExpedienteListoParaRetiroAsync(expediente, acta);
+        }
+
         var actaActualizada = await actaRetiroRepository.GetByIdAsync(dto.ActaRetiroID);
         return MapToDTO(actaActualizada!);
     }

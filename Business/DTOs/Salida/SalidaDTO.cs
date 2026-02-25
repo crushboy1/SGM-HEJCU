@@ -2,75 +2,90 @@
 
 /// <summary>
 /// DTO de respuesta que representa un registro de salida completado.
-/// Incluye información del expediente, responsable y métricas.
+/// Los datos del responsable se mapean desde ActaRetiro en el service.
+/// No duplica información — es solo para presentación en frontend.
 /// </summary>
 public class SalidaDTO
 {
     // ═══════════════════════════════════════════════════════════
     // IDENTIFICADORES Y REFERENCIAS
     // ═══════════════════════════════════════════════════════════
-
     public int SalidaID { get; set; }
     public int ExpedienteID { get; set; }
     public string CodigoExpediente { get; set; } = string.Empty;
     public string NombrePaciente { get; set; } = string.Empty;
 
     /// <summary>
-    /// ID del Acta de Retiro (solo si TipoSalida = Familiar)
+    /// ID del Acta de Retiro. Siempre presente — maneja ambos tipos de salida.
     /// </summary>
-    public int? ActaRetiroID { get; set; }
-
+    public int ActaRetiroID { get; set; }
     /// <summary>
-    /// ID del Expediente Legal (solo si TipoSalida = AutoridadLegal)
+    /// ID del Expediente Legal Digital. Opcional.
+    /// Referencia al archivador digital de Vigilancia.
     /// </summary>
     public int? ExpedienteLegalID { get; set; }
 
     // ═══════════════════════════════════════════════════════════
     // TIPO Y FECHA
     // ═══════════════════════════════════════════════════════════
-
     public DateTime FechaHoraSalida { get; set; }
 
     /// <summary>
-    /// Tipo de salida: "Familiar", "AutoridadLegal", "TrasladoHospital", "Otro"
+    /// Tipo de salida mapeado desde ActaRetiro.
+    /// Valores: "Familiar", "AutoridadLegal"
     /// </summary>
     public string TipoSalida { get; set; } = string.Empty;
 
     // ═══════════════════════════════════════════════════════════
-    // RESPONSABLE QUE RETIRA
+    // RESPONSABLE — mapeado desde ActaRetiro (solo lectura)
     // ═══════════════════════════════════════════════════════════
-
+    /// <summary>
+    /// Nombre completo del responsable, mapeado desde ActaRetiro.
+    /// Formato: "APELLIDO PATERNO APELLIDO MATERNO, Nombres"
+    /// </summary>
     public string ResponsableNombre { get; set; } = string.Empty;
 
     /// <summary>
-    /// Documento concatenado para mostrar: "DNI 12345678"
+    /// Documento concatenado para mostrar. Ejemplo: "DNI 12345678"
+    /// Mapeado desde ActaRetiro.
     /// </summary>
     public string ResponsableDocumento { get; set; } = string.Empty;
 
     /// <summary>
-    /// Parentesco (solo casos internos)
+    /// Parentesco con el fallecido. Solo si TipoSalida = Familiar.
+    /// Mapeado desde ActaRetiro.
     /// </summary>
     public string? ResponsableParentesco { get; set; }
 
     /// <summary>
-    /// Teléfono del responsable
+    /// Teléfono del responsable. Mapeado desde ActaRetiro.
     /// </summary>
     public string? ResponsableTelefono { get; set; }
 
     // ═══════════════════════════════════════════════════════════
-    // AUTORIZACIÓN (CASOS EXTERNOS)
+    // AUTORIDAD LEGAL — mapeado desde ActaRetiro (solo lectura)
+    // Solo presente si TipoSalida = AutoridadLegal
     // ═══════════════════════════════════════════════════════════
-
     /// <summary>
-    /// Número de oficio policial (solo casos externos)
-    /// Ejemplo: "OFICIO N° 1262-2025-REG.POL-LIMA/..."
+    /// Número de oficio legal. Mapeado desde ActaRetiro.
+    /// Ejemplo: "OF-2025-001234"
     /// </summary>
     public string? NumeroOficio { get; set; }
 
-    // ═══════════════════════════════════════════════════════════
-    // FUNERARIA (CASOS INTERNOS)
-    // ═══════════════════════════════════════════════════════════
+    /// <summary>
+    /// Tipo de autoridad. Mapeado desde ActaRetiro.
+    /// Ejemplo: "Policía Nacional del Perú (PNP)"
+    /// </summary>
+    public string? TipoAutoridad { get; set; }
 
+    /// <summary>
+    /// Institución de la autoridad. Mapeado desde ActaRetiro.
+    /// </summary>
+    public string? AutoridadInstitucion { get; set; }
+
+    // ═══════════════════════════════════════════════════════════
+    // FUNERARIA — capturado por Vigilante
+    // ═══════════════════════════════════════════════════════════
     public string? NombreFuneraria { get; set; }
     public string? FunerariaRUC { get; set; }
     public string? FunerariaTelefono { get; set; }
@@ -82,9 +97,10 @@ public class SalidaDTO
     // ═══════════════════════════════════════════════════════════
     // VEHÍCULO Y DESTINO
     // ═══════════════════════════════════════════════════════════
-
     /// <summary>
-    /// Placa del vehículo (funeraria o patrullero)
+    /// Placa del vehículo.
+    /// - Familiar: vehículo funerario
+    /// - AutoridadLegal: patrullero o vehículo oficial
     /// </summary>
     public string? PlacaVehiculo { get; set; }
 
@@ -93,14 +109,14 @@ public class SalidaDTO
     // ═══════════════════════════════════════════════════════════
     // VIGILANTE Y OBSERVACIONES
     // ═══════════════════════════════════════════════════════════
+    public int RegistradoPorID { get; set; }
 
-    public string VigilanteNombre { get; set; } = string.Empty;
+    public string RegistradoPorNombre { get; set; } = string.Empty;
     public string? Observaciones { get; set; }
 
     // ═══════════════════════════════════════════════════════════
     // INCIDENTES
     // ═══════════════════════════════════════════════════════════
-
     public bool IncidenteRegistrado { get; set; }
     public string? DetalleIncidente { get; set; }
 
@@ -109,18 +125,20 @@ public class SalidaDTO
     // ═══════════════════════════════════════════════════════════
 
     /// <summary>
-    /// Tiempo total de permanencia en el mortuorio
+    /// Tiempo total de permanencia en el mortuorio expresado en minutos.
+    /// Guardado como int para evitar overflow del tipo TIME de SQL Server.
+    /// El frontend formatea: días/horas/minutos según convenga.
     /// </summary>
-    public TimeSpan? TiempoPermanencia { get; set; }
+    public int? TiempoPermanenciaMinutos { get; set; }
 
     /// <summary>
-    /// Tiempo de permanencia en formato legible
-    /// Ejemplo: "2 días 5 horas", "18 horas"
+    /// Tiempo de permanencia en formato legible generado por el backend.
+    /// Ejemplos: "53d 7h 23m", "1d 8h 42m", "18h 20m"
     /// </summary>
     public string? TiempoPermanenciaLegible { get; set; }
 
     /// <summary>
-    /// Indica si excedió las 48 horas de permanencia
+    /// Indica si el cuerpo excedió las 48 horas de permanencia.
     /// </summary>
     public bool ExcedioLimite { get; set; }
 }

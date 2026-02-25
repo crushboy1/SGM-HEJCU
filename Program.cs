@@ -121,7 +121,8 @@ builder.Services.AddScoped<IDocumentoLegalRepository, DocumentoLegalRepository>(
 builder.Services.AddScoped<IExpedienteLegalRepository, ExpedienteLegalRepository>();
 builder.Services.AddScoped<IAutoridadExternaRepository, AutoridadExternaRepository>();
 builder.Services.AddScoped<IActaRetiroRepository, ActaRetiroRepository>();
-
+builder.Services.AddScoped<IDocumentoExpedienteRepository, DocumentoExpedienteRepository>();
+builder.Services.AddScoped<IDocumentoExpedienteService, DocumentoExpedienteService>();
 // Repositories - Deudas
 builder.Services.AddScoped<IDeudaSangreRepository, DeudaSangreRepository>();
 builder.Services.AddScoped<IDeudaEconomicaRepository, DeudaEconomicaRepository>();
@@ -157,13 +158,12 @@ builder.Services.AddScoped<IExpedienteLegalService, ExpedienteLegalService>();
 builder.Services.AddScoped<IActaRetiroService, ActaRetiroService>();
 // Servicio de almacenamiento de archivos
 builder.Services.AddScoped<ILocalFileStorageService, LocalFileStorageService>();
-
 // Servicio centralizado de notificaciones de deudas
 builder.Services.AddScoped<INotificacionDeudaService, NotificacionDeudaService>();
-
 // Servicio centralizado de notificaciones de bandejas
 builder.Services.AddScoped<INotificacionBandejaService, NotificacionBandejaService>();
-
+// Servicio centralizado de notificacion de ActaRetiro
+builder.Services.AddScoped<INotificacionActaRetiroService, NotificacionActaRetiroService>();
 // Servicio Para Generar PDF
 builder.Services.AddScoped<IPdfGeneratorService, PdfGeneratorService>();
 // ===================================================================
