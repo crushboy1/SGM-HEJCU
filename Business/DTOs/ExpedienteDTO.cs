@@ -25,6 +25,7 @@
         public string? MedicoRNE { get; set; }
         public string? NumeroCertificadoSINADEF { get; set; }
         public string? DiagnosticoFinal { get; set; }
+        public string? TipoSalidaPreliminar { get; set; }
         public bool DocumentacionCompleta { get; set; }
         public DateTime? FechaValidacionAdmision { get; set; }
         public string? UsuarioAdmisionNombre { get; set; }

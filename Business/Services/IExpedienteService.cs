@@ -18,5 +18,6 @@ namespace SisMortuorio.Business.Services
         Task<ExpedienteDTO?> BuscarPorHCAsync(string hc);
         Task<ExpedienteDTO?> BuscarPorDNIAsync(string dni);
         Task<ExpedienteDTO?> BuscarPorCodigoAsync(string codigoExpediente);
+        Task<ExpedienteDTO> EstablecerTipoSalidaPreliminarAsync(int expedienteId, TipoSalida? tipoSalida, int usuarioId);
     }
 }

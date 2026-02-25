@@ -209,11 +209,13 @@ export class FormularioActaRetiroComponent implements OnInit {
     this.formData.nombreCompletoPaciente = this.expediente.nombreCompleto;
     this.formData.servicioFallecimiento = this.expediente.servicioFallecimiento || '';
     this.formData.numeroCertificadoDefuncion = this.expediente.numeroCertificadoSINADEF || '';
-
     this.formData.nombreMedicoCertificante = this.expediente.medicoCertificaNombre || '';
     this.formData.cmpMedicoCertificante = this.expediente.medicoCertificaCMP || '';
     this.formData.rneMedicoCertificante = this.expediente.medicoCertificaRNE || '';
 
+    if (this.expediente.tipoSalidaPreliminar) {
+      this.formData.tipoSalida = this.expediente.tipoSalidaPreliminar;
+    }
     console.log('✅ Datos del expediente pre-llenados:', this.formData);
   }
 
@@ -571,6 +573,10 @@ export class FormularioActaRetiroComponent implements OnInit {
 
   get tituloFormulario(): string {
     return 'Crear Acta de Retiro';
+  }
+  /** true si el tipo de salida viene definido desde gestion de documentos */
+  get tipoSalidaBloqueado(): boolean {
+    return !!this.expediente?.tipoSalidaPreliminar;
   }
 
   // ===================================================================

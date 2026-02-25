@@ -2,7 +2,7 @@ import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { forkJoin, firstValueFrom } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 
 import Swal from 'sweetalert2';
 
@@ -12,6 +12,7 @@ import { DeudaEconomica } from '../../../services/deuda-economica';
 import { DeudaSangre } from '../../../services/deuda-sangre';
 import { ActaRetiroService, ActaRetiroDTO } from '../../../services/acta-retiro';
 import { AuthService } from '../../../services/auth';
+import { DocumentoExpedienteService, ResumenDocumentosDTO } from '../../../services/documento-expediente';
 
 // Models
 import { DeudaEconomicaSemaforoDTO } from '../../../models/deuda-economica.model';
@@ -21,9 +22,22 @@ import { IconComponent } from '../../../components/icon/icon.component';
 import { SemaforoDeudas } from '../../../components/semaforo-deudas/semaforo-deudas';
 import { FormularioActaRetiroComponent } from '../../../components/formulario-acta-retiro/formulario-acta-retiro';
 import { UploadPdf } from '../../../components/upload-pdf/upload-pdf';
+import { GestionDocumentos } from '../../../components/gestion-documentos/gestion-documentos';
 
 // Utils
 import { getBadgeClasses } from '../../../utils/badge-styles';
+
+// ===================================================================
+// TIPOS INTERNOS
+// ===================================================================
+
+interface SemaforoExpediente {
+  economica?: DeudaEconomicaSemaforoDTO;
+  /** Semáforo de sangre: "SIN DEUDA" | "PENDIENTE (X unidades)" | "LIQUIDADO" | "ANULADO POR MEDICO" */
+  sangre?: string;
+  cargando: boolean;
+  error?: boolean;
+}
 
 @Component({
   selector: 'app-validar-admision',
@@ -34,7 +48,8 @@ import { getBadgeClasses } from '../../../utils/badge-styles';
     IconComponent,
     SemaforoDeudas,
     FormularioActaRetiroComponent,
-    UploadPdf
+    UploadPdf,
+    GestionDocumentos
   ],
   templateUrl: './validar-admision.html',
   styleUrl: './validar-admision.css'
@@ -46,6 +61,7 @@ export class ValidarAdmision implements OnInit {
   private deudaSangreService = inject(DeudaSangre);
   private actaRetiroService = inject(ActaRetiroService);
   private authService = inject(AuthService);
+  private documentoService = inject(DocumentoExpedienteService);
 
   // ===================================================================
   // ESTADO DE DATOS
@@ -57,13 +73,14 @@ export class ValidarAdmision implements OnInit {
   error: string | null = null;
   procesando: number | null = null;
 
-  semaforos: Map<number, {
-    economica?: DeudaEconomicaSemaforoDTO;
-    sangre?: string;
-    cargando: boolean;
-  }> = new Map();
+  /** Semáforos de deudas por expedienteID */
+  semaforos: Map<number, SemaforoExpediente> = new Map();
 
+  /** Cache de actas de retiro por expedienteID */
   actasCache: Map<number, ActaRetiroDTO | null> = new Map();
+
+  /** Cache de resumen de documentos por expedienteID */
+  resumenDocumentosCache: { [expedienteId: number]: ResumenDocumentosDTO } = {};
 
   // ===================================================================
   // FILTROS
@@ -83,11 +100,13 @@ export class ValidarAdmision implements OnInit {
   totalItems = 0;
 
   // ===================================================================
-  // MODALES ACTA DE RETIRO
+  // MODALES
   // ===================================================================
   mostrarModalActa = false;
   mostrarModalUploadPDF = false;
   mostrarModalDetalle = false;
+  mostrarModalDocumentos = false;
+
   expedienteSeleccionado: Expediente | null = null;
   actaCreadaTemporal: ActaRetiroDTO | null = null;
   pdfFirmadoSeleccionado: File | null = null;
@@ -104,25 +123,36 @@ export class ValidarAdmision implements OnInit {
   // ===================================================================
   // CARGA DE DATOS
   // ===================================================================
-  async cargarExpedientes() {
-    this.cargando = true;
 
+  async cargarExpedientes(): Promise<void> {
+    this.cargando = true;
+    this.error = null;
+    this.actasCache.clear();
+    this.resumenDocumentosCache = {};
     try {
       this.expedientes = await firstValueFrom(
         this.expedienteService.getPendientesValidacionAdmision()
       );
 
       this.expedientesFiltrados = [...this.expedientes];
-      await this.cargarActasParaExpedientes();
+
+      // Carga en paralelo: actas, semáforos y resumen de documentos
+      await Promise.all([
+        this.cargarActasParaExpedientes(),
+        this.cargarSemaforosParaExpedientes(),
+        this.cargarResumenDocumentosParaExpedientes()
+      ]);
+
       this.aplicarFiltros();
 
     } catch (error) {
       console.error('❌ Error al cargar expedientes:', error);
+      this.error = 'No se pudieron cargar los expedientes pendientes';
 
       Swal.fire({
         icon: 'error',
         title: 'Error al Cargar Datos',
-        text: 'No se pudieron cargar los expedientes pendientes',
+        text: this.error,
         confirmButtonColor: '#EF4444'
       });
     } finally {
@@ -130,35 +160,40 @@ export class ValidarAdmision implements OnInit {
     }
   }
 
-  private cargarSemaforos(expedienteId: number): void {
-    this.semaforos.set(expedienteId, { cargando: true });
+  /**
+   * Carga semáforos de deudas para todos los expedientes en paralelo.
+   */
+  private async cargarSemaforosParaExpedientes(): Promise<void> {
+    const promesas = this.expedientes.map(async (expediente) => {
+      const id = expediente.expedienteID;
 
-    forkJoin({
-      economica: this.deudaEconomicaService.obtenerSemaforo(expedienteId),
-      sangre: this.deudaSangreService.obtenerSemaforo(expedienteId)
-    }).subscribe({
-      next: (semaforos) => {
-        this.semaforos.set(expedienteId, {
-          economica: semaforos.economica,
-          sangre: semaforos.sangre,
-          cargando: false
-        });
-      },
-      error: (err) => {
-        console.error(`❌ Error al cargar semáforos del expediente ${expedienteId}:`, err);
-        this.semaforos.set(expedienteId, { cargando: false });
+      this.semaforos.set(id, { cargando: true });
+
+      try {
+        const [economica, sangre] = await Promise.all([
+          firstValueFrom(this.deudaEconomicaService.obtenerSemaforo(id)),
+          firstValueFrom(this.deudaSangreService.obtenerSemaforo(id))
+        ]);
+
+        this.semaforos.set(id, { economica, sangre, cargando: false });
+
+      } catch (err) {
+        console.error(`❌ Error al cargar semáforos del expediente ${id}:`, err);
+        this.semaforos.set(id, { cargando: false, error: true });
       }
     });
+
+    await Promise.all(promesas);
   }
 
-  async cargarActasParaExpedientes() {
-    const expedientesSinActaEnCache = this.expedientesFiltrados.filter(
+  private async cargarActasParaExpedientes(): Promise<void> {
+    const expedientesSinCache = this.expedientes.filter(
       exp => !this.actasCache.has(exp.expedienteID)
     );
 
-    if (expedientesSinActaEnCache.length === 0) return;
+    if (expedientesSinCache.length === 0) return;
 
-    const promesas = expedientesSinActaEnCache.map(async (expediente) => {
+    const promesas = expedientesSinCache.map(async (expediente) => {
       try {
         const existe = await firstValueFrom(
           this.actaRetiroService.existeActa(expediente.expedienteID)
@@ -181,9 +216,38 @@ export class ValidarAdmision implements OnInit {
     await Promise.all(promesas);
   }
 
+  /**
+   * Carga el resumen de documentación para todos los expedientes.
+   * Determina si el botón "Crear Acta" debe estar habilitado.
+   */
+  private async cargarResumenDocumentosParaExpedientes(force = false): Promise<void> {
+    const expedientes = force
+      ? this.expedientes
+      : this.expedientes.filter(exp => !this.resumenDocumentosCache[exp.expedienteID]);
+
+    if (expedientes.length === 0) return;
+
+    const promesas = expedientes.map(async (expediente) => {
+      try {
+        const resumen = await firstValueFrom(
+          this.documentoService.obtenerResumen(expediente.expedienteID)
+        );
+        this.resumenDocumentosCache = {
+          ...this.resumenDocumentosCache,
+          [expediente.expedienteID]: resumen
+        };
+      } catch (error) {
+        console.error(`❌ Error al cargar documentos del expediente ${expediente.expedienteID}:`, error);
+      }
+    });
+
+    await Promise.all(promesas);
+  }
+
   // ===================================================================
   // FILTRADO
   // ===================================================================
+
   aplicarFiltros(): void {
     let resultados = [...this.expedientes];
 
@@ -283,35 +347,184 @@ export class ValidarAdmision implements OnInit {
   }
 
   // ===================================================================
-  // VALIDACIÓN DE DOCUMENTACIÓN
+  // FLUJO DOCUMENTOS DIGITALIZADOS
   // ===================================================================
-  validarDocumentacion(expediente: Expediente): void {
+  /**
+   * Abre el modal de gestión de documentos del expediente.
+   * Disponible siempre — el admisionista puede subir docs en cualquier momento.
+   */
+  abrirModalDocumentos(expediente: Expediente): void {
+    this.expedienteSeleccionado = expediente;
+    this.mostrarModalDocumentos = true;
+  }
+  /**
+   * Callback cuando se actualiza documentación en el modal.
+   * Recarga el resumen para ese expediente y actualiza el cache.
+   */
+  onDocumentosActualizados(completa: boolean): void {
+    if (!this.expedienteSeleccionado) return;
+    const id = this.expedienteSeleccionado.expedienteID;
+    // Invalidar cache del expediente afectado
+    delete this.resumenDocumentosCache[id];
+    // Recargar solo los que faltan (incluye este)
+    this.cargarResumenDocumentosParaExpedientes();
+  }
+  onResumenDocumentosActualizado(resumen: ResumenDocumentosDTO): void {
+    this.resumenDocumentosCache = {
+      ...this.resumenDocumentosCache,
+      [resumen.expedienteID]: resumen
+    };
+  }
+  // ===================================================================
+  // VALIDACIÓN DE DOCUMENTACIÓN → CREAR ACTA
+  // ===================================================================
+  /**
+   * Verifica deudas y documentación antes de abrir el modal de acta.
+   * Orden de validación:
+   * 1. Deudas económicas y de sangre (bloquean si pendientes)
+   * 2. Documentación completa (gate para crear acta)
+   */
+  async validarDocumentacion(expediente: Expediente): Promise<void> {
     const semaforo = this.semaforos.get(expediente.expedienteID);
 
-    const tieneDeudaEconomica = semaforo?.economica?.tieneDeuda || false;
-    const tieneDeudaSangre = semaforo?.sangre === 'PENDIENTE' ||
-      (semaforo?.sangre?.includes('PENDIENTE') || false);
+    // ── 1. Verificar si semáforos aún cargan ──
+    if (semaforo?.cargando) {
+      Swal.fire({
+        icon: 'info',
+        title: 'Cargando...',
+        text: 'Verificando estado de deudas, por favor espere.',
+        timer: 2000,
+        showConfirmButton: false
+      });
+      return;
+    }
+
+    // ── 2. Verificar deudas ──
+    const tieneDeudaEconomica = semaforo?.economica?.tieneDeuda === true;
+    const tieneDeudaSangre = semaforo?.sangre?.toUpperCase().includes('PENDIENTE') === true;
 
     if (tieneDeudaEconomica || tieneDeudaSangre) {
       this.mostrarAlertaDeudaPendiente(expediente, semaforo);
       return;
     }
 
-    this.expedienteSeleccionado = expediente;
-    this.mostrarModalActa = true;
+    // ── 3. Verificar documentación completa ──
+    const resumen = this.resumenDocumentosCache[expediente.expedienteID];
+
+    if (!resumen) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Documentación Requerida',
+        html: `
+        <p class="text-gray-600">
+          Primero debe subir y verificar la documentación del familiar<br>
+          antes de crear el Acta de Retiro.
+        </p>
+      `,
+        confirmButtonText: 'Gestionar Documentos',
+        confirmButtonColor: '#0891B2'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          this.abrirModalDocumentos(expediente);
+        }
+      });
+      return;
+    }
+
+    if (!resumen.documentacionCompleta) {
+      const faltantes = this.obtenerDocumentosFaltantes(resumen);
+
+      Swal.fire({
+        icon: 'warning',
+        title: 'Documentación Incompleta',
+        html: `
+        <p class="text-gray-600 mb-3">
+          No se puede crear el Acta de Retiro hasta que todos los documentos
+          estén <strong>verificados</strong>.
+        </p>
+        ${faltantes.length > 0 ? `
+          <div class="text-left bg-yellow-50 p-3 rounded-lg">
+            <p class="font-semibold text-yellow-800 mb-2">Pendientes:</p>
+            <ul class="list-disc list-inside text-sm text-yellow-700 space-y-1">
+              ${faltantes.map(f => `<li>${f}</li>`).join('')}
+            </ul>
+          </div>
+        ` : ''}
+      `,
+        showCancelButton: true,
+        confirmButtonText: 'Gestionar Documentos',
+        cancelButtonText: 'Cerrar',
+        confirmButtonColor: '#0891B2',
+        cancelButtonColor: '#6B7280'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          this.abrirModalDocumentos(expediente);
+        }
+      });
+      return;
+    }
+
+    // ── 4. Todo OK → recargar expediente fresco y abrir modal acta ──
+    this.procesando = expediente.expedienteID;
+    try {
+      const expedienteActualizado = await firstValueFrom(
+        this.expedienteService.getById(expediente.expedienteID)
+      );
+      this.expedienteSeleccionado = expedienteActualizado;
+      this.mostrarModalActa = true;
+    } catch {
+      this.expedienteSeleccionado = expediente;
+      this.mostrarModalActa = true;
+    } finally {
+      this.procesando = null;
+    }
+  }
+  /**
+   * Obtiene lista de documentos pendientes de verificación según tipo de salida.
+   */
+  private obtenerDocumentosFaltantes(resumen: ResumenDocumentosDTO): string[] {
+    const faltantes: string[] = [];
+    const tipoSalida = resumen.tipoSalida;
+
+    if (tipoSalida === 'AutoridadLegal') {
+      if (!resumen.oficioLegal.verificado) {
+        faltantes.push(resumen.oficioLegal.subido
+          ? 'Oficio Legal — pendiente de verificación'
+          : 'Oficio Legal — no subido');
+      }
+    } else {
+      // Familiar o sin tipo definido aún
+      if (!resumen.dniFamiliar.verificado) {
+        faltantes.push(resumen.dniFamiliar.subido
+          ? 'DNI del Familiar — pendiente de verificación'
+          : 'DNI del Familiar — no subido');
+      }
+      if (!resumen.dniFallecido.verificado) {
+        faltantes.push(resumen.dniFallecido.subido
+          ? 'DNI del Fallecido — pendiente de verificación'
+          : 'DNI del Fallecido — no subido');
+      }
+      if (!resumen.certificadoDefuncion.verificado) {
+        faltantes.push(resumen.certificadoDefuncion.subido
+          ? 'Certificado de Defunción (SINADEF) — pendiente de verificación'
+          : 'Certificado de Defunción (SINADEF) — no subido');
+      }
+    }
+
+    return faltantes;
   }
 
   private mostrarAlertaDeudaPendiente(
     expediente: Expediente,
-    semaforo: any
+    semaforo: SemaforoExpediente | undefined
   ): void {
     let detallesDeudas = '';
 
     if (semaforo?.economica?.tieneDeuda) {
       detallesDeudas += `
         <div class="flex items-center gap-3 text-red-600">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+          <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
           <div class="text-left">
@@ -322,12 +535,12 @@ export class ValidarAdmision implements OnInit {
       `;
     }
 
-    if (semaforo?.sangre?.includes('PENDIENTE')) {
+    if (semaforo?.sangre?.toUpperCase().includes('PENDIENTE')) {
       detallesDeudas += `
         <div class="flex items-center gap-3 text-red-600 mt-3">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+          <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
           </svg>
           <div class="text-left">
             <p class="font-semibold">Deuda de Sangre Pendiente</p>
@@ -339,7 +552,7 @@ export class ValidarAdmision implements OnInit {
 
     Swal.fire({
       icon: 'error',
-      title: 'No se Puede Validar',
+      title: 'No se Puede Crear Acta',
       html: `
         <div class="text-left space-y-2 mb-4">
           <p class="font-semibold">${expediente.nombreCompleto}</p>
@@ -349,7 +562,7 @@ export class ValidarAdmision implements OnInit {
           ${detallesDeudas}
         </div>
         <p class="text-sm text-gray-600 mt-4">
-          El expediente debe regularizar sus deudas antes de validar documentación.
+          Regularice las deudas antes de crear el Acta de Retiro.
         </p>
       `,
       confirmButtonText: 'Entendido',
@@ -360,22 +573,22 @@ export class ValidarAdmision implements OnInit {
   // ===================================================================
   // FLUJO ACTA DE RETIRO
   // ===================================================================
-  onActaCreada(acta: ActaRetiroDTO) {
+  onActaCreada(acta: ActaRetiroDTO): void {
     this.actaCreadaTemporal = acta;
     this.mostrarModalActa = false;
 
     if (this.expedienteSeleccionado) {
-      this.actasCache.set(this.expedienteSeleccionado.expedienteID, acta);
+      const id = this.expedienteSeleccionado.expedienteID;
+
+      this.actasCache.set(id, acta);
+      delete this.resumenDocumentosCache[id];
     }
 
     this.generarYDescargarPDF(acta.actaRetiroID, acta.tipoSalida);
     this.cargarExpedientes();
   }
 
-  /**
-   * Genera y descarga el PDF con instrucciones inteligentes según tipo de salida
-   */
-  async generarYDescargarPDF(actaRetiroID: number, tipoSalida: string) {
+  async generarYDescargarPDF(actaRetiroID: number, tipoSalida: string): Promise<void> {
     Swal.fire({
       title: 'Generando PDF...',
       text: 'Por favor espere',
@@ -393,9 +606,6 @@ export class ValidarAdmision implements OnInit {
       const nombreArchivo = `ActaRetiro_${this.expedienteSeleccionado?.codigoExpediente}.pdf`;
       this.actaRetiroService.descargarPDF(blob, nombreArchivo);
 
-      // ═══════════════════════════════════════════════════════════
-      // INSTRUCCIONES INTELIGENTES SEGÚN TIPO DE SALIDA
-      // ═══════════════════════════════════════════════════════════
       const responsableTipo = tipoSalida === 'Familiar'
         ? 'Familiar responsable'
         : 'Autoridad legal (PNP/Fiscal/Legista)';
@@ -408,7 +618,6 @@ export class ValidarAdmision implements OnInit {
             <div class="bg-green-50 p-3 rounded-lg">
               <p class="font-semibold text-gray-800">PDF descargado automáticamente</p>
             </div>
-            
             <div class="text-left">
               <p class="font-semibold text-gray-700 mb-2">Pasos a seguir:</p>
               <ol class="list-decimal list-inside space-y-1.5 text-gray-600 text-sm">
@@ -444,48 +653,33 @@ export class ValidarAdmision implements OnInit {
       });
     }
   }
-
-  async abrirModalSubirPDF(expediente: Expediente) {
+  async abrirModalSubirPDF(expediente: Expediente): Promise<void> {
     this.expedienteSeleccionado = expediente;
-
-    let acta = this.actasCache.get(expediente.expedienteID);
-
-    if (!acta) {
-      try {
-        Swal.fire({
-          title: 'Cargando datos...',
-          allowOutsideClick: false,
-          didOpen: () => Swal.showLoading()
-        });
-
-        acta = await firstValueFrom(
-          this.actaRetiroService.obtenerPorExpediente(expediente.expedienteID)
-        );
-
-        Swal.close();
-        this.actasCache.set(expediente.expedienteID, acta);
-
-      } catch (error) {
-        Swal.close();
-        console.error('❌ Error al cargar acta:', error);
-
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'No se pudo cargar el acta. Intente nuevamente.',
-          confirmButtonColor: '#EF4444'
-        });
-        return;
-      }
+    Swal.fire({
+      title: 'Cargando datos...',
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading()
+    });
+    try {
+      const acta = await firstValueFrom(
+        this.actaRetiroService.obtenerPorExpediente(expediente.expedienteID)
+      );
+      this.actasCache.set(expediente.expedienteID, acta);
+      this.actaCreadaTemporal = acta;
+      this.mostrarModalUploadPDF = true;
+    } catch (error) {
+      console.error('❌ Error al cargar acta:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'No se pudo cargar el acta. Intente nuevamente.',
+        confirmButtonColor: '#EF4444'
+      });
+    } finally {
+      Swal.close();
     }
-
-    this.actaCreadaTemporal = acta;
-    this.mostrarModalUploadPDF = true;
   }
-
   reimprimirActa(expediente: Expediente): void {
-    console.log('🖨️ Solicitando reimpresión de acta para:', expediente.expedienteID);
-
     Swal.fire({
       icon: 'question',
       title: '¿Reimprimir Acta?',
@@ -537,13 +731,11 @@ export class ValidarAdmision implements OnInit {
           Swal.close();
           console.error('❌ Error al reimprimir acta:', err);
 
-          let mensajeError = 'No se pudo reimprimir el acta.';
-
-          if (err.status === 404) {
-            mensajeError = 'No se encontró el acta de retiro para este expediente.';
-          } else if (err.status === 500) {
-            mensajeError = 'Error interno del servidor al generar el PDF.';
-          }
+          const mensajeError = err.status === 404
+            ? 'No se encontró el acta de retiro para este expediente.'
+            : err.status === 500
+              ? 'Error interno del servidor al generar el PDF.'
+              : 'No se pudo reimprimir el acta.';
 
           Swal.fire({
             icon: 'error',
@@ -555,19 +747,6 @@ export class ValidarAdmision implements OnInit {
       });
     });
   }
-
-  expedienteTieneActa(expediente: Expediente): boolean {
-    if (this.actasCache.has(expediente.expedienteID)) {
-      return this.actasCache.get(expediente.expedienteID) !== null;
-    }
-    return false;
-  }
-
-  expedienteTienePDFFirmado(expediente: Expediente): boolean {
-    const acta = this.actasCache.get(expediente.expedienteID);
-    return acta ? !!acta.rutaPDFFirmado : false;
-  }
-
   onPDFFirmadoSeleccionado(file: File): void {
     this.pdfFirmadoSeleccionado = file;
   }
@@ -579,7 +758,7 @@ export class ValidarAdmision implements OnInit {
 
     Swal.fire({
       title: 'Procesando...',
-      text: 'Subiendo PDF y validando documentación',
+      text: 'Subiendo PDF del acta firmada',
       allowOutsideClick: false,
       didOpen: () => Swal.showLoading()
     });
@@ -596,50 +775,46 @@ export class ValidarAdmision implements OnInit {
 
       await firstValueFrom(this.actaRetiroService.subirPDFFirmado(dto));
 
-      await firstValueFrom(
-        this.expedienteService.validarDocumentacion(
-          this.expedienteSeleccionado!.expedienteID
-        )
-      );
-
       Swal.close();
 
       Swal.fire({
         icon: 'success',
-        title: 'Documentación Validada',
-        text: `El expediente ${this.expedienteSeleccionado!.codigoExpediente} está listo para retiro`,
+        title: 'PDF Cargado Correctamente',
+        text: `El acta firmada del expediente ${this.expedienteSeleccionado!.codigoExpediente} fue registrada.`,
         confirmButtonColor: '#0891B2'
       });
 
+      if (this.expedienteSeleccionado) {
+        const id = this.expedienteSeleccionado.expedienteID;
+        this.actasCache.delete(id);
+        delete this.resumenDocumentosCache[id];
+      }
+
       this.limpiarEstadoModal();
-      this.cargarExpedientes();
+      await this.cargarExpedientes();
 
     } catch (err: any) {
       Swal.close();
-      console.error('❌ Error al validar:', err);
-
-      let mensajeError = err.error?.title || 'No se pudo completar la validación';
-
-      if (err.error?.errors) {
-        const errores = Object.entries(err.error.errors)
-          .map(([campo, mensajes]: [string, any]) => `${campo}: ${mensajes.join(', ')}`)
-          .join('\n');
-        mensajeError += `\n\n${errores}`;
-      }
+      console.error('❌ Error al subir PDF firmado:', err);
 
       Swal.fire({
         icon: 'error',
-        title: 'Error al Validar',
-        text: mensajeError,
+        title: 'Error al Subir PDF',
+        text: err.error?.mensaje || err.error?.title || 'No se pudo subir el PDF firmado.',
         confirmButtonColor: '#EF4444'
       });
     }
   }
 
   limpiarEstadoModal(): void {
+    // Si había expediente seleccionado con modal docs abierto, recargar su resumen
+    if (this.mostrarModalDocumentos && this.expedienteSeleccionado) {
+      this.onDocumentosActualizados(false);
+    }
     this.mostrarModalActa = false;
     this.mostrarModalUploadPDF = false;
     this.mostrarModalDetalle = false;
+    this.mostrarModalDocumentos = false;
     this.expedienteSeleccionado = null;
     this.actaCreadaTemporal = null;
     this.pdfFirmadoSeleccionado = null;
@@ -666,9 +841,9 @@ export class ValidarAdmision implements OnInit {
   }
 
   // ===================================================================
-  // HELPERS
+  // HELPERS PÚBLICOS
   // ===================================================================
-  getSemaforo(expedienteId: number) {
+  getSemaforo(expedienteId: number): SemaforoExpediente | undefined {
     return this.semaforos.get(expedienteId);
   }
 
@@ -676,10 +851,44 @@ export class ValidarAdmision implements OnInit {
     const semaforo = this.semaforos.get(expedienteId);
     if (!semaforo || semaforo.cargando) return false;
 
-    const tieneDeudaEconomica = semaforo.economica?.tieneDeuda || false;
-    const tieneDeudaSangre = semaforo.sangre?.includes('PENDIENTE') || false;
+    const tieneDeudaEconomica = semaforo.economica?.tieneDeuda === true;
+    const tieneDeudaSangre = semaforo.sangre?.toUpperCase().includes('PENDIENTE') === true;
 
     return tieneDeudaEconomica || tieneDeudaSangre;
+  }
+
+  expedienteTieneActa(expediente: Expediente): boolean {
+    return this.actasCache.has(expediente.expedienteID)
+      ? this.actasCache.get(expediente.expedienteID) !== null
+      : false;
+  }
+
+  expedienteTienePDFFirmado(expediente: Expediente): boolean {
+    const acta = this.actasCache.get(expediente.expedienteID);
+    return acta ? !!acta.rutaPDFFirmado : false;
+  }
+  /**
+   * Verifica si el expediente tiene documentación completa.
+   * Controla si el botón "Crear Acta" está habilitado.
+   */
+  expedienteTieneDocumentacionCompleta(expediente: Expediente): boolean {
+    const resumen = this.resumenDocumentosCache[expediente.expedienteID];
+    return resumen?.documentacionCompleta === true;
+  }
+
+  /**
+   * Retorna el conteo de documentos verificados del expediente.
+   * Útil para mostrar progreso en el template.
+   */
+  getConteoDocumentos(expediente: Expediente): { verificados: number; total: number } {
+    const resumen = this.resumenDocumentosCache[expediente.expedienteID];
+    if (!resumen) return { verificados: 0, total: 0 };
+    const verificados = resumen.documentos.filter(d =>
+      d.estado === 'Verificado' || Number(d.estado) === 2
+    ).length;
+    if (!resumen.tipoSalida) return { verificados: 0, total: 0 };
+    const total = resumen.tipoSalida === 'AutoridadLegal' ? 1 : 3;
+    return { verificados, total };
   }
 
   getEstadoBadge(estado: string): string {

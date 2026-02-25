@@ -353,5 +353,31 @@ namespace SisMortuorio.Business.Services
 
             return _mapper.MapToExpedienteDTO(expediente);
         }
+        /// <summary>
+        /// Establece el tipo de salida preliminar antes de crear el Acta de Retiro.
+        /// Define qué documentos son requeridos: Familiar (3 docs) o AutoridadLegal (1 doc).
+        /// Solo modificable por Administrador una vez creada el acta.
+        /// </summary>
+        public async Task<ExpedienteDTO> EstablecerTipoSalidaPreliminarAsync(
+            int expedienteId,
+            TipoSalida? tipoSalida,
+            int usuarioId)
+        {
+            var expediente = await _expedienteRepository.GetByIdAsync(expedienteId);
+            if (expediente == null)
+                throw new KeyNotFoundException($"Expediente {expedienteId} no encontrado");
+            // Bloquear cambio si ya existe acta (protección integridad)
+            if (expediente.ActaRetiro != null)
+                throw new InvalidOperationException(
+                    "No se puede cambiar el tipo de salida una vez creada el Acta de Retiro. " +
+                    "Contacte con Soporte.");
+
+            expediente.TipoSalidaPreliminar = tipoSalida;
+            expediente.FechaModificacion = DateTime.Now;
+
+            await _expedienteRepository.UpdateAsync(expediente);
+
+            return _mapper.MapToExpedienteDTO(expediente)!;
+        }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using SisMortuorio.Business.DTOs;
 using SisMortuorio.Business.Services;
 using SisMortuorio.Data.Entities.Enums;
@@ -379,5 +380,45 @@ namespace SisMortuorio.Controllers
                 return StatusCode(500, new { message = "Error interno del servidor" });
             }
         }
+        /// <summary>
+        /// Establece el tipo de salida preliminar del expediente.
+        /// Define los documentos requeridos antes de crear el Acta de Retiro.
+        /// </summary>
+        [HttpPatch("{id:int}/tipo-salida-preliminar")]
+        [Authorize(Roles = "Admision,Administrador")]
+        [ProducesResponseType(typeof(ExpedienteDTO), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<ExpedienteDTO>> EstablecerTipoSalidaPreliminar(
+            int id,
+            [FromBody] TipoSalida? tipoSalida)
+        {
+            try
+            {
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim))
+                    return Unauthorized(new { mensaje = "Usuario no autenticado" });
+
+                var usuarioId = int.Parse(userIdClaim);
+                var resultado = await _expedienteService.EstablecerTipoSalidaPreliminarAsync(
+                    id, tipoSalida, usuarioId);
+
+                return Ok(resultado);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { mensaje = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { mensaje = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al establecer tipo de salida para expediente {ID}", id);
+                return StatusCode(500, new { mensaje = "Error interno del servidor" });
+            }
+        }
+
     }
 }

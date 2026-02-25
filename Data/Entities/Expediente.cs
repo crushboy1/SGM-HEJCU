@@ -189,11 +189,13 @@ namespace SisMortuorio.Data.Entities
         public string? DiagnosticoFinal { get; set; }
 
         // ═══════════════════════════════════════════════════════════
-        // VALIDACIÓN ADMISIÓN (NUEVO)
+        // VALIDACIÓN ADMISIÓN
         // ═══════════════════════════════════════════════════════════
 
         /// <summary>
-        /// Indica si Admisión validó la documentación completa (3 juegos de copias).
+        /// Indica si todos los documentos requeridos según TipoSalida están verificados.
+        /// Calculado por DocumentoExpedienteService.VerificarDocumentosCompletosAsync()
+        /// Reemplaza el proceso manual de "3 juegos de copias físicas"
         /// </summary>
         [Required]
         public bool DocumentacionCompleta { get; set; } = false;
@@ -212,6 +214,19 @@ namespace SisMortuorio.Data.Entities
         /// Navegación al usuario de Admisión que validó.
         /// </summary>
         public virtual Usuario? UsuarioAdmision { get; set; }
+        // ═══════════════════════════════════════════════════════════
+        // TIPO DE SALIDA PRELIMINAR
+        // Definido por Admisión antes de crear el Acta de Retiro
+        // ═══════════════════════════════════════════════════════════
+        /// <summary>
+        /// Tipo de salida definido por Admisión al gestionar documentos.
+        /// Se establece ANTES de crear el Acta de Retiro.
+        /// Una vez creada el acta, este campo queda bloqueado para roles no administrativos.
+        /// Familiar → requiere DNI Familiar + DNI Fallecido + Cert. Defunción
+        /// AutoridadLegal → requiere solo Oficio Legal (PNP/Fiscal/Legista)
+        /// null → aún no definido (Admisión debe seleccionarlo)
+        /// </summary>
+        public TipoSalida? TipoSalidaPreliminar { get; set; }
         // ═══════════════════════════════════════════════════════════
         // ESTADO Y QR
         // ═══════════════════════════════════════════════════════════
@@ -383,6 +398,12 @@ namespace SisMortuorio.Data.Entities
         /// </summary>
         public virtual ICollection<BandejaHistorial> HistorialBandejas { get; set; } = new List<BandejaHistorial>();
 
+        /// <summary>
+        /// Documentos digitalizados adjuntos al expediente
+        /// Reemplaza los juegos de copias físicas del proceso manual
+        /// Relación 1:N
+        /// </summary>
+        public virtual ICollection<DocumentoExpediente> Documentos { get; set; } = new List<DocumentoExpediente>();
         // ═══════════════════════════════════════════════════════════
         // RELACIONES DE NAVEGACIÓN - CASOS EXTERNOS
         // Solo aplican cuando TipoExpediente = "Externo"

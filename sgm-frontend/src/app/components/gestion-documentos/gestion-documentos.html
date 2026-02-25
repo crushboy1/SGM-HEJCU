@@ -1,0 +1,377 @@
+<div class="flex flex-col gap-4">
+
+  <!-- ===================================================================
+       ESTADO: CARGANDO
+       =================================================================== -->
+  <div *ngIf="cargando" class="flex items-center justify-center py-10">
+    <div class="flex flex-col items-center gap-3">
+      <app-icon name="loader" [size]="28" class="animate-spin text-hospital-cyan"></app-icon>
+      <span class="text-sm text-gray-500">Cargando documentos...</span>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       ESTADO: ERROR
+       =================================================================== -->
+  <div *ngIf="!cargando && error"
+       class="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
+    <app-icon name="alert-circle" [size]="20" class="text-red-500 flex-shrink-0"></app-icon>
+    <div class="flex-1">
+      <p class="text-sm font-medium text-red-800">{{ error }}</p>
+    </div>
+    <button (click)="cargarResumen()"
+            class="text-sm text-red-700 hover:text-red-900 font-medium underline">
+      Reintentar
+    </button>
+  </div>
+
+  <!-- ===================================================================
+       CONTENIDO PRINCIPAL
+       =================================================================== -->
+  <ng-container *ngIf="!cargando && !error && resumen">
+    <!-- ===================================================================
+  SELECTOR DE TIPO DE SALIDA
+  Aparece solo cuando tipoSalida es null y no es soloLectura
+  =================================================================== -->
+    <div *ngIf="mostrarSelectorTipo"
+         class="border-2 border-dashed border-hospital-cyan rounded-xl p-5 animate-fade-in">
+
+      <div class="flex items-center gap-2 mb-4">
+        <app-icon name="git-branch" [size]="18" class="text-hospital-cyan flex-shrink-0"></app-icon>
+        <div>
+          <p class="text-sm font-bold text-gray-800">Definir tipo de salida</p>
+          <p class="text-xs text-gray-500">
+            Seleccione el tipo de retiro para determinar los documentos requeridos.
+            No podra modificarse una vez creada el Acta de Retiro.
+          </p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+
+        <!-- Opcion: Familiar -->
+        <button (click)="seleccionarTipoSalida('Familiar')"
+                [disabled]="guardandoTipo"
+                class="p-4 text-left rounded-xl border-2 border-blue-200 hover:border-blue-400 hover:bg-blue-50 transition disabled:opacity-50 disabled:cursor-not-allowed bg-white">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="p-2 bg-blue-100 rounded-lg">
+              <app-icon name="users" [size]="18" class="text-blue-700"></app-icon>
+            </div>
+            <p class="text-sm font-bold text-blue-800">Familiar</p>
+          </div>
+          <p class="text-xs text-gray-500 leading-relaxed">
+            El cuerpo es retirado por un familiar directo o persona autorizada.
+          </p>
+          <div class="mt-3 space-y-1">
+            <p class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Requiere:</p>
+            <div class="flex items-center gap-1.5 text-xs text-gray-500">
+              <app-icon name="file-text" [size]="11" class="text-blue-400 flex-shrink-0"></app-icon>
+              DNI del Familiar
+            </div>
+            <div class="flex items-center gap-1.5 text-xs text-gray-500">
+              <app-icon name="file-text" [size]="11" class="text-blue-400 flex-shrink-0"></app-icon>
+              DNI del Fallecido
+            </div>
+            <div class="flex items-center gap-1.5 text-xs text-gray-500">
+              <app-icon name="file-text" [size]="11" class="text-blue-400 flex-shrink-0"></app-icon>
+              Certificado de Defuncion (SINADEF)
+            </div>
+          </div>
+        </button>
+
+        <!-- Opcion: Autoridad Legal -->
+        <button (click)="seleccionarTipoSalida('AutoridadLegal')"
+                [disabled]="guardandoTipo"
+                class="p-4 text-left rounded-xl border-2 border-purple-200 hover:border-purple-400 hover:bg-purple-50 transition disabled:opacity-50 disabled:cursor-not-allowed bg-white">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="p-2 bg-purple-100 rounded-lg">
+              <app-icon name="shield" [size]="18" class="text-purple-700"></app-icon>
+            </div>
+            <p class="text-sm font-bold text-purple-800">Autoridad Legal</p>
+          </div>
+          <p class="text-xs text-gray-500 leading-relaxed">
+            El cuerpo es retirado por PNP, Fiscalia o Medico Legista por disposicion legal.
+          </p>
+          <div class="mt-3 space-y-1">
+            <p class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Requiere:</p>
+            <div class="flex items-center gap-1.5 text-xs text-gray-500">
+              <app-icon name="file-text" [size]="11" class="text-purple-400 flex-shrink-0"></app-icon>
+              Oficio Legal (PNP / Fiscal / Legista)
+            </div>
+          </div>
+        </button>
+
+      </div>
+
+      <!-- Indicador de guardado -->
+      <div *ngIf="guardandoTipo"
+           class="mt-3 flex items-center justify-center gap-2 text-sm text-hospital-cyan">
+        <app-icon name="loader" [size]="16" class="animate-spin"></app-icon>
+        <span>Guardando...</span>
+      </div>
+
+    </div>
+    <!-- HEADER: Estado general de documentación -->
+
+    <div *ngIf="!mostrarSelectorTipo"
+         class="flex items-center justify-between p-4 rounded-xl border-2"
+         [ngClass]="resumen.documentacionCompleta
+           ? 'bg-green-50 border-green-300'
+           : 'bg-yellow-50 border-yellow-300'">
+      <div class="flex items-center gap-3">
+        <app-icon [name]="resumen.documentacionCompleta ? 'check-circle' : 'clock'"
+                  [size]="22"
+                  [ngClass]="resumen.documentacionCompleta ? 'text-green-600' : 'text-yellow-600'">
+        </app-icon>
+        <div>
+          <p class="text-sm font-bold"
+             [ngClass]="resumen.documentacionCompleta ? 'text-green-800' : 'text-yellow-800'">
+            {{ resumen.documentacionCompleta ? 'Documentación Completa' : 'Documentación Pendiente' }}
+          </p>
+          <p class="text-xs"
+             [ngClass]="resumen.documentacionCompleta ? 'text-green-600' : 'text-yellow-600'">
+            {{ conteoVerificados }} de {{ totalObligatorios }} documentos obligatorios verificados
+          </p>
+        </div>
+      </div>
+
+      <!-- Badge tipo de salida + boton cambiar -->
+      <div class="flex items-center gap-2">
+        <button *ngIf="puedeVolverASelectorTipo"
+                (click)="volverASelectorTipo()"
+                class="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold
+               bg-hospital-cyan text-white hover:bg-hospital-blue transition shadow-sm">
+          <app-icon name="arrow-left" [size]="12"></app-icon>
+          Cambiar
+        </button>
+
+        <span *ngIf="resumen.tipoSalida"
+              class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold"
+              [ngClass]="resumen.tipoSalida === 'AutoridadLegal'
+          ? 'bg-purple-100 text-purple-800 border border-purple-300'
+          : 'bg-blue-100 text-blue-800 border border-blue-300'">
+          <app-icon [name]="resumen.tipoSalida === 'AutoridadLegal' ? 'shield' : 'users'" [size]="12">
+          </app-icon>
+          {{ resumen.tipoSalida === 'AutoridadLegal' ? 'Autoridad Legal' : 'Familiar' }}
+        </span>
+      </div>
+    </div>
+
+    <!-- NOTA contextual segun tipo de salida -->
+    <ng-container *ngIf="!soloLectura && !mostrarSelectorTipo">
+
+      <!-- Familiar -->
+      <div *ngIf="resumen.tipoSalida === 'Familiar'"
+           class="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <app-icon name="info" [size]="14" class="text-blue-500 flex-shrink-0 mt-0.5"></app-icon>
+        <p class="text-xs text-blue-700">
+          - Solicite copias del DNI del familiar y del fallecido para escanear.<br />
+          - El Certificado de Defuncion (SINADEF) debe ser el original firmado por el Jefe de Guardia.<br />
+          - Sera escaneado directamente en admision. Una vez verificados, quedara habilitada la creacion del Acta de Retiro.
+        </p>
+      </div>
+
+      <!-- Autoridad Legal -->
+      <div *ngIf="resumen.tipoSalida === 'AutoridadLegal'"
+           class="flex items-start gap-2 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+        <app-icon name="info" [size]="14" class="text-purple-500 flex-shrink-0 mt-0.5"></app-icon>
+        <p class="text-xs text-purple-700">
+          - Solicite el Oficio Legal original emitido por PNP, Fiscalia o Medico Legista,debidamente firmado y sellado por Jefe de Gurdia. <br />
+          - Sera escaneado directamente en admision.Una vez verificado, quedara habilitada la creacion del Acta de Retiro.
+        </p>
+      </div>
+
+    </ng-container>
+
+    <!-- ===================================================================
+     TABLA DE DOCUMENTOS REQUERIDOS
+     =================================================================== -->
+    <div *ngIf="!mostrarSelectorTipo"
+         class="border border-gray-200 rounded-xl overflow-hidden">
+
+      <div class="bg-gray-50 border-b border-gray-200 px-4 py-2.5 flex items-center justify-between">
+        <p class="text-xs font-bold text-gray-600 uppercase tracking-wide">
+          Documentos Requeridos
+        </p>
+        <span class="text-xs text-gray-400">
+          {{ soloLectura ? 'Vista de consulta' : 'Escaneados del original físico' }}
+        </span>
+      </div>
+
+      <div class="divide-y divide-gray-100">
+
+        <div *ngFor="let fila of filas">
+
+          <!-- FILA PRINCIPAL DEL DOCUMENTO -->
+          <div class="p-4 transition-colors"
+               [ngClass]="getBgEstado(fila.estado)">
+
+            <div class="flex items-start justify-between gap-3">
+
+              <!-- Icono + Info -->
+              <div class="flex items-start gap-3 min-w-0 flex-1">
+
+                <!-- Icono de estado -->
+                <div class="flex-shrink-0 mt-0.5">
+                  <app-icon [name]="getIconoEstado(fila.estado)"
+                            [size]="18"
+                            [ngClass]="getColorEstado(fila.estado)">
+                  </app-icon>
+                </div>
+
+                <div class="min-w-0 flex-1">
+                  <!-- Nombre del tipo de documento -->
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <p class="text-sm font-semibold text-gray-800">{{ fila.label }}</p>
+                    <span *ngIf="fila.obligatorio"
+                          class="text-xs text-gray-400">(Obligatorio)</span>
+                  </div>
+
+                  <!-- Archivo subido -->
+                  <div *ngIf="fila.nombreArchivo" class="mt-1 flex items-center gap-2">
+                    <app-icon name="paperclip" [size]="12" class="text-gray-400 flex-shrink-0"></app-icon>
+                    <span class="text-xs text-gray-500 truncate">{{ fila.nombreArchivo }}</span>
+                    <span *ngIf="fila.tamanioLegible"
+                          class="text-xs text-gray-400 flex-shrink-0">
+                      ({{ fila.tamanioLegible }})
+                    </span>
+                  </div>
+
+                  <!-- Estado textual -->
+                  <p class="mt-1 text-xs font-medium"
+                     [ngClass]="getColorEstado(fila.estado)">
+                    {{ getLabelEstado(fila.estado) }}
+                  </p>
+
+                  <!-- Motivo de rechazo (si fue rechazado) -->
+                  <div *ngIf="fila.estado === EstadoDoc.Rechazado && fila.observaciones"
+                       class="mt-2 p-2 bg-red-100 border border-red-200 rounded-lg">
+                    <p class="text-xs text-red-700">
+                      <span class="font-semibold">Motivo: </span>{{ fila.observaciones }}
+                    </p>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- Acciones -->
+              <div class="flex items-center gap-1.5 flex-shrink-0 flex-wrap justify-end">
+
+                <!-- Input file OCULTO — se activa programáticamente -->
+                <input #fileInput
+                       type="file"
+                       accept=".pdf,.jpg,.jpeg,.png"
+                       class="hidden"
+                       (change)="onArchivoSeleccionado($event, fila)">
+
+                <!-- SUBIR / RESUBIR -->
+                <button *ngIf="puedeSubir(fila)"
+                        (click)="seleccionarArchivo(fila, fileInput)"
+                        [disabled]="fila.subiendo"
+                        class="px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition shadow-sm"
+                        [ngClass]="fila.estado === EstadoDoc.Rechazado
+                          ? 'bg-red-500 text-white hover:bg-red-600 disabled:opacity-50'
+                          : 'bg-hospital-cyan text-white hover:bg-cyan-700 disabled:opacity-50'"
+                        [title]="fila.estado === EstadoDoc.Rechazado ? 'Resubir documento' : 'Subir documento'">
+                  <app-icon [name]="fila.subiendo ? 'loader' : 'upload'"
+                            [size]="13"
+                            [class.animate-spin]="fila.subiendo">
+                  </app-icon>
+                  <span>{{ fila.estado === EstadoDoc.Rechazado ? 'Resubir' : 'Subir' }}</span>
+                </button>
+
+                <!-- VERIFICAR -->
+                <button *ngIf="puedeVerificar(fila)"
+                        (click)="verificarDocumento(fila)"
+                        [disabled]="fila.verificando"
+                        class="px-2.5 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 text-xs font-semibold flex items-center gap-1 transition shadow-sm"
+                        title="Verificar contra original físico">
+                  <app-icon [name]="fila.verificando ? 'loader' : 'check'"
+                            [size]="13"
+                            [class.animate-spin]="fila.verificando">
+                  </app-icon>
+                  <span>Verificar</span>
+                </button>
+
+                <!-- RECHAZAR (abre panel inline) -->
+                <button *ngIf="puedeRechazar(fila)"
+                        (click)="togglePanelRechazo(fila.documentoID!)"
+                        class="px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition"
+                        [ngClass]="filaConRechazoAbierto === fila.documentoID
+                          ? 'bg-red-600 text-white'
+                          : 'bg-red-100 text-red-700 hover:bg-red-200 border border-red-300'"
+                        title="Rechazar documento">
+                  <app-icon name="circle-x" [size]="13"></app-icon>
+                  <span>Rechazar</span>
+                </button>
+
+                <!-- DESCARGAR -->
+                <button *ngIf="fila.documentoID"
+                        (click)="descargarDocumento(fila)"
+                        class="p-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition"
+                        title="Descargar archivo">
+                  <app-icon name="download" [size]="14"></app-icon>
+                </button>
+
+                <!-- ELIMINAR (solo si no está verificado) -->
+                <button *ngIf="puedeEliminar(fila)"
+                        (click)="eliminarDocumento(fila)"
+                        class="p-1.5 bg-gray-100 text-red-500 rounded-lg hover:bg-red-50 hover:text-red-700 transition"
+                        title="Eliminar documento">
+                  <app-icon name="trash" [size]="14"></app-icon>
+                </button>
+
+              </div>
+            </div>
+
+          </div>
+
+          <!-- PANEL INLINE: Motivo de rechazo -->
+          <div *ngIf="filaConRechazoAbierto === fila.documentoID && fila.documentoID"
+               class="px-4 pb-4 bg-red-50 border-t border-red-200">
+            <div class="pt-3">
+              <label class="block text-xs font-bold text-red-700 mb-1.5 uppercase">
+                Motivo del rechazo <span class="text-red-500">*</span>
+              </label>
+              <textarea [value]="getMotivoRechazo(fila.documentoID)"
+                        (input)="setMotivoRechazo(fila.documentoID, $any($event.target).value)"
+                        rows="2"
+                        placeholder="Ej: Documento ilegible, fotocopia no aceptable, datos no coinciden..."
+                        class="w-full px-3 py-2 border border-red-300 rounded-lg text-sm focus:ring-2 focus:ring-red-400 focus:border-red-400 transition resize-none bg-white">
+              </textarea>
+              <div class="flex gap-2 mt-2 justify-end">
+                <button (click)="togglePanelRechazo(fila.documentoID)"
+                        class="px-3 py-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+                  Cancelar
+                </button>
+                <button (click)="rechazarDocumento(fila)"
+                        [disabled]="fila.verificando || !getMotivoRechazo(fila.documentoID).trim()"
+                        class="px-3 py-1.5 text-xs font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1">
+                  <app-icon [name]="fila.verificando ? 'loader' : 'circle-x'"
+                            [size]="12"
+                            [class.animate-spin]="fila.verificando">
+                  </app-icon>
+                  Confirmar Rechazo
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <!-- /ngFor filas -->
+
+      </div>
+    </div>
+    <!-- /tabla -->
+    <!-- Documentos adicionales ya subidos del tipo "Otro" se muestran dentro de filas -->
+    <!-- Si no hay filas "Otro" y no es soloLectura, mostrar opción para agregar -->
+    <div *ngIf="!soloLectura" class="text-center">
+      <p class="text-xs text-gray-400 italic">
+        ¿Hay un documento adicional no listado? Coordine con el supervisor de admisión.
+      </p>
+    </div>
+
+  </ng-container>
+  <!-- /contenido principal -->
+
+</div>

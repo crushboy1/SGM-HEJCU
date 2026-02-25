@@ -8,33 +8,22 @@ import { Observable } from 'rxjs';
  */
 export interface RegistrarSalidaRequest {
   expedienteID: number;
-  tipoSalida: string; // "Familiar" | "AutoridadLegal" | "TrasladoHospital" | "Otro"
+  expedienteLegalID?: number;
 
-  // Datos del responsable
-  responsableNombre: string;
-  responsableTipoDocumento: string; // "DNI" | "CE" | "Pasaporte"
-  responsableNumeroDocumento: string;
-  responsableParentesco?: string;
-  responsableTelefono?: string;
-
-  // Autorización legal (opcional - solo si TipoSalida = "AutoridadLegal")
-  numeroAutorizacion?: string;
-  entidadAutorizante?: string; // "Fiscalía" | "PolicíaNacional" | "PoderJudicial"
-
-  // Validaciones de documentación
-  documentacionVerificada: boolean;
-  pagoRealizado: boolean;
-  numeroRecibo?: string;
-
-  // Funeraria (opcional)
+  // Funeraria — solo TipoSalida = Familiar
   nombreFuneraria?: string;
+  funerariaRUC?: string;
+  funerariaTelefono?: string;
   conductorFuneraria?: string;
   dniConductor?: string;
-  placaVehiculo?: string;
   ayudanteFuneraria?: string;
   dniAyudante?: string;
-  // Destino y observaciones
-  destino?: string; // "CementerioLocal" | "CementerioForáneo" | "Crematorio" | "Otro"
+
+  // Vehículo y destino
+  placaVehiculo?: string;
+  destino?: string;
+
+  // Observaciones
   observaciones?: string;
 }
 

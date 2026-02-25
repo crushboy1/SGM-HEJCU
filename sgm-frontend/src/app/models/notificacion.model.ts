@@ -18,7 +18,8 @@ export interface NotificacionDTO {
   /** 
    * Categoría de notificación para clasificación automática.
    * Valores: "nuevo_expediente" | "expediente_actualizado" | "bandeja_actualizada" | 
-   *          "alerta_ocupacion" | "alerta_permanencia" | "solicitud_correccion" | "generico"
+   *          "alerta_ocupacion" | "alerta_permanencia" | "solicitud_correccion" | "generico"|
+   *          "expediente_listo_para_retiro" | "salida_mortuorio"
    */
   categoriaNotificacion?: string;
   /** Timestamp de cuando se generó la notificación */

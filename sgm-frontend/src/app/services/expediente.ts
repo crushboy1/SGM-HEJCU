@@ -20,6 +20,7 @@ export interface Expediente {
   tipoDocumento?: string;
   numeroDocumento?: string;
   tipoExpediente?: string;
+  tipoSalidaPreliminar?: 'Familiar' | 'AutoridadLegal' | null;
   documentacionCompleta: boolean;
   fechaValidacionAdmision?: string;
   usuarioAdmisionNombre?: string;
@@ -174,6 +175,28 @@ export class ExpedienteService {
         medicoCertificaCMP: exp.medicoCMP || exp.medicoCertificaCMP,
         medicoCertificaRNE: exp.medicoRNE || exp.medicoCertificaRNE
       } as Expediente)))
+    );
+  }
+  /**
+ * Establece el tipo de salida preliminar antes de crear el Acta de Retiro.
+ * Define qué documentos son requeridos: Familiar (3 docs) o AutoridadLegal (1 doc).
+ * Bloqueado si ya existe el Acta de Retiro.
+ */
+  establecerTipoSalidaPreliminar(
+    expedienteId: number,
+    tipoSalida: 'Familiar' | 'AutoridadLegal'
+  ): Observable<Expediente> {
+    return this.http.patch<Expediente>(
+      `${this.apiUrl}/Expedientes/${expedienteId}/tipo-salida-preliminar`,
+      JSON.stringify(tipoSalida),
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+  limpiarTipoSalidaPreliminar(expedienteId: number): Observable<Expediente> {
+    return this.http.patch<Expediente>(
+      `${this.apiUrl}/Expedientes/${expedienteId}/tipo-salida-preliminar`,
+      JSON.stringify(null),
+      { headers: { 'Content-Type': 'application/json' } }
     );
   }
 }

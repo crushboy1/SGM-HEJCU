@@ -1,465 +1,563 @@
 <!-- OVERLAY MODAL -->
-<div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 animate-fade-in"
+<div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fade-in"
      (click)="cerrarModal()">
 
-  <!-- CONTENEDOR MODAL (optimizado para tablet) -->
+  <!-- CONTENEDOR MODAL -->
   <div class="bg-white w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden
-              flex flex-col animate-scale-in"
+              flex flex-col animate-fade-in-up"
        (click)="$event.stopPropagation()">
 
-    <!-- ═══════════════════════════════════════════════════════════
-         HEADER MODAL
-         ═══════════════════════════════════════════════════════════ -->
-    <div class="bg-gradient-to-r from-red-600 to-red-700 p-5 md:p-6 text-white flex-shrink-0">
+    <!-- HEADER -->
+    <div class="bg-gradient-to-r from-hospital-blue to-hospital-blue-dark p-5 md:p-6
+                text-white flex-shrink-0">
       <div class="flex justify-between items-start">
-        <div class="flex-1">
-          <h2 class="text-xl md:text-2xl font-bold flex items-center gap-2.5 mb-1">
-            <app-icon name="log-out" class="w-6 h-6 md:w-7 md:h-7"></app-icon>
-            <span>Registro de Salida del Mortuorio</span>
-          </h2>
-          <p class="text-red-100 text-xs md:text-sm font-medium">
-            Control de Puerta - Retiro de Cadaver
-          </p>
+        <div class="flex items-center gap-3 flex-1">
+          <div class="p-2.5 bg-white/10 rounded-xl backdrop-blur-sm flex-shrink-0">
+            <app-icon name="file-check" class="w-6 h-6 md:w-7 md:h-7"></app-icon>
+          </div>
+          <div>
+            <h2 class="text-xl md:text-2xl font-bold leading-tight">Confirmar Entrega</h2>
+            <p class="text-blue-100 text-xs md:text-sm mt-0.5">
+              Control de Puerta · Retiro de Cadáver
+            </p>
+          </div>
         </div>
-
-        <!-- Boton Cerrar -->
         <button (click)="cerrarModal()"
-                class="ml-4 p-2 hover:bg-white/10 rounded-lg transition-colors">
-          <app-icon name="x" class="w-6 h-6"></app-icon>
+                class="ml-4 p-2 hover:bg-white/10 rounded-lg transition-colors flex-shrink-0">
+          <app-icon name="x" class="w-5 h-5 md:w-6 md:h-6"></app-icon>
         </button>
       </div>
     </div>
 
-    <!-- ═══════════════════════════════════════════════════════════
-         CONTENIDO MODAL (scrollable)
-         ═══════════════════════════════════════════════════════════ -->
-    <div class="flex-1 overflow-y-auto p-4 md:p-6 scrollbar-custom">
+    <!-- LOADING -->
+    <div *ngIf="cargandoActa"
+         class="flex-1 flex flex-col items-center justify-center gap-4 p-12 animate-fade-in">
+      <div class="p-4 bg-hospital-cyan/10 rounded-full">
+        <app-icon name="loader" class="w-10 h-10 text-hospital-cyan animate-spin"></app-icon>
+      </div>
+      <div class="text-center">
+        <p class="font-bold text-gray-700 text-base">Cargando datos del acta...</p>
+        <p class="text-sm text-gray-500 mt-1">Verificando ActaRetiro y deudas pendientes</p>
+      </div>
+    </div>
 
-      <!-- PANEL INFO EXPEDIENTE -->
-      <div class="bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-200
-                  rounded-xl p-4 md:p-5 mb-5 md:mb-6 shadow-sm">
-        <div class="flex items-start gap-3 md:gap-4">
-          <div class="flex-shrink-0 p-2.5 md:p-3 bg-white rounded-xl text-hospital-cyan shadow-sm">
-            <app-icon name="user" class="w-6 h-6 md:w-7 md:h-7"></app-icon>
-          </div>
-          <div class="flex-1 min-w-0">
-            <h3 class="font-bold text-gray-800 text-lg md:text-xl mb-3">
-              {{ expediente.nombreCompleto }}
-            </h3>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2 text-sm">
-              <div class="flex items-center gap-1.5">
-                <app-icon name="hash" class="w-3.5 h-3.5 text-gray-400 flex-shrink-0"></app-icon>
-                <span class="text-gray-500">HC:</span>
-                <strong class="font-mono">{{ expediente.hc }}</strong>
-              </div>
-              <div class="flex items-center gap-1.5">
-                <app-icon name="building-2" class="w-3.5 h-3.5 text-gray-400 flex-shrink-0"></app-icon>
-                <span class="text-gray-500">Servicio:</span>
-                <strong class="truncate">{{ expediente.servicioFallecimiento }}</strong>
-              </div>
-              <div class="flex items-center gap-1.5">
-                <app-icon name="archive" class="w-3.5 h-3.5 text-gray-400 flex-shrink-0"></app-icon>
-                <span class="text-gray-500">Bandeja:</span>
-                <strong class="text-red-600">{{ expediente.codigoBandeja || 'N/A' }}</strong>
-              </div>
-              <div class="flex items-center gap-1.5">
-                <app-icon name="info" class="w-3.5 h-3.5 text-gray-400 flex-shrink-0"></app-icon>
-                <span class="text-gray-500">Estado:</span>
-                <strong class="text-blue-600">{{ expediente.estadoActual }}</strong>
+    <!-- CONTENIDO -->
+    <ng-container *ngIf="!cargandoActa">
+
+      <div class="flex-1 overflow-y-auto p-4 md:p-6 scrollbar-custom space-y-5 md:space-y-6">
+
+        <!-- INFO EXPEDIENTE -->
+        <div class="bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-200
+                    rounded-xl p-4 md:p-5 shadow-sm animate-fade-in">
+          <div class="flex items-start gap-3 md:gap-4">
+            <div class="flex-shrink-0 p-2.5 bg-white rounded-xl text-hospital-cyan shadow-sm">
+              <app-icon name="user" class="w-6 h-6 md:w-7 md:h-7"></app-icon>
+            </div>
+            <div class="flex-1 min-w-0">
+              <h3 class="font-bold text-gray-800 text-lg md:text-xl mb-3 leading-tight">
+                {{ expediente.nombreCompleto }}
+              </h3>
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2 text-sm">
+                <div class="flex items-center gap-1.5">
+                  <app-icon name="hash" class="w-3.5 h-3.5 text-gray-400 flex-shrink-0">
+                  </app-icon>
+                  <span class="text-gray-500">HC:</span>
+                  <strong class="font-mono">{{ expediente.hc }}</strong>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <app-icon name="building-2"
+                            class="w-3.5 h-3.5 text-gray-400 flex-shrink-0"></app-icon>
+                  <span class="text-gray-500">Serv.:</span>
+                  <strong class="truncate">{{ expediente.servicioFallecimiento }}</strong>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <app-icon name="archive"
+                            class="w-3.5 h-3.5 text-gray-400 flex-shrink-0"></app-icon>
+                  <span class="text-gray-500">Bandeja:</span>
+                  <strong class="text-hospital-red">
+                    {{ expediente.codigoBandeja ?? 'N/A' }}
+                  </strong>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <app-icon name="info"
+                            class="w-3.5 h-3.5 text-gray-400 flex-shrink-0"></app-icon>
+                  <span class="text-gray-500">Estado:</span>
+                  <span [class]="getBadgeClasses(expediente.estadoActual)"
+                        class="text-2xs px-2 py-0.5">
+                    {{ getEstadoLabel(expediente.estadoActual) }}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-
-      <!-- FORMULARIO -->
-      <form class="space-y-5 md:space-y-6">
 
         <!-- TIPO DE SALIDA -->
-        <div class="bg-white border-2 border-gray-200 rounded-xl p-4 md:p-5 hover:border-gray-300 transition-colors">
-          <div class="font-bold text-gray-700 mb-3 md:mb-4 flex items-center gap-2 text-base md:text-lg">
+        <div class="bg-gradient-to-br from-gray-50 to-slate-50 border-2 border-gray-200
+                    rounded-xl p-4 md:p-5 animate-fade-in">
+          <div class="flex items-center gap-2 mb-3">
             <div class="p-1.5 bg-hospital-cyan/10 rounded-lg text-hospital-cyan">
               <app-icon name="file-check" class="w-4 h-4 md:w-5 md:h-5"></app-icon>
             </div>
-            <span>Tipo de Salida</span>
+            <span class="font-bold text-gray-700 text-base md:text-lg">Tipo de Salida</span>
+            <span class="ml-auto text-xs text-gray-400 bg-gray-100 px-2 py-0.5
+                         rounded-full font-medium">
+              Definido por Admisión
+            </span>
           </div>
-          <select [(ngModel)]="form.tipoSalida"
-                  name="tipoSalida"
-                  class="w-full px-4 py-3 md:py-3.5 border-2 border-gray-300 rounded-lg
-                         focus:ring-4 focus:ring-hospital-cyan/20 focus:border-hospital-cyan
-                         outline-none transition-all text-base font-medium bg-white">
-            <option value="Familiar">Entrega a Familiar</option>
-            <option value="AutoridadLegal">Autoridad Legal (Fiscalia/PNP)</option>
-            <option value="TrasladoHospital">Traslado a otro Hospital</option>
-            <option value="Otro">Otro</option>
-          </select>
-        </div>
-
-        <!-- DATOS DEL RESPONSABLE -->
-        <div class="bg-white border-2 border-gray-200 rounded-xl p-4 md:p-5 hover:border-gray-300 transition-colors">
-          <div class="font-bold text-gray-700 mb-3 md:mb-4 flex items-center gap-2 text-base md:text-lg">
-            <div class="p-1.5 bg-green-100 rounded-lg text-green-600">
-              <app-icon name="user" class="w-4 h-4 md:w-5 md:h-5"></app-icon>
-            </div>
-            <span>Datos del Responsable</span>
-            <span class="text-red-500 text-xl">*</span>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-            <!-- Nombre Completo -->
-            <div class="md:col-span-2">
-              <label class="block text-xs font-bold text-gray-600 uppercase mb-2 tracking-wide">
-                Nombre Completo
-                <span class="text-red-500">*</span>
-              </label>
-              <input type="text"
-                     [(ngModel)]="form.responsableNombre"
-                     name="responsableNombre"
-                     class="w-full px-4 py-3 md:py-3.5 border-2 border-gray-300 rounded-lg
-                            focus:ring-4 focus:ring-green-100 focus:border-green-500
-                            outline-none transition-all placeholder:text-gray-400"
-                     placeholder="Ingrese nombre completo de quien retira">
-            </div>
-
-            <!-- Tipo Documento -->
-            <div>
-              <label class="block text-xs font-bold text-gray-600 uppercase mb-2 tracking-wide">
-                Tipo Documento
-                <span class="text-red-500">*</span>
-              </label>
-              <select [(ngModel)]="form.responsableTipoDocumento"
-                      name="responsableTipoDocumento"
-                      class="w-full px-4 py-3 md:py-3.5 border-2 border-gray-300 rounded-lg
-                             focus:ring-4 focus:ring-green-100 focus:border-green-500
-                             outline-none transition-all bg-white">
-                <option value="DNI">DNI</option>
-                <option value="CE">Carnet de Extranjeria</option>
-                <option value="Pasaporte">Pasaporte</option>
-                <option value="CIP">CIP (Policia)</option>
-                <option value="RUC">RUC (Institucion)</option>
-              </select>
-            </div>
-
-            <!-- N Documento -->
-            <div>
-              <label class="block text-xs font-bold text-gray-600 uppercase mb-2 tracking-wide">
-                N Documento
-                <span class="text-red-500">*</span>
-              </label>
-              <input type="text"
-                     [(ngModel)]="form.responsableNumeroDocumento"
-                     name="responsableNumeroDocumento"
-                     class="w-full px-4 py-3 md:py-3.5 border-2 border-gray-300 rounded-lg
-                            focus:ring-4 focus:ring-green-100 focus:border-green-500
-                            outline-none transition-all font-mono placeholder:text-gray-400"
-                     placeholder="00000000">
-            </div>
-
-            <!-- Parentesco -->
-            <div>
-              <label class="block text-xs font-bold text-gray-600 uppercase mb-2 tracking-wide">
-                Parentesco
-                <span *ngIf="form.tipoSalida === 'Familiar'" class="text-red-500">*</span>
-              </label>
-              <input type="text"
-                     [(ngModel)]="form.responsableParentesco"
-                     name="responsableParentesco"
-                     class="w-full px-4 py-3 md:py-3.5 border-2 border-gray-300 rounded-lg
-                            focus:ring-4 focus:ring-green-100 focus:border-green-500
-                            outline-none transition-all placeholder:text-gray-400"
-                     placeholder="Hijo/a, Conyuge, Hermano/a">
-            </div>
-
-            <!-- Telefono -->
-            <div>
-              <label class="block text-xs font-bold text-gray-600 uppercase mb-2 tracking-wide">
-                Telefono
-              </label>
-              <input type="tel"
-                     [(ngModel)]="form.responsableTelefono"
-                     name="responsableTelefono"
-                     class="w-full px-4 py-3 md:py-3.5 border-2 border-gray-300 rounded-lg
-                            focus:ring-4 focus:ring-green-100 focus:border-green-500
-                            outline-none transition-all font-mono placeholder:text-gray-400"
-                     placeholder="999 999 999">
-            </div>
-
+          <div class="flex items-center gap-3 p-3 bg-white border-2 border-gray-200 rounded-lg">
+            <app-icon name="shield" class="w-5 h-5 text-hospital-blue flex-shrink-0"></app-icon>
+            <span class="font-semibold text-gray-800">{{ tipoSalidaLabel }}</span>
           </div>
         </div>
 
-        <!-- AUTORIDAD LEGAL (Condicional) -->
-        <div *ngIf="form.tipoSalida === 'AutoridadLegal'"
-             class="bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-300
-                    rounded-xl p-4 md:p-5 shadow-sm animate-fade-in">
-          <div class="font-bold text-gray-700 mb-3 md:mb-4 flex items-center gap-2 text-base md:text-lg">
-            <div class="p-1.5 bg-yellow-100 rounded-lg text-yellow-700">
-              <app-icon name="shield" class="w-4 h-4 md:w-5 md:h-5"></app-icon>
+        <!-- ══════════════════════════════════════════
+             CASO FAMILIAR
+             ══════════════════════════════════════════ -->
+        <ng-container *ngIf="esFamiliar && datosResponsableReadonly">
+
+          <!-- Datos del Familiar (readonly) -->
+          <div class="bg-white border-2 border-gray-200 rounded-xl p-4 md:p-5 animate-fade-in">
+            <div class="flex items-center gap-2 mb-4">
+              <div class="p-1.5 bg-green-100 rounded-lg text-green-600">
+                <app-icon name="user" class="w-4 h-4 md:w-5 md:h-5"></app-icon>
+              </div>
+              <span class="font-bold text-gray-700 text-base md:text-lg">
+                Datos del Familiar
+              </span>
+              <span class="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold
+                           text-amber-700 bg-amber-50 border border-amber-200
+                           px-2.5 py-1 rounded-full">
+                <app-icon name="shield" class="w-3 h-3"></app-icon>
+                Solo lectura · Acta firmada
+              </span>
             </div>
-            <span>Autorizacion Legal</span>
-            <span class="text-red-500 text-xl">*</span>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+
+              <div class="md:col-span-2">
+                <label class="block text-xs font-bold text-gray-500 uppercase
+                               tracking-wide mb-1.5">Nombre Completo</label>
+                <div class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-lg
+                            text-gray-800 font-medium text-base select-none cursor-default">
+                  {{ datosResponsableReadonly.nombre }}
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase
+                               tracking-wide mb-1.5">Tipo Documento</label>
+                <div class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-lg
+                            text-gray-800 font-medium font-mono text-base
+                            select-none cursor-default">
+                  {{ datosResponsableReadonly.tipoDoc }}
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase
+                               tracking-wide mb-1.5">N° Documento</label>
+                <div class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-lg
+                            text-gray-800 font-medium font-mono text-base
+                            select-none cursor-default">
+                  {{ datosResponsableReadonly.nroDoc }}
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase
+                               tracking-wide mb-1.5">Parentesco</label>
+                <div class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-lg
+                            text-gray-800 font-medium text-base select-none cursor-default">
+                  {{ datosResponsableReadonly.parentesco }}
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase
+                               tracking-wide mb-1.5">Teléfono</label>
+                <div class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-lg
+                            text-gray-800 font-medium font-mono text-base
+                            select-none cursor-default">
+                  {{ datosResponsableReadonly.telefono }}
+                </div>
+              </div>
+
+            </div>
           </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-            <!-- Entidad Autorizante -->
-            <div>
-              <label class="block text-xs font-bold text-gray-600 uppercase mb-2 tracking-wide">
-                Entidad Autorizante
-                <span class="text-red-500">*</span>
-              </label>
-              <select [(ngModel)]="form.entidadAutorizante"
-                      name="entidadAutorizante"
-                      class="w-full px-4 py-3 md:py-3.5 border-2 border-yellow-300 rounded-lg
-                             focus:ring-4 focus:ring-yellow-100 focus:border-yellow-500
-                             outline-none transition-all bg-white">
-                <option value="">Seleccionar...</option>
-                <option value="Fiscalia">Fiscalia / Ministerio Publico</option>
-                <option value="PolicíaNacional">Policia Nacional del Peru</option>
-                <option value="PoderJudicial">Poder Judicial</option>
-                <option value="Otro">Otra Autoridad</option>
-              </select>
+          <!-- Funeraria (editable) -->
+          <div class="bg-white border-2 border-gray-200 rounded-xl p-4 md:p-5
+                      hover:border-gray-300 transition-colors animate-fade-in">
+            <div class="flex items-center gap-2 mb-4">
+              <div class="p-1.5 bg-purple-100 rounded-lg text-purple-600">
+                <app-icon name="truck" class="w-4 h-4 md:w-5 md:h-5"></app-icon>
+              </div>
+              <span class="font-bold text-gray-700 text-base md:text-lg">
+                Datos de Funeraria
+              </span>
+              <span class="text-gray-400 text-xs font-normal ml-1">(opcional)</span>
             </div>
 
-            <!-- N Oficio -->
-            <div>
-              <label class="block text-xs font-bold text-gray-600 uppercase mb-2 tracking-wide">
-                N Oficio / Resolucion
-                <span class="text-red-500">*</span>
-              </label>
-              <input type="text"
-                     [(ngModel)]="form.numeroAutorizacion"
-                     name="numeroAutorizacion"
-                     class="w-full px-4 py-3 md:py-3.5 border-2 border-yellow-300 rounded-lg
-                            focus:ring-4 focus:ring-yellow-100 focus:border-yellow-500
-                            outline-none transition-all font-mono placeholder:text-gray-400"
-                     placeholder="Ej: OF-2025-0001">
-            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-            <!-- Destino Final -->
-            <div class="md:col-span-2">
-              <label class="block text-xs font-bold text-gray-600 uppercase mb-2 tracking-wide">
-                Destino Final
-              </label>
-              <input type="text"
-                     [(ngModel)]="form.destino"
-                     name="destino"
-                     class="w-full px-4 py-3 md:py-3.5 border-2 border-yellow-300 rounded-lg
-                            focus:ring-4 focus:ring-yellow-100 focus:border-yellow-500
-                            outline-none transition-all placeholder:text-gray-400"
-                     placeholder="Ej: Morgue Central de Lima">
-            </div>
+              <div class="md:col-span-2">
+                <label class="block text-xs font-bold text-gray-600 uppercase
+                               tracking-wide mb-2">Nombre de Funeraria</label>
+                <input type="text"
+                       [(ngModel)]="form.nombreFuneraria"
+                       name="nombreFuneraria"
+                       placeholder="Ej: Funeraria San Martín"
+                       class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg
+                              focus:ring-4 focus:ring-purple-100 focus:border-purple-400
+                              outline-none transition-all placeholder:text-gray-400 text-base">
+              </div>
 
+              <div>
+                <label class="block text-xs font-bold text-gray-600 uppercase
+                               tracking-wide mb-2">
+                  Conductor
+                  <span *ngIf="form.nombreFuneraria?.trim()"
+                        class="text-hospital-red">*</span>
+                </label>
+                <input type="text"
+                       [(ngModel)]="form.conductorFuneraria"
+                       name="conductorFuneraria"
+                       placeholder="Nombre del conductor"
+                       class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg
+                              focus:ring-4 focus:ring-purple-100 focus:border-purple-400
+                              outline-none transition-all placeholder:text-gray-400 text-base">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-600 uppercase
+                               tracking-wide mb-2">DNI Conductor</label>
+                <input type="text"
+                       [(ngModel)]="form.dniConductor"
+                       name="dniConductor"
+                       placeholder="00000000"
+                       class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg
+                              focus:ring-4 focus:ring-purple-100 focus:border-purple-400
+                              outline-none transition-all font-mono
+                              placeholder:text-gray-400 text-base">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-600 uppercase
+                               tracking-wide mb-2">
+                  Placa del Vehículo
+                  <span *ngIf="form.nombreFuneraria?.trim()"
+                        class="text-hospital-red">*</span>
+                </label>
+                <input type="text"
+                       [(ngModel)]="form.placaVehiculo"
+                       name="placaVehiculo"
+                       placeholder="ABC-123"
+                       class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg
+                              focus:ring-4 focus:ring-purple-100 focus:border-purple-400
+                              outline-none transition-all uppercase font-mono
+                              placeholder:text-gray-400 text-base">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-600 uppercase
+                               tracking-wide mb-2">Ayudante</label>
+                <input type="text"
+                       [(ngModel)]="form.ayudanteFuneraria"
+                       name="ayudanteFuneraria"
+                       placeholder="Nombre del ayudante"
+                       class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg
+                              focus:ring-4 focus:ring-purple-100 focus:border-purple-400
+                              outline-none transition-all placeholder:text-gray-400 text-base">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-600 uppercase
+                               tracking-wide mb-2">DNI Ayudante</label>
+                <input type="text"
+                       [(ngModel)]="form.dniAyudante"
+                       name="dniAyudante"
+                       placeholder="00000000"
+                       class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg
+                              focus:ring-4 focus:ring-purple-100 focus:border-purple-400
+                              outline-none transition-all font-mono
+                              placeholder:text-gray-400 text-base">
+              </div>
+
+            </div>
           </div>
-        </div>
 
-        <!-- FUNERARIA -->
-        <div class="bg-white border-2 border-gray-200 rounded-xl p-4 md:p-5 hover:border-gray-300 transition-colors">
-          <div class="font-bold text-gray-700 mb-3 md:mb-4 flex items-center gap-2 text-base md:text-lg">
-            <div class="p-1.5 bg-purple-100 rounded-lg text-purple-600">
-              <app-icon name="truck" class="w-4 h-4 md:w-5 md:h-5"></app-icon>
+          <!-- Destino Final — Familiar (readonly, viene del ActaRetiro) -->
+          <div class="bg-white border-2 border-gray-200 rounded-xl p-4 md:p-5 animate-fade-in">
+            <label class="block text-xs font-bold text-gray-500 uppercase
+                           tracking-wide mb-1.5 flex items-center gap-2">
+              <app-icon name="map-pin" class="w-3.5 h-3.5 text-gray-400"></app-icon>
+              <span>Destino Final</span>
+              <span class="inline-flex items-center gap-1.5 text-xs font-semibold
+                           text-amber-700 bg-amber-50 border border-amber-200
+                           px-2 py-0.5 rounded-full">
+                <app-icon name="shield" class="w-3 h-3"></app-icon>
+                Solo lectura · Acta firmada
+              </span>
+            </label>
+            <div class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-lg
+                        text-gray-800 font-medium text-base select-none cursor-default">
+              {{ actaRetiro?.destino || '—' }}
             </div>
-            <span>Datos de Funeraria</span>
-            <span class="text-xs font-normal text-gray-500 ml-auto"></span>
           </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-            <!-- Nombre Funeraria -->
-            <div class="md:col-span-2">
-              <label class="block text-xs font-bold text-gray-600 uppercase mb-2 tracking-wide">
-                Nombre de Funeraria
-              </label>
-              <input type="text"
-                     [(ngModel)]="form.nombreFuneraria"
-                     name="nombreFuneraria"
-                     class="w-full px-4 py-3 md:py-3.5 border-2 border-gray-300 rounded-lg
-                            focus:ring-4 focus:ring-purple-100 focus:border-purple-500
-                            outline-none transition-all placeholder:text-gray-400"
-                     placeholder="Ej: Funeraria San Martin">
+        </ng-container>
+
+        <!-- ══════════════════════════════════════════
+             CASO AUTORIDAD LEGAL (todo readonly)
+             ══════════════════════════════════════════ -->
+        <ng-container *ngIf="esAutoridadLegal && datosResponsableReadonly">
+
+          <div class="bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-200
+                      rounded-xl p-4 md:p-5 animate-fade-in">
+            <div class="flex items-center gap-2 mb-4">
+              <div class="p-1.5 bg-yellow-100 rounded-lg text-yellow-700">
+                <app-icon name="shield" class="w-4 h-4 md:w-5 md:h-5"></app-icon>
+              </div>
+              <span class="font-bold text-gray-700 text-base md:text-lg">
+                Datos de la Autoridad Legal
+              </span>
+              <span class="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold
+                           text-amber-700 bg-amber-50 border border-amber-200
+                           px-2.5 py-1 rounded-full">
+                <app-icon name="shield" class="w-3 h-3"></app-icon>
+                Solo lectura · Acta firmada
+              </span>
             </div>
 
-            <!-- Conductor -->
-            <div>
-              <label class="block text-xs font-bold text-gray-600 uppercase mb-2 tracking-wide">
-                Conductor
-              </label>
-              <input type="text"
-                     [(ngModel)]="form.conductorFuneraria"
-                     name="conductorFuneraria"
-                     class="w-full px-4 py-3 md:py-3.5 border-2 border-gray-300 rounded-lg
-                            focus:ring-4 focus:ring-purple-100 focus:border-purple-500
-                            outline-none transition-all placeholder:text-gray-400"
-                     placeholder="Nombre del conductor">
-            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
 
-            <!-- DNI Conductor -->
-            <div>
-              <label class="block text-xs font-bold text-gray-600 uppercase mb-2 tracking-wide">
-                DNI Conductor
-              </label>
-              <input type="text"
-                     [(ngModel)]="form.dniConductor"
-                     name="dniConductor"
-                     class="w-full px-4 py-3 md:py-3.5 border-2 border-gray-300 rounded-lg
-                            focus:ring-4 focus:ring-purple-100 focus:border-purple-500
-                            outline-none transition-all font-mono placeholder:text-gray-400"
-                     placeholder="00000000">
-            </div>
+              <div class="md:col-span-2">
+                <label class="block text-xs font-bold text-gray-500 uppercase
+                               tracking-wide mb-1.5">Nombre Completo</label>
+                <div class="w-full px-4 py-3 bg-white border-2 border-yellow-200 rounded-lg
+                            text-gray-800 font-medium text-base select-none cursor-default">
+                  {{ datosResponsableReadonly.nombre }}
+                </div>
+              </div>
 
-            <!-- Ayudante -->
-            <div>
-              <label class="block text-xs font-bold text-gray-600 uppercase mb-2 tracking-wide">
-                Ayudante
-              </label>
-              <input type="text"
-                     [(ngModel)]="form.ayudanteFuneraria"
-                     name="ayudanteFuneraria"
-                     class="w-full px-4 py-3 md:py-3.5 border-2 border-gray-300 rounded-lg
-                            focus:ring-4 focus:ring-purple-100 focus:border-purple-500
-                            outline-none transition-all placeholder:text-gray-400"
-                     placeholder="Nombre del ayudante">
-            </div>
+              <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase
+                               tracking-wide mb-1.5">Tipo Documento</label>
+                <div class="w-full px-4 py-3 bg-white border-2 border-yellow-200 rounded-lg
+                            text-gray-800 font-medium font-mono text-base
+                            select-none cursor-default">
+                  {{ datosResponsableReadonly.tipoDoc }}
+                </div>
+              </div>
 
-            <!-- DNI Ayudante -->
-            <div>
-              <label class="block text-xs font-bold text-gray-600 uppercase mb-2 tracking-wide">
-                DNI Ayudante
-              </label>
-              <input type="text"
-                     [(ngModel)]="form.dniAyudante"
-                     name="dniAyudante"
-                     class="w-full px-4 py-3 md:py-3.5 border-2 border-gray-300 rounded-lg
-                            focus:ring-4 focus:ring-purple-100 focus:border-purple-500
-                            outline-none transition-all font-mono placeholder:text-gray-400"
-                     placeholder="00000000">
-            </div>
+              <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase
+                               tracking-wide mb-1.5">N° Documento</label>
+                <div class="w-full px-4 py-3 bg-white border-2 border-yellow-200 rounded-lg
+                            text-gray-800 font-medium font-mono text-base
+                            select-none cursor-default">
+                  {{ datosResponsableReadonly.nroDoc }}
+                </div>
+              </div>
 
-            <!-- Placa Vehiculo -->
-            <div class="md:col-span-2">
-              <label class="block text-xs font-bold text-gray-600 uppercase mb-2 tracking-wide">
-                Placa del Vehiculo
-              </label>
-              <input type="text"
-                     [(ngModel)]="form.placaVehiculo"
-                     name="placaVehiculo"
-                     class="w-full px-4 py-3 md:py-3.5 border-2 border-gray-300 rounded-lg
-                            focus:ring-4 focus:ring-purple-100 focus:border-purple-500
-                            outline-none transition-all uppercase font-mono placeholder:text-gray-400"
-                     placeholder="ABC-123">
-            </div>
+              <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase
+                               tracking-wide mb-1.5">Cargo</label>
+                <div class="w-full px-4 py-3 bg-white border-2 border-yellow-200 rounded-lg
+                            text-gray-800 font-medium text-base select-none cursor-default">
+                  {{ datosResponsableReadonly.cargo }}
+                </div>
+              </div>
 
+              <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase
+                               tracking-wide mb-1.5">Institución</label>
+                <div class="w-full px-4 py-3 bg-white border-2 border-yellow-200 rounded-lg
+                            text-gray-800 font-medium text-base select-none cursor-default">
+                  {{ datosResponsableReadonly.institucion }}
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase
+                               tracking-wide mb-1.5">N° Oficio / Resolución</label>
+                <div class="w-full px-4 py-3 bg-white border-2 border-yellow-200 rounded-lg
+                            text-gray-800 font-medium font-mono text-base
+                            select-none cursor-default">
+                  {{ datosResponsableReadonly.nroOficio }}
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase
+                               tracking-wide mb-1.5">Placa del Vehículo</label>
+                <div class="w-full px-4 py-3 bg-white border-2 border-yellow-200 rounded-lg
+                            text-gray-800 font-medium font-mono uppercase text-base
+                            select-none cursor-default">
+                  {{ datosResponsableReadonly.placa }}
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase
+                               tracking-wide mb-1.5">Teléfono</label>
+                <div class="w-full px-4 py-3 bg-white border-2 border-yellow-200 rounded-lg
+                            text-gray-800 font-medium font-mono text-base
+                            select-none cursor-default">
+                  {{ datosResponsableReadonly.telefono }}
+                </div>
+              </div>
+
+              <div class="md:col-span-2">
+                <label class="block text-xs font-bold text-gray-500 uppercase
+                               tracking-wide mb-1.5 flex items-center gap-2">
+                  <app-icon name="map-pin" class="w-3.5 h-3.5 text-gray-400"></app-icon>
+                  Destino Final
+                </label>
+                <div class="w-full px-4 py-3 bg-white border-2 border-yellow-200 rounded-lg
+                            text-gray-800 font-medium text-base select-none cursor-default">
+                  {{ actaRetiro?.destino || '—' }}
+                </div>
+              </div>
+
+            </div>
           </div>
-        </div>
 
-        <!-- PANEL VALIDACION ADMINISTRATIVA -->
+        </ng-container>
+
+        <!-- PANEL AUTORIZACIÓN ADMINISTRATIVA -->
         <div class="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-300
-            rounded-xl p-4 md:p-5 shadow-md">
-
-          <!-- Título -->
+                    rounded-xl p-4 md:p-5 shadow-sm animate-fade-in">
           <div class="flex items-center gap-3 mb-4">
-            <div class="flex-shrink-0 p-2.5 md:p-3 bg-green-100 text-green-700 rounded-xl shadow-sm">
+            <div class="flex-shrink-0 p-2.5 bg-green-100 text-green-700 rounded-xl shadow-sm">
               <app-icon name="shield" class="w-6 h-6 md:w-7 md:h-7"></app-icon>
             </div>
             <div class="flex-1">
-              <strong class="font-bold text-green-900 text-sm md:text-base block">
+              <p class="font-bold text-green-900 text-sm md:text-base">
                 Autorización Administrativa
-              </strong>
+              </p>
               <p class="text-xs md:text-sm text-green-700">
-                Validado por Admisión y Caja
+                Validado por Admisión · PDF firmado recibido
               </p>
             </div>
           </div>
 
-          <!-- Checks + Semáforo -->
-          <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-
-            <!-- Checks de Validación -->
+          <div class="flex flex-col lg:flex-row items-start lg:items-center
+                      justify-between gap-4">
             <div class="flex flex-wrap gap-2">
-              <div class="px-3 md:px-4 py-2 md:py-2.5 bg-white border-2 border-green-300 rounded-lg
-                  shadow-sm flex items-center gap-2">
-                <app-icon name="circle-check" class="w-4 h-4 md:w-5 md:h-5 text-green-600"></app-icon>
+              <div class="px-3 py-2 bg-white border-2 border-green-300 rounded-lg shadow-sm
+                          flex items-center gap-2">
+                <app-icon name="circle-check"
+                          class="w-4 h-4 md:w-5 md:h-5 text-green-600"></app-icon>
                 <span class="text-xs md:text-sm font-bold text-gray-700 uppercase tracking-wide">
                   Documentos OK
                 </span>
               </div>
-              <div class="px-3 md:px-4 py-2 md:py-2.5 bg-white border-2 border-green-300 rounded-lg
-                  shadow-sm flex items-center gap-2">
-                <app-icon name="circle-check" class="w-4 h-4 md:w-5 md:h-5 text-green-600"></app-icon>
+              <div class="px-3 py-2 bg-white border-2 border-green-300 rounded-lg shadow-sm
+                          flex items-center gap-2">
+                <app-icon name="circle-check"
+                          class="w-4 h-4 md:w-5 md:h-5 text-green-600"></app-icon>
                 <span class="text-xs md:text-sm font-bold text-gray-700 uppercase tracking-wide">
-                  Pagos OK
+                  PDF Firmado
                 </span>
               </div>
             </div>
-
-            <!-- Semáforo de Deudas -->
             <div class="w-full lg:w-auto">
               <app-semaforo-deudas [expedienteId]="expediente.expedienteID"
                                    [mostrarDetalle]="true"
                                    [compacto]="false">
               </app-semaforo-deudas>
             </div>
-
           </div>
 
-          <!-- Loading State -->
           <div *ngIf="cargandoSemaforos"
-               class="mt-3 flex items-center justify-center gap-2 text-sm text-gray-600">
+               class="mt-3 flex items-center gap-2 text-sm text-green-700">
             <app-icon name="loader" class="w-4 h-4 animate-spin"></app-icon>
             <span>Verificando deudas...</span>
           </div>
 
+          <div *ngIf="!cargandoSemaforos && hayDeudasBloqueantes"
+               class="mt-3 flex items-start gap-2 p-3 bg-red-50 border border-red-200
+                      rounded-lg animate-fade-in">
+            <app-icon name="alert-triangle"
+                      class="w-4 h-4 text-hospital-red flex-shrink-0 mt-0.5"></app-icon>
+            <p class="text-xs text-red-700 font-semibold">
+              Hay deudas pendientes. No se puede confirmar la entrega hasta regularizarlas.
+            </p>
+          </div>
         </div>
 
         <!-- OBSERVACIONES -->
-        <div class="bg-white border-2 border-gray-200 rounded-xl p-4 md:p-5 hover:border-gray-300 transition-colors">
-          <label class="block text-xs font-bold text-gray-600 uppercase mb-2 tracking-wide flex items-center gap-2">
+        <div class="bg-white border-2 border-gray-200 rounded-xl p-4 md:p-5
+                    hover:border-gray-300 transition-colors animate-fade-in">
+          <label class="block text-xs font-bold text-gray-600 uppercase tracking-wide mb-2
+                         flex items-center gap-2">
             <app-icon name="file-text" class="w-4 h-4 text-gray-500"></app-icon>
-            <span>Observaciones Adicionales</span>
+            <span>
+              Observaciones
+              <span class="text-gray-400 font-normal normal-case ml-1">(opcional)</span>
+            </span>
           </label>
           <textarea [(ngModel)]="form.observaciones"
                     name="observaciones"
                     rows="3"
+                    placeholder="Registre cualquier incidencia, discrepancia o información adicional..."
                     class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg
                            focus:ring-4 focus:ring-hospital-cyan/20 focus:border-hospital-cyan
-                           outline-none resize-none transition-all placeholder:text-gray-400"
-                    placeholder="Cualquier informacion adicional relevante..."></textarea>
+                           outline-none resize-none transition-all
+                           placeholder:text-gray-400 text-base">
+          </textarea>
+          <p *ngIf="esAutoridadLegal"
+             class="mt-2 text-xs text-amber-700 flex items-center gap-1.5">
+            <app-icon name="info" class="w-3.5 h-3.5 flex-shrink-0"></app-icon>
+            Si hay discrepancia con el documento físico, regístrela aquí y
+            comunique a Admisión para corrección.
+          </p>
         </div>
 
-      </form>
-
-    </div>
-
-    <!-- ═══════════════════════════════════════════════════════════
-         FOOTER MODAL (botones de accion)
-         ═══════════════════════════════════════════════════════════ -->
-    <div class="flex-shrink-0 bg-gray-50 border-t-2 border-gray-200 p-4 md:p-5">
-      <div class="flex flex-col sm:flex-row gap-3 md:gap-4">
-
-        <!-- Boton Cancelar -->
-        <button (click)="cerrarModal()"
-                type="button"
-                class="flex-1 py-3 md:py-4 text-gray-600 hover:bg-gray-200 active:bg-gray-300
-                       rounded-xl transition-all font-semibold text-sm md:text-base
-                       flex items-center justify-center gap-2 border-2 border-gray-300
-                       hover:border-gray-400">
-          <app-icon name="x" class="w-4 h-4 md:w-5 md:h-5"></app-icon>
-          <span>Cancelar</span>
-        </button>
-
-        <!-- Boton Registrar -->
-        <button (click)="confirmarSalida()"
-                type="button"
-                [disabled]="isLoading"
-                class="flex-1 py-3 md:py-4 bg-red-600 text-white rounded-xl
-                       hover:bg-red-700 active:scale-95 shadow-lg transition-all font-bold
-                       text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed
-                       disabled:hover:bg-red-600 disabled:active:scale-100
-                       flex items-center justify-center gap-2.5">
-          <app-icon *ngIf="isLoading" name="loader" class="w-5 h-5 animate-spin"></app-icon>
-          <app-icon *ngIf="!isLoading" name="log-out" class="w-5 h-5"></app-icon>
-          <span>{{ isLoading ? 'REGISTRANDO...' : 'REGISTRAR SALIDA' }}</span>
-        </button>
-
       </div>
-    </div>
 
+      <!-- FOOTER -->
+      <div class="flex-shrink-0 bg-gray-50 border-t-2 border-gray-200 p-4 md:p-5">
+        <div class="flex flex-col sm:flex-row gap-3">
+
+          <button (click)="cerrarModal()"
+                  type="button"
+                  class="flex-1 py-3 md:py-4 bg-white text-gray-600 hover:bg-gray-100
+                         border-2 border-gray-300 hover:border-gray-400 rounded-xl
+                         transition-all font-semibold text-sm md:text-base
+                         flex items-center justify-center gap-2 active:scale-95">
+            <app-icon name="x" class="w-4 h-4 md:w-5 md:h-5"></app-icon>
+            <span>Cancelar</span>
+          </button>
+
+          <button (click)="confirmarSalida()"
+                  type="button"
+                  [disabled]="isLoading || cargandoSemaforos || hayDeudasBloqueantes"
+                  class="flex-1 py-3 md:py-4 bg-hospital-green text-white rounded-xl
+                         hover:bg-green-700 active:scale-95 shadow-lg transition-all
+                         font-bold text-sm md:text-base
+                         flex items-center justify-center gap-2.5
+                         disabled:opacity-50 disabled:cursor-not-allowed
+                         disabled:hover:bg-hospital-green disabled:active:scale-100">
+            <app-icon *ngIf="isLoading || cargandoSemaforos"
+                      name="loader" class="w-5 h-5 animate-spin"></app-icon>
+            <app-icon *ngIf="!isLoading && !cargandoSemaforos"
+                      name="file-check" class="w-5 h-5"></app-icon>
+            <span>
+              {{
+                 isLoading            ? 'PROCESANDO...'      :
+                 cargandoSemaforos    ? 'VERIFICANDO...'     :
+                 hayDeudasBloqueantes ? 'DEUDAS PENDIENTES'  :
+                 'CONFIRMAR ENTREGA'
+              }}
+            </span>
+          </button>
+
+        </div>
+      </div>
+
+    </ng-container>
   </div>
 </div>

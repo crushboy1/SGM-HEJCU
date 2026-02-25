@@ -46,6 +46,7 @@ namespace SisMortuorio.Business.Services
                 MedicoRNE = expediente.MedicoRNE,
                 NumeroCertificadoSINADEF = expediente.NumeroCertificadoSINADEF,
                 DiagnosticoFinal = expediente.DiagnosticoFinal,
+                TipoSalidaPreliminar = expediente.TipoSalidaPreliminar?.ToString(),
                 EstadoActual = expediente.EstadoActual.ToString(),
                 CodigoQR = expediente.CodigoQR,
                 FechaGeneracionQR = expediente.FechaGeneracionQR,
