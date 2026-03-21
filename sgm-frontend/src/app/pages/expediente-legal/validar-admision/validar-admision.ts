@@ -364,10 +364,22 @@ export class ValidarAdmision implements OnInit {
   onDocumentosActualizados(completa: boolean): void {
     if (!this.expedienteSeleccionado) return;
     const id = this.expedienteSeleccionado.expedienteID;
-    // Invalidar cache del expediente afectado
+
+    // Invalidar cache de documentos
     delete this.resumenDocumentosCache[id];
-    // Recargar solo los que faltan (incluye este)
+
+    // Recargar resumen de documentos
     this.cargarResumenDocumentosParaExpedientes();
+    this.expedienteService.getById(id).subscribe({
+      next: (expedienteActualizado) => {
+        const idx = this.expedientes.findIndex(e => e.expedienteID === id);
+        if (idx !== -1) {
+          this.expedientes[idx] = expedienteActualizado;
+          this.aplicarFiltros();
+        }
+      },
+      error: (err) => console.error('Error al recargar expediente:', err)
+    });
   }
   onResumenDocumentosActualizado(resumen: ResumenDocumentosDTO): void {
     this.resumenDocumentosCache = {
@@ -402,8 +414,10 @@ export class ValidarAdmision implements OnInit {
     // ── 2. Verificar deudas ──
     const tieneDeudaEconomica = semaforo?.economica?.tieneDeuda === true;
     const tieneDeudaSangre = semaforo?.sangre?.toUpperCase().includes('PENDIENTE') === true;
+    const hayDeudas = tieneDeudaEconomica || tieneDeudaSangre;
 
-    if (tieneDeudaEconomica || tieneDeudaSangre) {
+    // Bypass autorizado por JG/Admin → ignorar deudas y continuar
+    if (hayDeudas && !expediente.bypassDeudaAutorizado) {
       this.mostrarAlertaDeudaPendiente(expediente, semaforo);
       return;
     }
@@ -487,13 +501,15 @@ export class ValidarAdmision implements OnInit {
     const tipoSalida = resumen.tipoSalida;
 
     if (tipoSalida === 'AutoridadLegal') {
+      // Solo oficio legal
       if (!resumen.oficioLegal.verificado) {
         faltantes.push(resumen.oficioLegal.subido
           ? 'Oficio Legal — pendiente de verificación'
           : 'Oficio Legal — no subido');
       }
-    } else {
-      // Familiar o sin tipo definido aún
+
+    } else if (tipoSalida === 'Familiar') {
+      // Los 3 documentos del familiar
       if (!resumen.dniFamiliar.verificado) {
         faltantes.push(resumen.dniFamiliar.subido
           ? 'DNI del Familiar — pendiente de verificación'
@@ -509,6 +525,11 @@ export class ValidarAdmision implements OnInit {
           ? 'Certificado de Defunción (SINADEF) — pendiente de verificación'
           : 'Certificado de Defunción (SINADEF) — no subido');
       }
+
+    } else {
+      faltantes.push('DNI del Familiar + DNI del Fallecido + SINADEF (Retiro Familiar)');
+      faltantes.push('— u —');
+      faltantes.push('Oficio Policial (Retiro por Autoridad Legal)');
     }
 
     return faltantes;
@@ -550,6 +571,8 @@ export class ValidarAdmision implements OnInit {
       `;
     }
 
+    const esAutoridadLegal = expediente.tipoSalidaPreliminar === 'AutoridadLegal';
+
     Swal.fire({
       icon: 'error',
       title: 'No se Puede Crear Acta',
@@ -561,13 +584,124 @@ export class ValidarAdmision implements OnInit {
         <div class="p-4 bg-red-50 rounded-lg">
           ${detallesDeudas}
         </div>
-        <p class="text-sm text-gray-600 mt-4">
-          Regularice las deudas antes de crear el Acta de Retiro.
-        </p>
+        ${esAutoridadLegal ? `
+          <div class="mt-4 p-3 bg-yellow-50 border border-yellow-300 rounded-lg text-left">
+            <p class="text-sm font-semibold text-yellow-800 flex items-center gap-2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="2"
+                   stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/>
+              </svg>
+              Retiro por Autoridad Legal con deuda pendiente
+            </p>
+            <p class="text-xs text-yellow-700 mt-1">
+              Si PNP debe retirar el cuerpo sin familiar presente,
+              el <strong>Jefe de Guardia</strong> puede autorizar una excepción
+              desde el botón <strong>"Autorizar Excep."</strong> en esta misma fila.
+            </p>
+          </div>
+        ` : `
+          <p class="text-sm text-gray-600 mt-4">
+            Regularice las deudas antes de crear el Acta de Retiro.
+          </p>
+        `}
       `,
       confirmButtonText: 'Entendido',
-      confirmButtonColor: '#DC2626'
+      confirmButtonColor: '#DC2626',
+      width: '480px',
+      padding: '1.5rem'
     });
+  }
+  /**
+   * Modal de autorización de bypass de deuda.
+   * Solo visible/accesible para JefeGuardia y Administrador.
+   */
+  async autorizarBypassDeuda(expediente: Expediente): Promise<void> {
+    const { value: justificacion } = await Swal.fire({
+      icon: 'warning',
+      title: 'Autorizar Retiro con Deuda Pendiente',
+      html: `
+        <div class="text-left text-sm space-y-3">
+          <div class="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p class="font-semibold text-yellow-800">${expediente.nombreCompleto}</p>
+            <p class="text-yellow-700 text-xs mt-0.5">${expediente.codigoExpediente}</p>
+          </div>
+          <p class="text-gray-600">
+            Esta acción permite crear el Acta de Retiro a pesar de tener
+            <strong>deudas económicas y/o de sangre pendientes</strong>.
+          </p>
+          <p class="text-sm font-semibold text-gray-700 mt-2">
+            Ingrese la justificación obligatoria:
+          </p>
+        </div>
+      `,
+      input: 'textarea',
+      inputPlaceholder: 'Ej: PNP retira cuerpo sin familiar identificado — caso legal urgente sin deudohabiente',
+      inputAttributes: { rows: '3', maxlength: '500' },
+      inputValidator: (value) => {
+        if (!value || value.trim().length < 10)
+          return 'La justificación debe tener al menos 10 caracteres';
+        return null;
+      },
+      showCancelButton: true,
+      confirmButtonText: 'Autorizar Excepción',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#D97706',
+      cancelButtonColor: '#6B7280',
+      width: '520px',
+      padding: '1.5rem'
+    });
+
+    if (!justificacion) return;
+
+    this.procesando = expediente.expedienteID;
+
+    try {
+      await firstValueFrom(
+        this.actaRetiroService.autorizarBypassDeuda({
+          expedienteID: expediente.expedienteID,
+          justificacion: justificacion.trim()
+        })
+      );
+
+      // Actualizar el expediente en memoria para reflejar el bypass
+      const idx = this.expedientes.findIndex(e => e.expedienteID === expediente.expedienteID);
+      if (idx !== -1) {
+        const actualizado = {
+          ...this.expedientes[idx],
+          bypassDeudaAutorizado: true,
+          bypassDeudaJustificacion: justificacion.trim(),
+          bypassDeudaUsuarioNombre: this.authService.getUserName()
+        };
+        // Nueva referencia del array para que Angular detecte el cambio
+        this.expedientes = [
+          ...this.expedientes.slice(0, idx),
+          actualizado,
+          ...this.expedientes.slice(idx + 1)
+        ];
+      }
+      this.aplicarFiltros();
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Excepción Autorizada',
+        text: 'El admisionista ahora puede crear el Acta de Retiro.',
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: true,
+      });
+
+    } catch (err: any) {
+      console.error('Error al autorizar bypass:', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error al Autorizar',
+        text: err.error?.mensaje || 'No se pudo autorizar la excepción.',
+        confirmButtonColor: '#EF4444'
+      });
+    } finally {
+      this.procesando = null;
+    }
   }
 
   // ===================================================================
@@ -893,5 +1027,40 @@ export class ValidarAdmision implements OnInit {
 
   getEstadoBadge(estado: string): string {
     return getBadgeClasses(estado);
+  }
+  /**
+  * true si el usuario actual puede autorizar bypass de deuda.
+  * Solo JefeGuardia y Administrador.
+  */
+  get puedeAutorizarBypass(): boolean {
+    const rol = this.authService.getUserRole();
+    return rol === 'JefeGuardia' || rol === 'Administrador';
+  }
+  /**
+   * true si el expediente necesita bypass y el usuario puede autorizarlo.
+   * Condiciones: deuda pendiente + TipoSalida = AutoridadLegal + sin acta + sin bypass previo.
+   */
+  necesitaBypass(expediente: Expediente): boolean {
+    if (!this.tieneDeudas(expediente.expedienteID)) return false;
+    if (expediente.tipoSalidaPreliminar !== 'AutoridadLegal') return false;
+    if (this.expedienteTieneActa(expediente)) return false;
+    if (expediente.bypassDeudaAutorizado) return false;
+    return true;
+  }
+
+  /**
+   * Verifica si el expediente puede crear acta considerando bypass autorizado.
+   */
+  puedeCrearActa(expediente: Expediente): boolean {
+    const tieneDoc = this.expedienteTieneDocumentacionCompleta(expediente);
+    if (!tieneDoc) return false;
+    // Sin deudas: OK directo
+    if (!this.tieneDeudas(expediente.expedienteID)) return true;
+    // Con deudas pero bypass autorizado: OK
+    if (expediente.bypassDeudaAutorizado) return true;
+    return false;
+  }
+  trackByExpedienteId(index: number, expediente: Expediente): number {
+    return expediente.expedienteID;
   }
 }

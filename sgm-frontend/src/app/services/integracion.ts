@@ -2,18 +2,33 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
+// ── Alineado con BandejaEntradaDTO (backend) ─────────────────────────────────
+
+/** Paciente fallecido pendiente de generar expediente (bandeja de Enfermería) */
 export interface PacientePendiente {
+  // Galenhos — identificación
   hc: string;
+  tipoDocumentoID: number;       // TipoDocumentoIdentidad (enum int)
   numeroDocumento: string;
-  apellidoPaterno: string;
-  apellidoMaterno: string;
-  nombres: string;
+  nombreCompleto: string;
+  edad: number;
   sexo: string;
-  tipoDocumentoID: number;
-  servicioFallecimiento?: string; 
-  fechaHoraFallecimiento?: string; 
+  fuenteFinanciamiento: string;
+  esNN: boolean;
+
+  // SIGEM (opcional)
+  servicioFallecimiento?: string;
+  numeroCama?: string;
+  fechaHoraFallecimiento?: string;
+  diagnosticoFinal?: string;
+  medicoCertificaNombre?: string;
+
+  // Estado de integración
+  tieneDatosSigem: boolean;
+  advertencias: string[];
 }
 
+/** Datos completos del paciente para pre-llenar el formulario de expediente */
 export interface PacienteParaForm {
   hc: string;
   tipoDocumentoID: number;
@@ -25,6 +40,8 @@ export interface PacienteParaForm {
   edad: number;
   sexo: string;
   fuenteFinanciamiento: string;
+  esNN: boolean;
+  causaViolentaODudosa: boolean;
   servicioFallecimiento: string | null;
   numeroCama: string | null;
   fechaHoraFallecimiento: string | null;
@@ -38,18 +55,18 @@ export interface PacienteParaForm {
   advertencias: string[];
 }
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class IntegracionService {
   private http = inject(HttpClient);
-  private apiUrl = 'https://localhost:7153/api/Integracion';
+  private readonly apiUrl = 'https://localhost:7153/api';
 
+  /** Lista de pacientes fallecidos sin expediente (bandeja Enfermería) */
   getPendientes(): Observable<PacientePendiente[]> {
-    return this.http.get<PacientePendiente[]>(`${this.apiUrl}/pendientes`);
+    return this.http.get<PacientePendiente[]>(`${this.apiUrl}/Integracion/pendientes`);
   }
 
-  consultarParaForm(hc: string): Observable<PacienteParaForm> {
-    return this.http.get<PacienteParaForm>(`${this.apiUrl}/consultar-paciente/${hc}`);
+  /** Datos completos para pre-llenar formulario de nuevo expediente */
+  consultarPaciente(hc: string): Observable<PacienteParaForm> {
+    return this.http.get<PacienteParaForm>(`${this.apiUrl}/Integracion/consultar-paciente/${hc}`);
   }
 }

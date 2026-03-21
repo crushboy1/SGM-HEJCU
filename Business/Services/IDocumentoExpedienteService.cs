@@ -60,7 +60,7 @@ public interface IDocumentoExpedienteService
     /// - AutoridadLegal → OficioLegal
     /// Actualiza Expediente.DocumentacionCompleta automáticamente.
     /// </summary>
-    Task<bool> VerificarDocumentacionCompletaAsync(int expedienteId);
+    Task<bool> VerificarDocumentacionCompletaAsync(int expedienteId, int? usuarioId = null);
 
     /// <summary>
     /// Retorna el stream del archivo para descarga.

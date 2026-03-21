@@ -17,6 +17,6 @@ namespace SisMortuorio.Business.Services
         /// Obtiene la lista de pacientes marcados como fallecidos en SIGEM
         /// que aún no han sido procesados (no tienen expediente en SGM).
         /// </summary>
-        Task<List<PacienteGalenhos>> GetPacientesPendientesAsync();
+        Task<List<BandejaEntradaDTO>> GetPacientesPendientesAsync();
     }
 }

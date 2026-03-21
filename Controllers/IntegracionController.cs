@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SisMortuorio.Business.DTOs;
 using SisMortuorio.Business.Services;
-using SisMortuorio.Data.ExternalSystems;
 
 namespace SisMortuorio.Controllers
 {
@@ -76,7 +76,7 @@ namespace SisMortuorio.Controllers
         /// </summary>
         [HttpGet("pendientes")]
         [Authorize(Roles = "EnfermeriaTecnica,EnfermeriaLicenciada,SupervisoraEnfermeria,Administrador")]
-        [ProducesResponseType(typeof(List<PacienteGalenhos>), 200)]
+        [ProducesResponseType(typeof(List<BandejaEntradaDTO>), 200)]
         public async Task<IActionResult> GetPendientes()
         {
             try

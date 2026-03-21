@@ -1,7 +1,8 @@
 import { Component, EventEmitter, Input, Output, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { forkJoin } from 'rxjs';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import Swal from 'sweetalert2';
 
 import { IconComponent } from '../icon/icon.component';
@@ -20,40 +21,22 @@ import { getBadgeClasses, getEstadoIcon, getEstadoLabel } from '../../utils/badg
  * Bandeja ocupada → click "Salida" → este modal → confirmar entrega → emite onSalidaRegistrada
  *
  * FLUJO 2 — Desde Búsqueda Manual (10% excepcional):
- * Búsqueda HC/DNI/Nombre → seleccionar expediente → este modal → confirmar entrega → emite onSalidaRegistrada
+ * Búsqueda HC/DNI/Nombre → seleccionar expediente → este modal → confirmar entrega
  *
- * DECISIÓN DE DISEÑO (v3.0):
- * ─────────────────────────────────────────────────────────────────
- * El ActaRetiro ya fue firmado por 3 actores (Responsable, Admisionista,
- * Supervisor Vigilancia). Editar esos datos post-firma rompe la integridad
- * del documento físico firmado.
+ * DECISIÓN DE DISEÑO:
+ * - ActaRetiro ya fue firmado por 3 actores — sus datos son READONLY
+ * - CASO AutoridadLegal: todos los datos readonly + placa y observaciones editables
+ * - CASO Familiar: datos familiar readonly + funeraria/placa/observaciones editables
+ * - Bypass de deuda autorizado por JG/Admin permite continuar sin bloqueo de semáforo
  *
- * Por lo tanto:
- *
- * CASO AutoridadLegal:
- *   - Todos los datos son READONLY (vienen del ActaRetiro firmado)
- *   - Solo "Observaciones" es editable
- *   - Funeraria NO aplica
- *
- * CASO Familiar:
- *   - Datos del familiar son READONLY (vienen del ActaRetiro firmado)
- *   - Sección Funeraria es EDITABLE (no existe en ActaRetiro, llega el día del retiro)
- *   - "Observaciones" es editable
- *
- * Si hay discrepancia con el papel:
- *   Vigilante documenta en Observaciones → Admisión corrige → nueva acta si aplica.
- *
- * @version 3.0.0
+ * @version 3.1.0
  * @changelog
+ * - v3.1.0: actaRetiroID agregado al form (campo requerido en backend).
+ *           catchError en forkJoin para expedientes sin acta.
+ *           hayDeudasBloqueantes considera bypassDeudaAutorizado.
+ *           Placa vehículo editable para ambos tipos de salida.
+ *           Badges autorización dinámicos según actaRetiro.
  * - v3.0.0: Formulario inteligente por tipo de salida.
- *           Datos del ActaRetiro en modo READONLY post-firma.
- *           AutoridadLegal: solo observaciones editables.
- *           Familiar: solo funeraria + observaciones editables.
- *           Pre-llenado completo desde ActaRetiro (placa, teléfono, institución).
- *           Eliminados campos innecesarios según tipo.
- * - v2.0.0: TipoSalida pasa a solo lectura. forkJoin para carga paralela.
- * - v1.1.0: Integración semáforo de deudas.
- * - v1.0.0: Versión inicial.
  */
 @Component({
   selector: 'app-formulario-salida',
@@ -68,20 +51,11 @@ export class FormularioSalida implements OnInit {
   private deudaSangreService = inject(DeudaSangre);
   private actaRetiroService = inject(ActaRetiroService);
 
-  /* Expediente pre-cargado desde componente padre. */
   @Input() expediente: any = null;
-
-  /* Emitido cuando la salida se confirma exitosamente. */
   @Output() onSalidaRegistrada = new EventEmitter<any>();
-
-  /* Emitido cuando el usuario cierra el modal sin confirmar. */
   @Output() onCerrar = new EventEmitter<void>();
 
   isLoading = false;
-
-  // ===================================================================
-  // ESTADO DE CARGA
-  // ===================================================================
   cargandoSemaforos = false;
   cargandoActa = false;
 
@@ -94,10 +68,10 @@ export class FormularioSalida implements OnInit {
   // ===================================================================
   // ACTA DE RETIRO (fuente de verdad — readonly post-firma)
   // ===================================================================
-  actaRetiro?: ActaRetiroDTO;
+  actaRetiro?: ActaRetiroDTO | null;
 
   // ===================================================================
-  // HELPERS VISUALES (para template)
+  // HELPERS VISUALES
   // ===================================================================
   getBadgeClasses = getBadgeClasses;
   getEstadoIcon = getEstadoIcon;
@@ -105,17 +79,14 @@ export class FormularioSalida implements OnInit {
 
   // ===================================================================
   // MODELO DEL FORMULARIO
-  // Solo campos capturados físicamente por el Vigilante.
-  // TipoSalida, responsable y destino los resuelve el backend
-  // desde ActaRetiro (relación 1-1 con ExpedienteID).
-  // - Familiar:        funeraria + observaciones
-  // - AutoridadLegal:  solo observaciones
+  // Campos capturados físicamente por el Vigilante Mortuorio.
+  // - Familiar:        funeraria + placa + observaciones
+  // - AutoridadLegal:  placa patrullero + observaciones
   // ===================================================================
   form: RegistrarSalidaRequest = {
     expedienteID: 0,
+    actaRetiroID: 0,
     expedienteLegalID: undefined,
-
-    // Funeraria — editable solo en caso Familiar
     nombreFuneraria: '',
     funerariaRUC: '',
     funerariaTelefono: '',
@@ -123,19 +94,14 @@ export class FormularioSalida implements OnInit {
     dniConductor: '',
     ayudanteFuneraria: '',
     dniAyudante: '',
-
-    // Vehículo y destino
     placaVehiculo: '',
     destino: '',
-
-    // Observaciones — siempre editable
     observaciones: ''
   };
 
   // ===================================================================
-  // CICLO DE VIDA
+  // LIFECYCLE
   // ===================================================================
-
   ngOnInit(): void {
     if (!this.expediente) {
       console.error('[FormularioSalida] Modal abierto sin expediente');
@@ -150,26 +116,27 @@ export class FormularioSalida implements OnInit {
 
     this.form.expedienteID = this.expediente.expedienteID;
     this.cargarDatosIniciales();
-
-    console.log('[FormularioSalida] Inicializado para:', this.expediente.codigoExpediente);
   }
 
   // ===================================================================
-  // CARGA INICIAL — forkJoin paralelo
+  // CARGA INICIAL — forkJoin paralelo con catchError en acta
   // ===================================================================
 
-  /**
-   * Carga en paralelo: ActaRetiro + semáforos de deudas.
-   * Una vez completado, pre-llena el formulario desde ActaRetiro.
-   */
   private cargarDatosIniciales(): void {
     this.cargandoSemaforos = true;
     this.cargandoActa = true;
 
     forkJoin({
-      economica: this.deudaEconomicaService.obtenerSemaforo(this.expediente.expedienteID),
-      sangre: this.deudaSangreService.obtenerSemaforo(this.expediente.expedienteID),
-      acta: this.actaRetiroService.obtenerPorExpediente(this.expediente.expedienteID)
+      economica: this.deudaEconomicaService.obtenerSemaforo(
+        this.expediente.expedienteID
+      ),
+      sangre: this.deudaSangreService.obtenerSemaforo(
+        this.expediente.expedienteID
+      ),
+      // catchError: si no existe acta, retorna null sin romper el forkJoin
+      acta: this.actaRetiroService
+        .obtenerPorExpediente(this.expediente.expedienteID)
+        .pipe(catchError(() => of(null)))
     }).subscribe({
       next: ({ economica, sangre, acta }) => {
         this.semaforoEconomica = economica;
@@ -178,10 +145,7 @@ export class FormularioSalida implements OnInit {
         this.cargandoSemaforos = false;
         this.cargandoActa = false;
 
-        // Pre-llenar form desde ActaRetiro real
         this.prellenarDesdeActa();
-
-        console.log('[FormularioSalida] Datos cargados — TipoSalida:', acta.tipoSalida);
       },
       error: (err) => {
         console.error('[FormularioSalida] Error al cargar datos iniciales:', err);
@@ -201,37 +165,32 @@ export class FormularioSalida implements OnInit {
   // PRE-LLENADO DESDE ACTA DE RETIRO
   // ===================================================================
 
-  /**
-   * Pre-llena el formulario con datos del ActaRetiro.
-   * Estos datos NO son editables en la UI — el ActaRetiro ya fue firmado.
-   * Se envían al backend para registrar la salida con coherencia.
-   */
   private prellenarDesdeActa(): void {
-    this.form.destino = this.actaRetiro?.destino ?? '';
-    console.log('[FormularioSalida] Pre-llenado desde ActaRetiro — TipoSalida:',
-      this.actaRetiro?.tipoSalida);
+    if (!this.actaRetiro) return;
+
+    // actaRetiroID — campo requerido por el backend
+    this.form.actaRetiroID = this.actaRetiro.actaRetiroID;
+
+    // Destino — viene del acta como referencia, el vigilante puede ajustarlo
+    this.form.destino = this.actaRetiro.destino ?? '';
   }
 
   // ===================================================================
   // GETTERS — TIPO DE SALIDA
   // ===================================================================
 
-  /** TipoSalida leído del ActaRetiro. Fallback 'Familiar' mientras carga. */
   get tipoSalidaActa(): string {
     return this.actaRetiro?.tipoSalida ?? 'Familiar';
   }
 
-  /** True si es retiro por familiar. */
   get esFamiliar(): boolean {
     return this.tipoSalidaActa === 'Familiar';
   }
 
-  /** True si es retiro por autoridad legal. */
   get esAutoridadLegal(): boolean {
     return this.tipoSalidaActa === 'AutoridadLegal';
   }
 
-  /** Etiqueta legible del tipo de salida. */
   get tipoSalidaLabel(): string {
     const etiquetas: Record<string, string> = {
       'Familiar': 'Entrega a Familiar',
@@ -243,13 +202,9 @@ export class FormularioSalida implements OnInit {
   }
 
   // ===================================================================
-  // GETTERS — DATOS READONLY DEL ACTA (para template)
+  // GETTERS — DATOS READONLY DEL ACTA
   // ===================================================================
 
-  /**
-   * Datos del responsable para mostrar en modo readonly.
-   * Familiar → datos del familiar. AutoridadLegal → datos de la autoridad.
-   */
   get datosResponsableReadonly() {
     const acta = this.actaRetiro;
     if (!acta) return null;
@@ -261,10 +216,8 @@ export class FormularioSalida implements OnInit {
         nroDoc: acta.familiarNumeroDocumento ?? '—',
         parentesco: acta.familiarParentesco ?? '—',
         telefono: acta.familiarTelefono ?? '—',
-        // No aplica para familiar
         cargo: null,
         institucion: null,
-        placa: null,
         nroOficio: null
       };
     }
@@ -275,58 +228,67 @@ export class FormularioSalida implements OnInit {
       nroDoc: acta.autoridadNumeroDocumento ?? '—',
       cargo: acta.autoridadCargo ?? '—',
       institucion: acta.autoridadInstitucion ?? '—',
-      placa: acta.autoridadPlacaVehiculo ?? '—',
       telefono: acta.autoridadTelefono ?? '—',
-      nroOficio: acta.numeroOficioLegal ?? '—',
-      // No aplica para autoridad
+      nroOficio: acta.numeroOficioPolicial ?? '—',
       parentesco: null
     };
   }
 
   // ===================================================================
   // GETTER — DEUDAS BLOQUEANTES
+  // Considera bypass autorizado: si JG/Admin autorizó, no bloquea.
   // ===================================================================
 
   get hayDeudasBloqueantes(): boolean {
+    // Bypass autorizado por JG/Admin — no bloquear
+    if (this.actaRetiro?.bypassDeudaAutorizado) return false;
+
     return (this.semaforoEconomica?.tieneDeuda ?? false) ||
       (this.semaforoSangre?.includes('PENDIENTE') ?? false);
+  }
+
+  // ===================================================================
+  // GETTER — AUTORIZACIÓN COMPLETA
+  // ===================================================================
+
+  get actaEstaCompleta(): boolean {
+    return this.actaRetiro?.estaCompleta ?? false;
+  }
+
+  get actaTienePDFFirmado(): boolean {
+    return this.actaRetiro?.tienePDFFirmado ?? false;
   }
 
   // ===================================================================
   // GETTER — FORMULARIO TIENE DATOS EDITABLES
   // ===================================================================
 
-  /** Solo considera campos que el vigilante puede editar. */
   private formularioTieneDatos(): boolean {
     if (this.esFamiliar) {
       return !!(
         this.form.nombreFuneraria?.trim() ||
         this.form.conductorFuneraria?.trim() ||
+        this.form.placaVehiculo?.trim() ||
         this.form.observaciones?.trim()
       );
     }
-    // AutoridadLegal — solo observaciones
-    return !!this.form.observaciones?.trim();
+    // AutoridadLegal — placa patrullero + observaciones
+    return !!(
+      this.form.placaVehiculo?.trim() ||
+      this.form.observaciones?.trim()
+    );
   }
 
   // ===================================================================
   // FLUJO DE CONFIRMACIÓN
   // ===================================================================
 
-  /**
-   * Punto de entrada del botón "Confirmar Entrega".
-   * Verifica semáforos → valida → muestra confirmación → procesa.
-   */
   confirmarSalida(): void {
     if (!this.verificarSemaforos()) return;
     if (!this.validarFormulario()) return;
     this.mostrarConfirmacion();
   }
 
-  /**
-   * Verifica semáforos. Muestra detalle si hay bloqueo.
-   * @returns true si puede continuar
-   */
   private verificarSemaforos(): boolean {
     if (!this.hayDeudasBloqueantes) return true;
 
@@ -393,33 +355,34 @@ export class FormularioSalida implements OnInit {
     return false;
   }
 
-  /**
-   * Valida solo los campos editables según tipo de salida.
-   * Los campos readonly vienen del ActaRetiro — ya validados por Admisión.
-   */
   private validarFormulario(): boolean {
-    const error = (texto: string) => Swal.fire({
-      icon: 'warning', title: 'Datos Incompletos',
-      text: texto, confirmButtonColor: '#F59E0B'
-    });
+    const error = (texto: string) => {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Datos Incompletos',
+        text: texto,
+        confirmButtonColor: '#F59E0B'
+      });
+      return false;
+    };
 
     if (!this.actaRetiro)
-      return error('El acta de retiro no está disponible. Espere o recargue.'), false;
+      return error('El acta de retiro no está disponible. Espere o recargue.');
 
-    // Familiar con funeraria — conductor y placa obligatorios
+    if (!this.form.actaRetiroID || this.form.actaRetiroID === 0)
+      return error('No se pudo obtener el ID del acta. Cierre y vuelva a abrir el formulario.');
+
+    // Familiar con funeraria: conductor y placa obligatorios
     if (this.esFamiliar && this.form.nombreFuneraria?.trim()) {
       if (!this.form.conductorFuneraria?.trim())
-        return error('Si registra funeraria, ingrese el nombre del conductor.'), false;
+        return error('Si registra funeraria, ingrese el nombre del conductor.');
       if (!this.form.placaVehiculo?.trim())
-        return error('Si registra funeraria, ingrese la placa del vehículo.'), false;
+        return error('Si registra funeraria, ingrese la placa del vehículo.');
     }
 
     return true;
   }
 
-  /**
-   * Muestra confirmación final antes de procesar.
-   */
   private mostrarConfirmacion(): void {
     const datos = this.datosResponsableReadonly;
 
@@ -453,6 +416,9 @@ export class FormularioSalida implements OnInit {
             ${this.esAutoridadLegal && datos?.institucion
           ? `<p><span class="text-gray-500">Institución:</span>
                  <strong>${datos.institucion}</strong></p>` : ''}
+            ${this.form.placaVehiculo?.trim()
+          ? `<p><span class="text-gray-500">Placa:</span>
+                 <strong class="uppercase">${this.form.placaVehiculo}</strong></p>` : ''}
             ${this.form.nombreFuneraria?.trim()
           ? `<p><span class="text-gray-500">Funeraria:</span>
                  <strong>${this.form.nombreFuneraria}</strong></p>` : ''}
@@ -471,7 +437,7 @@ export class FormularioSalida implements OnInit {
       confirmButtonColor: '#16A34A',
       cancelButtonColor: '#6B7280',
       confirmButtonText: 'Sí, Confirmar Entrega',
-      cancelButtonText: 'Revisar',
+      cancelButtonText: 'Cancelar',
       reverseButtons: true
     }).then((result) => {
       if (result.isConfirmed) this.procesarSalida();
@@ -493,35 +459,32 @@ export class FormularioSalida implements OnInit {
           icon: 'success',
           title: 'Entrega Confirmada',
           html: `
-          <div class="text-left space-y-2 text-sm">
-            <p class="text-green-600 font-semibold">
-              El cuerpo ha sido retirado del mortuorio correctamente.
-            </p>
-            <div class="bg-green-50 border border-green-200 p-3 rounded-lg mt-2 space-y-1">
-              <p>Expediente cerrado:
-                <strong>${this.expediente.codigoExpediente}</strong>
+            <div class="text-left space-y-2 text-sm">
+              <p class="text-green-600 font-semibold">
+                El cuerpo ha sido retirado del mortuorio correctamente.
               </p>
-              <p>Bandeja liberada:
-                <strong>${this.expediente.codigoBandeja ?? 'N/A'}</strong>
-              </p>
-              <p>Responsable:
-                <strong>${this.datosResponsableReadonly?.nombre ?? '—'}</strong>
-                ${this.esFamiliar && this.datosResponsableReadonly?.parentesco
-                  ? `· <span class="text-gray-500">${this.datosResponsableReadonly.parentesco}</span>`
-                  : this.esAutoridadLegal && this.datosResponsableReadonly?.cargo
-                    ? `· <span class="text-gray-500">${this.datosResponsableReadonly.cargo}</span>`
-                    : ''}
-              </p>
-
-            </div>
-          </div>`,
+              <div class="bg-green-50 border border-green-200 p-3 rounded-lg mt-2 space-y-1">
+                <p>Expediente cerrado:
+                  <strong>${this.expediente.codigoExpediente}</strong>
+                </p>
+                <p>Bandeja liberada:
+                  <strong>${this.expediente.codigoBandeja ?? 'N/A'}</strong>
+                </p>
+                <p>Responsable:
+                  <strong>${this.datosResponsableReadonly?.nombre ?? '—'}</strong>
+                  ${this.esFamiliar && this.datosResponsableReadonly?.parentesco
+              ? `· <span class="text-gray-500">${this.datosResponsableReadonly.parentesco}</span>`
+              : this.esAutoridadLegal && this.datosResponsableReadonly?.cargo
+                ? `· <span class="text-gray-500">${this.datosResponsableReadonly.cargo}</span>`
+                : ''}
+                </p>
+              </div>
+            </div>`,
           confirmButtonColor: '#16A34A',
           confirmButtonText: 'Aceptar'
         }).then(() => {
           this.onSalidaRegistrada.emit(response);
         });
-
-        console.log('[FormularioSalida] Entrega confirmada:', response);
       },
       error: (err: any) => {
         this.isLoading = false;
@@ -530,7 +493,7 @@ export class FormularioSalida implements OnInit {
         Swal.fire({
           icon: 'error',
           title: 'Error al Confirmar Entrega',
-          text: err.error?.message ?? err.message
+          text: err.error?.mensaje ?? err.error?.message ?? err.message
             ?? 'No se pudo procesar. Intente nuevamente.',
           confirmButtonColor: '#EF4444'
         });

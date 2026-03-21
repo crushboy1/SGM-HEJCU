@@ -258,7 +258,7 @@ public class SalidaMortuorioRepository(ApplicationDbContext context) : ISalidaMo
             TipoAutoridad = acta.TipoAutoridad?.ToString(),
             AutoridadInstitucion = acta.AutoridadInstitucion,
             AutoridadCargo = acta.AutoridadCargo,
-            NumeroOficioLegal = acta.NumeroOficioLegal,
+            NumeroOficioPolicial = acta.NumeroOficioPolicial,
 
             // ── Destino sugerido ─────────────────────────────────
             Destino = acta.TipoSalida == TipoSalida.AutoridadLegal

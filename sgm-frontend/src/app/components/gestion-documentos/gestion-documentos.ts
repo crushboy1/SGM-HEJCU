@@ -4,7 +4,13 @@ import { FormsModule } from '@angular/forms';
 
 import { IconComponent } from '../icon/icon.component';
 import { ExpedienteService } from '../../services/expediente';
-import {DocumentoExpedienteService,DocumentoExpedienteDTO,ResumenDocumentosDTO,TipoDocumentoExpediente,EstadoDocumentoExpediente} from '../../services/documento-expediente';
+import {
+  DocumentoExpedienteService,
+  DocumentoExpedienteDTO,
+  ResumenDocumentosDTO,
+  TipoDocumentoExpediente,
+  EstadoDocumentoExpediente
+} from '../../services/documento-expediente';
 import { firstValueFrom } from 'rxjs';
 import Swal from 'sweetalert2';
 
@@ -16,7 +22,7 @@ interface FilaDocumento {
   tipo: TipoDocumentoExpediente;
   label: string;
   obligatorio: boolean;
-  estado: EstadoDocumentoExpediente | null; // null = no subido
+  estado: EstadoDocumentoExpediente | null;
   documentoID?: number;
   nombreArchivo?: string;
   tamanioLegible?: string;
@@ -34,37 +40,26 @@ interface FilaDocumento {
 })
 export class GestionDocumentos implements OnInit {
 
-  // ===================================================================
-  // DEPENDENCY INJECTION
-  // ===================================================================
   private documentoService = inject(DocumentoExpedienteService);
   private expedienteService = inject(ExpedienteService);
+
   // ===================================================================
   // INPUTS Y OUTPUTS
   // ===================================================================
 
-  /** ID del expediente cuyos documentos se gestionan */
   @Input() expedienteId!: number;
-
-  /**
-   * Nombre del paciente para mostrar en el header.
-   * Opcional — si no se pasa, no se muestra.
-   */
   @Input() nombrePaciente?: string;
-
-  /**
-   * Si true, solo muestra el semáforo sin botones de acción.
-   * Útil para vistas de consulta.
-   */
   @Input() soloLectura: boolean = false;
 
   /**
-   * Emite true cuando todos los documentos requeridos están verificados.
-   * Emite false cuando el estado vuelve a incompleto (ej. rechazo).
+   * Si true: causa de muerte violenta o dudosa.
+   * Fuerza el tipo de salida a AutoridadLegal sin excepción.
+   * La card de Familiar queda bloqueada y gris en el selector.
+   * Si tipoSalida es null al iniciar, se auto-selecciona AutoridadLegal.
    */
-  @Output() documentacionCompleta = new EventEmitter<boolean>();
+  @Input() causaViolentaODudosa: boolean = false;
 
-  /** Emite cada vez que cambia el resumen (subida, verificación, rechazo) */
+  @Output() documentacionCompleta = new EventEmitter<boolean>();
   @Output() resumenActualizado = new EventEmitter<ResumenDocumentosDTO>();
 
   // ===================================================================
@@ -74,62 +69,67 @@ export class GestionDocumentos implements OnInit {
   cargando = true;
   error: string | null = null;
   resumen: ResumenDocumentosDTO | null = null;
-
-  /** Filas construidas a partir del resumen — una por tipo requerido */
   filas: FilaDocumento[] = [];
-
-  /** Motivoss de rechazo por documentoID (input del usuario) */
   motivosRechazo: Map<number, string> = new Map();
-
-  /** Controla qué fila tiene el panel de rechazo expandido */
   filaConRechazoAbierto: number | null = null;
+  guardandoTipo = false;
 
-  // Exponer enums al template
   readonly EstadoDoc = EstadoDocumentoExpediente;
   readonly TipoDoc = TipoDocumentoExpediente;
-  /** Controla si se muestra el selector de tipo de salida */
+
   get mostrarSelectorTipo(): boolean {
     return !this.resumen?.tipoSalida && !this.soloLectura;
   }
-  guardandoTipo = false;
+
   // ===================================================================
   // LIFECYCLE
   // ===================================================================
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     if (!this.expedienteId) {
-      console.error('❌ GestionDocumentos: expedienteId es requerido');
+      console.error('[GestionDocumentos] expedienteId es requerido');
       return;
     }
-    this.cargarResumen();
+
+    await this.cargarResumen();
+
+    // Auto-seleccionar AutoridadLegal si causa violenta y aún sin tipo definido
+    if (this.causaViolentaODudosa && !this.resumen?.tipoSalida && !this.soloLectura) {
+      await this.seleccionarTipoSalidaSilencioso('AutoridadLegal');
+    }
   }
 
+  // ===================================================================
+  // SELECCIÓN DE TIPO DE SALIDA
+  // ===================================================================
+
   /**
- * Guarda el tipo de salida preliminar en el backend.
- * Una vez seleccionado, construye las filas correspondientes.
- * Bloqueado si ya existe Acta de Retiro.
- */
+   * Selección manual con confirmación — para uso del admisionista.
+   * Cuando causaViolentaODudosa = true, solo AutoridadLegal está habilitada.
+   */
   async seleccionarTipoSalida(tipo: 'Familiar' | 'AutoridadLegal'): Promise<void> {
+    // Guardia: no permitir Familiar si causa violenta
+    if (tipo === 'Familiar' && this.causaViolentaODudosa) return;
+
     const confirmacion = await Swal.fire({
       icon: 'question',
       title: '¿Confirmar tipo de salida?',
       html: `
-      <div class="text-sm text-left">
-        <p class="text-gray-700 mb-3">Tipo seleccionado:</p>
-        <p class="font-semibold text-lg ${tipo === 'Familiar' ? 'text-blue-700' : 'text-orange-700'}">
-          ${tipo === 'Familiar' ? 'Familiar' : 'Autoridad Legal (PNP / Fiscalía)'}
-        </p>
-        <p class="text-xs text-gray-500 mt-3">
-          ${tipo === 'Familiar'
+        <div class="text-sm text-left">
+          <p class="text-gray-700 mb-3">Tipo seleccionado:</p>
+          <p class="font-semibold text-lg ${tipo === 'Familiar' ? 'text-blue-700' : 'text-orange-700'}">
+            ${tipo === 'Familiar' ? 'Familiar' : 'Autoridad Legal (PNP / Fiscalía)'}
+          </p>
+          <p class="text-xs text-gray-500 mt-3">
+            ${tipo === 'Familiar'
           ? 'Requerirá: DNI Familiar + DNI Fallecido + Certificado Defunción'
-          : 'Requerirá: Oficio Legal (PNP / Fiscal / Legista)'
-        }
-        </p>
-        <p class="text-xs text-orange-600 mt-2 font-medium">
-          Este dato no podrá modificarse una vez creada el Acta de Retiro.
-        </p>
-      </div>
-    `,
+          : 'Requerirá: Oficio Legal (PNP / Fiscal / Legista)'}
+          </p>
+          <p class="text-xs text-orange-600 mt-2 font-medium">
+            Este dato no podrá modificarse una vez creada el Acta de Retiro.
+          </p>
+        </div>
+      `,
       showCancelButton: true,
       confirmButtonText: 'Confirmar',
       cancelButtonText: 'Cancelar',
@@ -140,39 +140,79 @@ export class GestionDocumentos implements OnInit {
     if (!confirmacion.isConfirmed) return;
 
     this.guardandoTipo = true;
-
     try {
       await firstValueFrom(
-        this.expedienteService.establecerTipoSalidaPreliminar(
-          this.expedienteId,
-          tipo
-        )
+        this.expedienteService.establecerTipoSalidaPreliminar(this.expedienteId, tipo)
       );
-
-      // Recargar resumen - ahora tendrá tipoSalida definido
-      await this.cargarResumen();
-
+      await this.cargarResumen(true);
     } catch (err: any) {
-      console.error('❌ Error al establecer tipo de salida:', err);
-      const mensaje = err.error?.mensaje || 'No se pudo guardar el tipo de salida.';
+      console.error('[GestionDocumentos] Error al establecer tipo de salida:', err);
       Swal.fire({
         icon: 'error',
         title: 'Error',
-        text: mensaje,
+        text: err.error?.mensaje || 'No se pudo guardar el tipo de salida.',
         confirmButtonColor: '#EF4444'
       });
     } finally {
       this.guardandoTipo = false;
     }
   }
+
+  /**
+   * Auto-selección silenciosa sin confirmación del usuario.
+   * Usada cuando causaViolentaODudosa = true al iniciar el componente.
+   */
+  private async seleccionarTipoSalidaSilencioso(tipo: 'Familiar' | 'AutoridadLegal'): Promise<void> {
+    this.guardandoTipo = true;
+    try {
+      await firstValueFrom(
+        this.expedienteService.establecerTipoSalidaPreliminar(this.expedienteId, tipo)
+      );
+      await this.cargarResumen(true);
+    } catch (err) {
+      console.error('[GestionDocumentos] Error en auto-selección tipo salida:', err);
+    } finally {
+      this.guardandoTipo = false;
+    }
+  }
+
+  async volverASelectorTipo(): Promise<void> {
+    // Bloquear retroceso si causa violenta — no tiene sentido volver al selector
+    if (this.causaViolentaODudosa) return;
+
+    const confirmacion = await Swal.fire({
+      icon: 'warning',
+      title: 'Cambiar tipo de salida',
+      text: 'Se limpiará el tipo seleccionado. Deberá elegirlo nuevamente.',
+      showCancelButton: true,
+      confirmButtonText: 'Continuar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#0891B2',
+      cancelButtonColor: '#6B7280'
+    });
+
+    if (!confirmacion.isConfirmed) return;
+
+    this.guardandoTipo = true;
+    try {
+      await firstValueFrom(
+        this.expedienteService.limpiarTipoSalidaPreliminar(this.expedienteId)
+      );
+      await this.cargarResumen(true);
+    } catch (err) {
+      console.error('[GestionDocumentos] Error al limpiar tipo de salida:', err);
+    } finally {
+      this.guardandoTipo = false;
+    }
+  }
+
   // ===================================================================
   // CARGA DE DATOS
   // ===================================================================
 
-  async cargarResumen(): Promise<void> {
-    this.cargando = true;
+  async cargarResumen(silencioso = false): Promise<void> {
+    if (!silencioso) this.cargando = true;
     this.error = null;
-
     try {
       this.resumen = await firstValueFrom(
         this.documentoService.obtenerResumen(this.expedienteId)
@@ -180,19 +220,14 @@ export class GestionDocumentos implements OnInit {
       this.construirFilas();
       this.resumenActualizado.emit(this.resumen);
       this.documentacionCompleta.emit(this.resumen.documentacionCompleta);
-
     } catch (err) {
-      console.error('❌ Error al cargar resumen de documentos:', err);
+      console.error('[GestionDocumentos] Error al cargar resumen:', err);
       this.error = 'No se pudo cargar el estado de documentación';
     } finally {
       this.cargando = false;
     }
   }
 
-  /**
-   * Construye las filas de la tabla a partir del resumen del backend.
-   * Las filas mostradas dependen del tipoSalida.
-   */
   private construirFilas(): void {
     if (!this.resumen) return;
 
@@ -208,7 +243,6 @@ export class GestionDocumentos implements OnInit {
         )
       ];
     } else {
-      // Familiar o sin tipo definido — mostrar los 3 requeridos
       this.filas = [
         this.construirFila(
           TipoDocumentoExpediente.DNI_Familiar,
@@ -231,7 +265,6 @@ export class GestionDocumentos implements OnInit {
       ];
     }
 
-    // Documentos adicionales (Otro) si existen
     const adicionales = this.resumen.documentos.filter(
       d => d.tipoDocumento === TipoDocumentoExpediente.Otro
     );
@@ -255,24 +288,26 @@ export class GestionDocumentos implements OnInit {
     tipo: TipoDocumentoExpediente,
     label: string,
     obligatorio: boolean,
-    item: { subido: boolean; verificado: boolean; rechazado: boolean; documentoID?: number; nombreArchivo?: string; observaciones?: string }
+    item: {
+      subido: boolean;
+      verificado: boolean;
+      rechazado: boolean;
+      documentoID?: number;
+      nombreArchivo?: string;
+      observaciones?: string;
+    }
   ): FilaDocumento {
-    // Determinar estado desde los bools del EstadoDocumentoItem
     let estado: EstadoDocumentoExpediente | null = null;
     if (item.verificado) estado = EstadoDocumentoExpediente.Verificado;
     else if (item.rechazado) estado = EstadoDocumentoExpediente.Rechazado;
     else if (item.subido) estado = EstadoDocumentoExpediente.PendienteVerificacion;
 
-    // Buscar tamaño en la lista completa si está disponible
     const docCompleto = this.resumen?.documentos.find(
       d => d.documentoExpedienteID === item.documentoID
     );
 
     return {
-      tipo,
-      label,
-      obligatorio,
-      estado,
+      tipo, label, obligatorio, estado,
       documentoID: item.documentoID,
       nombreArchivo: item.nombreArchivo,
       tamanioLegible: docCompleto?.tamanioLegible,
@@ -286,24 +321,16 @@ export class GestionDocumentos implements OnInit {
   // SUBIDA DE DOCUMENTO
   // ===================================================================
 
-  /**
-   * Abre el selector de archivo nativo para una fila específica.
-   * El input[type=file] es invisible — se activa programáticamente.
-   */
   seleccionarArchivo(fila: FilaDocumento, inputRef: HTMLInputElement): void {
-    inputRef.value = ''; // Reset para permitir reselección del mismo archivo
+    inputRef.value = '';
     inputRef.click();
   }
 
-  async onArchivoSeleccionado(
-    event: Event,
-    fila: FilaDocumento
-  ): Promise<void> {
+  async onArchivoSeleccionado(event: Event, fila: FilaDocumento): Promise<void> {
     const input = event.target as HTMLInputElement;
     const archivo = input.files?.[0];
     if (!archivo) return;
 
-    // Validaciones cliente
     if (!this.documentoService.validarFormato(archivo)) {
       Swal.fire({
         icon: 'error',
@@ -325,17 +352,10 @@ export class GestionDocumentos implements OnInit {
     }
 
     fila.subiendo = true;
-
     try {
       const dto = await firstValueFrom(
-        this.documentoService.subirDocumento(
-          this.expedienteId,
-          fila.tipo,
-          archivo
-        )
+        this.documentoService.subirDocumento(this.expedienteId, fila.tipo, archivo)
       );
-
-      // Actualizar fila con el nuevo documento
       fila.estado = EstadoDocumentoExpediente.PendienteVerificacion;
       fila.documentoID = dto.documentoExpedienteID;
       fila.nombreArchivo = dto.nombreArchivo;
@@ -344,21 +364,15 @@ export class GestionDocumentos implements OnInit {
       Swal.fire({
         icon: 'success',
         title: 'Documento subido',
-        text: `${fila.label} subido correctamente. Pendiente de verificación.`,
-        toast: true,
-        position: 'top-end',
-        showConfirmButton: false,
-        timer: 3000
+        text: `${fila.label} subido. Pendiente de verificación.`,
+        toast: true, position: 'top-end',
+        showConfirmButton: false, timer: 3000
       });
-
-      // Recargar resumen para sincronizar documentacionCompleta
-      await this.cargarResumen();
-
+      await this.cargarResumen(true);
     } catch (err) {
-      console.error('❌ Error al subir documento:', err);
+      console.error('[GestionDocumentos] Error al subir:', err);
       Swal.fire({
-        icon: 'error',
-        title: 'Error al subir',
+        icon: 'error', title: 'Error al subir',
         text: 'No se pudo subir el documento. Intente nuevamente.',
         confirmButtonColor: '#EF4444'
       });
@@ -379,9 +393,7 @@ export class GestionDocumentos implements OnInit {
       title: 'Verificar documento',
       html: `
         <div class="text-sm text-left">
-          <p class="text-gray-700 mb-2">
-            ¿Confirma que verificó el documento original físico?
-          </p>
+          <p class="text-gray-700 mb-2">¿Confirma que verificó el documento original físico?</p>
           <p class="font-semibold text-gray-800">${fila.label}</p>
           <p class="text-xs text-gray-500 mt-1">${fila.nombreArchivo ?? ''}</p>
         </div>
@@ -396,31 +408,20 @@ export class GestionDocumentos implements OnInit {
     if (!confirmacion.isConfirmed) return;
 
     fila.verificando = true;
-
     try {
-      await firstValueFrom(
-        this.documentoService.verificar(fila.documentoID)
-      );
-
+      await firstValueFrom(this.documentoService.verificar(fila.documentoID));
       fila.estado = EstadoDocumentoExpediente.Verificado;
-
       Swal.fire({
-        icon: 'success',
-        title: 'Documento verificado',
-        toast: true,
-        position: 'top-end',
-        showConfirmButton: false,
-        timer: 2500
+        icon: 'success', title: 'Documento verificado',
+        toast: true, position: 'top-end',
+        showConfirmButton: false, timer: 2500
       });
-
-      await this.cargarResumen();
-
+      await this.cargarResumen(true);
     } catch (err) {
-      console.error('❌ Error al verificar documento:', err);
+      console.error('[GestionDocumentos] Error al verificar:', err);
       Swal.fire({
-        icon: 'error',
-        title: 'Error al verificar',
-        text: 'No se pudo verificar el documento. Intente nuevamente.',
+        icon: 'error', title: 'Error al verificar',
+        text: 'No se pudo verificar el documento.',
         confirmButtonColor: '#EF4444'
       });
     } finally {
@@ -450,49 +451,35 @@ export class GestionDocumentos implements OnInit {
 
   async rechazarDocumento(fila: FilaDocumento): Promise<void> {
     if (!fila.documentoID) return;
-
     const motivo = this.getMotivoRechazo(fila.documentoID).trim();
-
     if (!motivo) {
       Swal.fire({
-        icon: 'warning',
-        title: 'Motivo requerido',
-        text: 'Debe ingresar el motivo del rechazo para continuar',
+        icon: 'warning', title: 'Motivo requerido',
+        text: 'Debe ingresar el motivo del rechazo.',
         confirmButtonColor: '#EF4444'
       });
       return;
     }
 
     fila.verificando = true;
-
     try {
-      await firstValueFrom(
-        this.documentoService.rechazar(fila.documentoID, motivo)
-      );
-
+      await firstValueFrom(this.documentoService.rechazar(fila.documentoID, motivo));
       fila.estado = EstadoDocumentoExpediente.Rechazado;
       fila.observaciones = motivo;
       this.filaConRechazoAbierto = null;
       this.motivosRechazo.delete(fila.documentoID);
-
       Swal.fire({
-        icon: 'warning',
-        title: 'Documento rechazado',
-        text: 'El familiar deberá presentar el documento nuevamente',
-        toast: true,
-        position: 'top-end',
-        showConfirmButton: false,
-        timer: 3000
+        icon: 'warning', title: 'Documento rechazado',
+        text: 'El familiar deberá presentar el documento nuevamente.',
+        toast: true, position: 'top-end',
+        showConfirmButton: false, timer: 3000
       });
-
-      await this.cargarResumen();
-
+      await this.cargarResumen(true);
     } catch (err) {
-      console.error('❌ Error al rechazar documento:', err);
+      console.error('[GestionDocumentos] Error al rechazar:', err);
       Swal.fire({
-        icon: 'error',
-        title: 'Error al rechazar',
-        text: 'No se pudo rechazar el documento. Intente nuevamente.',
+        icon: 'error', title: 'Error al rechazar',
+        text: 'No se pudo rechazar el documento.',
         confirmButtonColor: '#EF4444'
       });
     } finally {
@@ -506,18 +493,13 @@ export class GestionDocumentos implements OnInit {
 
   async descargarDocumento(fila: FilaDocumento): Promise<void> {
     if (!fila.documentoID || !fila.nombreArchivo) return;
-
     try {
-      const blob = await firstValueFrom(
-        this.documentoService.descargar(fila.documentoID)
-      );
+      const blob = await firstValueFrom(this.documentoService.descargar(fila.documentoID));
       this.documentoService.descargarArchivo(blob, fila.nombreArchivo);
-
     } catch (err) {
-      console.error('❌ Error al descargar documento:', err);
+      console.error('[GestionDocumentos] Error al descargar:', err);
       Swal.fire({
-        icon: 'error',
-        title: 'Error al descargar',
+        icon: 'error', title: 'Error al descargar',
         text: 'No se pudo descargar el archivo.',
         confirmButtonColor: '#EF4444'
       });
@@ -534,12 +516,9 @@ export class GestionDocumentos implements OnInit {
     const confirmacion = await Swal.fire({
       icon: 'warning',
       title: '¿Eliminar documento?',
-      html: `
-        <p class="text-sm text-gray-600">
-          Se eliminará <strong>${fila.nombreArchivo}</strong>.
-          <br>Deberás subirlo nuevamente.
-        </p>
-      `,
+      html: `<p class="text-sm text-gray-600">
+        Se eliminará <strong>${fila.nombreArchivo}</strong>.<br>Deberás subirlo nuevamente.
+      </p>`,
       showCancelButton: true,
       confirmButtonText: 'Sí, eliminar',
       cancelButtonText: 'Cancelar',
@@ -550,75 +529,35 @@ export class GestionDocumentos implements OnInit {
     if (!confirmacion.isConfirmed) return;
 
     try {
-      await firstValueFrom(
-        this.documentoService.eliminar(fila.documentoID)
-      );
-
-      // Resetear fila
+      await firstValueFrom(this.documentoService.eliminar(fila.documentoID));
       fila.estado = null;
       fila.documentoID = undefined;
       fila.nombreArchivo = undefined;
       fila.tamanioLegible = undefined;
       fila.observaciones = undefined;
-
       Swal.fire({
-        icon: 'success',
-        title: 'Documento eliminado',
-        toast: true,
-        position: 'top-end',
-        showConfirmButton: false,
-        timer: 2500
+        icon: 'success', title: 'Documento eliminado',
+        toast: true, position: 'top-end',
+        showConfirmButton: false, timer: 2500
       });
-
-      await this.cargarResumen();
-
+      await this.cargarResumen(true);
     } catch (err) {
-      console.error('❌ Error al eliminar documento:', err);
+      console.error('[GestionDocumentos] Error al eliminar:', err);
       Swal.fire({
-        icon: 'error',
-        title: 'Error al eliminar',
+        icon: 'error', title: 'Error al eliminar',
         text: 'No se pudo eliminar el documento.',
         confirmButtonColor: '#EF4444'
       });
     }
   }
-  // ===================================================================
-  // Funcion para volver al selector previo
-  // ===================================================================
-  async volverASelectorTipo(): Promise<void> {
-    const confirmacion = await Swal.fire({
-      icon: 'warning',
-      title: 'Cambiar tipo de salida',
-      text: 'Se limpiara el tipo seleccionado. Debera elegirlo nuevamente.',
-      showCancelButton: true,
-      confirmButtonText: 'Continuar',
-      cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#0891B2',
-      cancelButtonColor: '#6B7280'
-    });
 
-    if (!confirmacion.isConfirmed) return;
-
-    this.guardandoTipo = true;
-    try {
-      // Enviar null al backend para limpiar el tipo preliminar
-      await firstValueFrom(
-        this.expedienteService.limpiarTipoSalidaPreliminar(this.expedienteId)
-      );
-      await this.cargarResumen();
-    } catch (err) {
-      console.error('❌ Error al limpiar tipo de salida:', err);
-    } finally {
-      this.guardandoTipo = false;
-    }
-  }
   // ===================================================================
   // HELPERS PARA TEMPLATE
   // ===================================================================
 
   getIconoEstado(estado: EstadoDocumentoExpediente | null): string {
     switch (estado) {
-      case EstadoDocumentoExpediente.Verificado: return 'check-circle';
+      case EstadoDocumentoExpediente.Verificado: return 'circle-check';
       case EstadoDocumentoExpediente.Rechazado: return 'circle-x';
       case EstadoDocumentoExpediente.PendienteVerificacion: return 'clock';
       default: return 'file-plus';
@@ -652,21 +591,18 @@ export class GestionDocumentos implements OnInit {
     }
   }
 
-  /** true si el botón verificar debe mostrarse */
   puedeVerificar(fila: FilaDocumento): boolean {
     return !this.soloLectura &&
       fila.estado === EstadoDocumentoExpediente.PendienteVerificacion &&
       !!fila.documentoID;
   }
 
-  /** true si el botón rechazar debe mostrarse */
   puedeRechazar(fila: FilaDocumento): boolean {
     return !this.soloLectura &&
       fila.estado === EstadoDocumentoExpediente.PendienteVerificacion &&
       !!fila.documentoID;
   }
 
-  /** true si el botón subir/resubir debe mostrarse */
   puedeSubir(fila: FilaDocumento): boolean {
     return !this.soloLectura && (
       fila.estado === null ||
@@ -674,7 +610,6 @@ export class GestionDocumentos implements OnInit {
     );
   }
 
-  /** true si el botón eliminar debe mostrarse */
   puedeEliminar(fila: FilaDocumento): boolean {
     return !this.soloLectura && (
       fila.estado === EstadoDocumentoExpediente.PendienteVerificacion ||
@@ -683,17 +618,16 @@ export class GestionDocumentos implements OnInit {
   }
 
   get conteoVerificados(): number {
-    return this.filas.filter(
-      f => f.estado === EstadoDocumentoExpediente.Verificado
-    ).length;
+    return this.filas.filter(f => f.estado === EstadoDocumentoExpediente.Verificado).length;
   }
 
   get totalObligatorios(): number {
     return this.filas.filter(f => f.obligatorio).length;
   }
-  /** true si no hay ningún documento subido aún — permite volver a elegir tipo */
+
   get puedeVolverASelectorTipo(): boolean {
     return !this.soloLectura &&
+      !this.causaViolentaODudosa &&  // No puede volver si causa violenta
       !!this.resumen?.tipoSalida &&
       this.filas.every(f => f.estado === null);
   }

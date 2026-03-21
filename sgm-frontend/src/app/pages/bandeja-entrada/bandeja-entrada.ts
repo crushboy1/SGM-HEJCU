@@ -16,24 +16,25 @@ export class BandejaEntradaComponent implements OnInit {
   private integracionService = inject(IntegracionService);
   private router = inject(Router);
 
-  // DATOS
+  // ── Datos ────────────────────────────────────────────────────────
   pendientes: PacientePendiente[] = [];
   pendientesFiltrados: PacientePendiente[] = [];
   pendientesPaginados: PacientePendiente[] = [];
   isLoading = true;
   errorMessage = '';
 
-  // FILTROS
+  // ── Filtros ──────────────────────────────────────────────────────
   searchTerm = '';
   filtroServicio = '';
   filtroFecha = 'todas';
-  servicios: string[] = ['Medicina Interna', 'Cirugía General', 'UCI', 'UCINT', 'Emergencia', 'Trauma Shock'];
+  /** Derivado dinámicamente de los datos recibidos */
+  servicios: string[] = [];
 
-  // ORDENAMIENTO (Corrección de tipos)
-  ordenColumna: 'hc' | 'nombre' | 'fecha' = 'fecha';
+  // ── Ordenamiento ─────────────────────────────────────────────────
+  ordenColumna: 'hc' | 'nombre' | 'fecha' | 'edad' = 'fecha';
   ordenDireccion: 'asc' | 'desc' = 'desc';
 
-  // PAGINACIÓN
+  // ── Paginación ───────────────────────────────────────────────────
   paginaActual = 1;
   itemsPorPagina = 10;
   totalPaginas = 1;
@@ -49,12 +50,13 @@ export class BandejaEntradaComponent implements OnInit {
     this.isLoading = true;
     this.errorMessage = '';
     this.integracionService.getPendientes().subscribe({
-      next: (data) => {
+      next: data => {
         this.pendientes = data;
+        this.derivarServiciosDisponibles();
         this.aplicarFiltros();
         this.isLoading = false;
       },
-      error: (err) => {
+      error: err => {
         console.error(err);
         this.errorMessage = 'No se pudieron cargar los pacientes pendientes';
         this.isLoading = false;
@@ -64,90 +66,92 @@ export class BandejaEntradaComponent implements OnInit {
 
   recargar(): void { this.cargarPendientes(); }
 
-  aplicarFiltros(): void {
-    let resultados = [...this.pendientes];
+  /** Extrae servicios únicos de los datos para el filtro dropdown */
+  private derivarServiciosDisponibles(): void {
+    this.servicios = Array.from(
+      new Set(this.pendientes.map(p => p.servicioFallecimiento).filter(Boolean) as string[])
+    ).sort();
+  }
 
-    // Búsqueda
+  aplicarFiltros(): void {
+    let r = [...this.pendientes];
+
+    // Búsqueda por nombreCompleto, hc (campos reales del DTO)
     if (this.searchTerm.trim()) {
-      const termino = this.searchTerm.toLowerCase().trim();
-      resultados = resultados.filter(p =>
-        p.hc.toLowerCase().includes(termino) ||
-        p.nombres.toLowerCase().includes(termino) ||
-        p.apellidoPaterno.toLowerCase().includes(termino) ||
-        p.apellidoMaterno.toLowerCase().includes(termino) ||
-        p.numeroDocumento.toLowerCase().includes(termino)
+      const t = this.searchTerm.toLowerCase();
+      r = r.filter(p =>
+        p.hc.toLowerCase().includes(t) ||
+        p.nombreCompleto.toLowerCase().includes(t)
       );
     }
 
-    // Filtro Servicio (Validamos que exista)
+    // Filtro servicio
     if (this.filtroServicio) {
-      resultados = resultados.filter(p => p.servicioFallecimiento === this.filtroServicio);
+      r = r.filter(p => p.servicioFallecimiento === this.filtroServicio);
     }
 
-    // Filtro Fecha
+    // Filtro fecha
     if (this.filtroFecha !== 'todas') {
-      const hoy = new Date();
-      hoy.setHours(0, 0, 0, 0);
-
-      resultados = resultados.filter(p => {
+      const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+      r = r.filter(p => {
         if (!p.fechaHoraFallecimiento) return false;
-        const fecha = new Date(p.fechaHoraFallecimiento);
-        fecha.setHours(0, 0, 0, 0);
-
+        const f = new Date(p.fechaHoraFallecimiento); f.setHours(0, 0, 0, 0);
         switch (this.filtroFecha) {
-          case 'hoy': return fecha.getTime() === hoy.getTime();
-          case 'ayer':
+          case 'hoy': return f.getTime() === hoy.getTime();
+          case 'ayer': {
             const ayer = new Date(hoy); ayer.setDate(ayer.getDate() - 1);
-            return fecha.getTime() === ayer.getTime();
-          case 'semana':
+            return f.getTime() === ayer.getTime();
+          }
+          case 'semana': {
             const semana = new Date(hoy); semana.setDate(semana.getDate() - 7);
-            return fecha >= semana;
+            return f >= semana;
+          }
           default: return true;
         }
       });
     }
 
-    this.ordenarResultados(resultados);
-    this.pendientesFiltrados = resultados;
-    this.totalFiltrados = resultados.length;
+    this.ordenarResultados(r);
+    this.pendientesFiltrados = r;
+    this.totalFiltrados = r.length;
     this.paginaActual = 1;
     this.calcularPaginacion();
     this.actualizarPagina();
   }
 
-  ordenarPor(columna: 'hc' | 'nombre' | 'fecha'): void {
-    if (this.ordenColumna === columna) {
-      this.ordenDireccion = this.ordenDireccion === 'asc' ? 'desc' : 'asc';
-    } else {
-      this.ordenColumna = columna;
-      this.ordenDireccion = 'asc';
-    }
+  ordenarPor(columna: typeof this.ordenColumna): void {
+    this.ordenDireccion = this.ordenColumna === columna
+      ? (this.ordenDireccion === 'asc' ? 'desc' : 'asc')
+      : 'asc';
+    this.ordenColumna = columna;
     this.aplicarFiltros();
   }
 
-  private ordenarResultados(resultados: PacientePendiente[]): void {
-    resultados.sort((a, b) => {
-      let comparacion = 0;
+  private ordenarResultados(r: PacientePendiente[]): void {
+    r.sort((a, b) => {
+      let cmp = 0;
       switch (this.ordenColumna) {
         case 'hc':
-          comparacion = a.hc.localeCompare(b.hc);
+          cmp = a.hc.localeCompare(b.hc);
           break;
         case 'nombre':
-          const nA = `${a.apellidoPaterno} ${a.apellidoMaterno} ${a.nombres}`.toLowerCase();
-          const nB = `${b.apellidoPaterno} ${b.apellidoMaterno} ${b.nombres}`.toLowerCase();
-          comparacion = nA.localeCompare(nB);
+          // nombreCompleto ya viene formateado desde backend
+          cmp = a.nombreCompleto.localeCompare(b.nombreCompleto);
           break;
-        case 'fecha': // Lógica segura para fechas
-          const fA = a.fechaHoraFallecimiento ? new Date(a.fechaHoraFallecimiento).getTime() : 0;
-          const fB = b.fechaHoraFallecimiento ? new Date(b.fechaHoraFallecimiento).getTime() : 0;
-          comparacion = fA - fB;
+        case 'edad':
+          cmp = (a.edad ?? 0) - (b.edad ?? 0);
+          break;
+        case 'fecha':
+          cmp = (a.fechaHoraFallecimiento ? new Date(a.fechaHoraFallecimiento).getTime() : 0)
+            - (b.fechaHoraFallecimiento ? new Date(b.fechaHoraFallecimiento).getTime() : 0);
           break;
       }
-      return this.ordenDireccion === 'asc' ? comparacion : -comparacion;
+      return this.ordenDireccion === 'asc' ? cmp : -cmp;
     });
   }
 
-  // PAGINACIÓN
+  // ── Paginación ───────────────────────────────────────────────────
+
   calcularPaginacion(): void {
     this.totalPaginas = Math.ceil(this.totalFiltrados / this.itemsPorPagina) || 1;
     if (this.paginaActual > this.totalPaginas) this.paginaActual = this.totalPaginas;
@@ -162,14 +166,14 @@ export class BandejaEntradaComponent implements OnInit {
   paginaAnterior(): void { if (this.paginaActual > 1) { this.paginaActual--; this.actualizarPagina(); } }
   paginaSiguiente(): void { if (this.paginaActual < this.totalPaginas) { this.paginaActual++; this.actualizarPagina(); } }
 
-  // HELPERS
+  // ── Helpers ──────────────────────────────────────────────────────
+
   get totalPendientes(): number { return this.pendientes.length; }
 
-  getTipoDocumento(id: number): string {
-    const tipos: Record<number, string> = { 1: 'DNI', 2: 'Pasaporte', 3: 'C. Ext.', 4: 'S/D', 5: 'NN' };
-    return tipos[id] || 'Otro';
-  }
-
+  /**
+   * Navega al formulario pasando solo el HC.
+   * El formulario consulta /consultar-paciente/{hc} para obtener datos completos.
+   */
   generarExpediente(hc: string): void {
     this.router.navigate(['/nuevo-expediente', hc]);
   }

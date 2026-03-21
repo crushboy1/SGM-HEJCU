@@ -141,7 +141,7 @@ namespace SisMortuorio.Data.ExternalSystems
                 new EpisodioSigem
                 {
                     HC = "111222",
-                    ServicioFallecimiento = "Cirugía de Tórax",
+                    ServicioFallecimiento = "Cirugía General",
                     NumeroCama = "CT-204",
                     FechaHoraFallecimiento = DateTime.Now.AddDays(-1).AddHours(-6),
                     DiagnosticoFinal = "Tumor maligno de los bronquios y del pulmón",
@@ -164,61 +164,9 @@ namespace SisMortuorio.Data.ExternalSystems
                     CodigoCIE10 = "N18.0",
                     MedicoCertificaNombre = "Dr. José Miguel González",
                     MedicoCMP = null,
-                    MedicoRNE = "RNE-12345"  // Médico extranjero
+                    MedicoRNE = "12345"
                 }
             };
         }
-    }
-
-    /// <summary>
-    /// Modelo de episodio médico según estructura de SIGEM
-    /// Representa el último episodio de atención del paciente fallecido
-    /// </summary>
-    public class EpisodioSigem
-    {
-        /// <summary>
-        /// Historia Clínica del paciente
-        /// </summary>
-        public string HC { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Servicio hospitalario donde ocurrió el fallecimiento
-        /// </summary>
-        public string ServicioFallecimiento { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Número de cama o ubicación específica
-        /// </summary>
-        public string NumeroCama { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Fecha y hora exacta del fallecimiento
-        /// </summary>
-        public DateTime FechaHoraFallecimiento { get; set; }
-
-        /// <summary>
-        /// Diagnóstico final del paciente (texto descriptivo)
-        /// </summary>
-        public string DiagnosticoFinal { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Código CIE-10 del diagnóstico
-        /// </summary>
-        public string CodigoCIE10 { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Nombre completo del médico que certifica el fallecimiento
-        /// </summary>
-        public string MedicoCertificaNombre { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Colegio Médico del Perú (CMP) del médico certificante
-        /// </summary>
-        public string? MedicoCMP { get; set; }
-
-        /// <summary>
-        /// Registro Nacional de Extranjería (RNE) - para médicos extranjeros
-        /// </summary>
-        public string? MedicoRNE { get; set; }
     }
 }

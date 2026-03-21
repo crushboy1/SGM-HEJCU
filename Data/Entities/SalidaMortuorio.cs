@@ -265,20 +265,14 @@ namespace SisMortuorio.Data.Entities
             if (ActaRetiro is null)
                 return "No se encontró el Acta de Retiro asociada";
 
-            var placaEfectiva = ActaRetiro.TipoSalida == TipoSalida.AutoridadLegal
-                ? (!string.IsNullOrWhiteSpace(PlacaVehiculo)
-                    ? PlacaVehiculo
-                    : ActaRetiro.AutoridadPlacaVehiculo)
-                : PlacaVehiculo;
-
             return ActaRetiro.TipoSalida switch
             {
                 TipoSalida.Familiar when !TieneDatosFunerariaCompletos()
-                    => "Faltan datos completos de la funeraria",
+                    => "Faltan datos completos de la funeraria (nombre, conductor, DNI y placa)",
                 TipoSalida.Familiar when string.IsNullOrWhiteSpace(PlacaVehiculo)
-                    => "Falta placa del vehículo funerario",
-                TipoSalida.AutoridadLegal when string.IsNullOrWhiteSpace(placaEfectiva)
-                    => "Falta placa del vehículo oficial en acta",
+                    => "Falta la placa del vehículo funerario",
+                TipoSalida.AutoridadLegal when string.IsNullOrWhiteSpace(PlacaVehiculo)
+                    => "Falta la placa del vehículo oficial (patrullero)",
                 _ => "Documentación completa"
             };
         }

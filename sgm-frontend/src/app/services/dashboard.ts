@@ -90,7 +90,7 @@ export class DashboardService {
       requests.deudas = this.getDeudaStats();
     }
 
-    return forkJoin(requests) as Observable<DashboardKPIs>;  // ✅ Cast explícito
+    return forkJoin(requests) as Observable<DashboardKPIs>;  //Cast explícito
   }
   /**
  * Obtener estadísticas de deudas (Sangre + Económica)

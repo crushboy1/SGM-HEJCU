@@ -10,10 +10,21 @@ namespace SisMortuorio.Business.Services
     /// <summary>
     /// Servicio para gestión de documentos digitalizados del expediente.
     /// Reemplaza el proceso manual de "juegos de copias físicas".
+    ///
     /// RESPONSABILIDADES:
     /// - Subir y almacenar archivos via LocalFileStorageService
     /// - Verificar/rechazar documentos contra originales físicos
     /// - Calcular DocumentacionCompleta según TipoSalida del ActaRetiro
+    ///
+    /// ENDPOINTS QUE USA:
+    /// - GET  /api/DocumentosExpediente/expediente/{id}          → lista documentos
+    /// - GET  /api/DocumentosExpediente/expediente/{id}/resumen  → semáforo
+    /// - GET  /api/DocumentosExpediente/{id}                     → detalle
+    /// - POST /api/DocumentosExpediente/subir                    → upload archivo
+    /// - POST /api/DocumentosExpediente/{id}/verificar           → marcar verificado
+    /// - POST /api/DocumentosExpediente/{id}/rechazar            → marcar rechazado
+    /// - GET  /api/DocumentosExpediente/{id}/descargar           → descarga
+    /// - DELETE /api/DocumentosExpediente/{id}                   → eliminar
     /// </summary>
     public class DocumentoExpedienteService : IDocumentoExpedienteService
     {
@@ -23,8 +34,7 @@ namespace SisMortuorio.Business.Services
         private readonly ILocalFileStorageService _fileStorage;
         private readonly ILogger<DocumentoExpedienteService> _logger;
 
-        // Configuración de validación de archivos
-        private const long MaxTamañoBytes = 5 * 1024 * 1024; // 5 MB
+        private const long MaxTamañoBytes = 5 * 1024 * 1024;
         private static readonly string[] ExtensionesPermitidas = [".pdf", ".jpg", ".jpeg", ".png"];
         private const string CarpetaDocumentos = "documentos-expedientes";
 
@@ -68,7 +78,6 @@ namespace SisMortuorio.Business.Services
             var expediente = await _expedienteRepository.GetByIdAsync(expedienteId)
                 ?? throw new KeyNotFoundException($"Expediente {expedienteId} no encontrado.");
 
-            // TipoSalida efectivo: del acta si existe, del preliminar si no
             var tipoSalidaEfectivo = acta is not null
                 ? acta.TipoSalida
                 : expediente.TipoSalidaPreliminar;
@@ -83,7 +92,7 @@ namespace SisMortuorio.Business.Services
             resumen.DNIFamiliar = BuildEstadoItem(documentos, TipoDocumentoExpediente.DNI_Familiar);
             resumen.DNIFallecido = BuildEstadoItem(documentos, TipoDocumentoExpediente.DNI_Fallecido);
             resumen.CertificadoDefuncion = BuildEstadoItem(documentos, TipoDocumentoExpediente.CertificadoDefuncion);
-            resumen.OficioLegal = BuildEstadoItem(documentos, TipoDocumentoExpediente.OficioLegal);
+            resumen.OficioLegal = BuildEstadoItem(documentos, TipoDocumentoExpediente.OficioPolicial);
 
             resumen.DocumentacionCompleta = tipoSalidaEfectivo is not null
                 ? EsDocumentacionCompleta(documentos, tipoSalidaEfectivo.Value)
@@ -99,28 +108,22 @@ namespace SisMortuorio.Business.Services
         /// <inheritdoc/>
         public async Task<DocumentoExpedienteDTO> SubirDocumentoAsync(SubirDocumentoDTO dto, IFormFile archivo)
         {
-            // Validar expediente existe
             var expediente = await _expedienteRepository.GetByIdAsync(dto.ExpedienteID)
                 ?? throw new KeyNotFoundException($"Expediente con ID {dto.ExpedienteID} no encontrado.");
 
-            // Validar archivo
             ValidarArchivo(archivo);
 
             var extension = Path.GetExtension(archivo.FileName).ToLowerInvariant();
-
-            // Generar nombre único para evitar colisiones
             var nombreArchivo = GenerarNombreArchivo(
                 expediente.CodigoExpediente,
                 dto.TipoDocumento,
                 extension);
 
-            // Guardar en filesystem
             var rutaRelativa = await _fileStorage.GuardarArchivoAsync(
                 archivo,
                 CarpetaDocumentos,
                 nombreArchivo);
 
-            // Crear entidad
             var documento = new DocumentoExpediente
             {
                 ExpedienteID = dto.ExpedienteID,
@@ -161,8 +164,8 @@ namespace SisMortuorio.Business.Services
 
             var actualizado = await _documentoRepository.UpdateAsync(documento);
 
-            // Recalcular DocumentacionCompleta del expediente
-            await VerificarDocumentacionCompletaAsync(documento.ExpedienteID);
+            // Recalcular DocumentacionCompleta propagando el usuario verificador
+            await VerificarDocumentacionCompletaAsync(documento.ExpedienteID, dto.UsuarioVerificoID);
 
             _logger.LogInformation(
                 "Documento verificado - DocumentoID: {ID}, ExpedienteID: {ExpedienteID}, Usuario: {UsuarioID}",
@@ -188,8 +191,9 @@ namespace SisMortuorio.Business.Services
 
             var actualizado = await _documentoRepository.UpdateAsync(documento);
 
-            // Recalcular — puede que DocumentacionCompleta pase a false
-            await VerificarDocumentacionCompletaAsync(documento.ExpedienteID);
+            // Al rechazar, DocumentacionCompleta puede pasar a false.
+            // Se pasa el usuario para auditoría aunque el resultado sea incompleto.
+            await VerificarDocumentacionCompletaAsync(documento.ExpedienteID, dto.UsuarioVerificoID);
 
             _logger.LogInformation(
                 "Documento rechazado - DocumentoID: {ID}, Motivo: {Motivo}, Usuario: {UsuarioID}",
@@ -212,13 +216,11 @@ namespace SisMortuorio.Business.Services
                 throw new InvalidOperationException(
                     "No se puede eliminar un documento verificado. Rechácelo primero si necesita reemplazarlo.");
 
-            // Eliminar archivo físico
             await _fileStorage.EliminarArchivoAsync(documento.RutaArchivo);
-
-            // Eliminar registro
             await _documentoRepository.DeleteAsync(documentoId);
 
-            // Recalcular DocumentacionCompleta
+            // Al eliminar, DocumentacionCompleta puede pasar a false.
+            // Sin usuario verificador — null es correcto (no hay "completador").
             await VerificarDocumentacionCompletaAsync(documento.ExpedienteID);
 
             _logger.LogInformation(
@@ -229,8 +231,17 @@ namespace SisMortuorio.Business.Services
         // ===================================================================
         // VERIFICACIÓN DE DOCUMENTACIÓN COMPLETA
         // ===================================================================
+
         /// <inheritdoc/>
-        public async Task<bool> VerificarDocumentacionCompletaAsync(int expedienteId)
+        /// <param name="expedienteId">ID del expediente a recalcular.</param>
+        /// <param name="usuarioId">
+        ///   ID del usuario que verificó el último documento.
+        ///   Se guarda en Expediente.UsuarioAdmisionID cuando DocumentacionCompleta = true.
+        ///   Null cuando la documentación pasa a incompleta (rechazo/eliminación).
+        /// </param>
+        public async Task<bool> VerificarDocumentacionCompletaAsync(
+            int expedienteId,
+            int? usuarioId = null)
         {
             var expediente = await _expedienteRepository.GetByIdAsync(expedienteId)
                 ?? throw new KeyNotFoundException($"Expediente con ID {expedienteId} no encontrado.");
@@ -238,25 +249,28 @@ namespace SisMortuorio.Business.Services
             var acta = await _actaRetiroRepository.GetByExpedienteIdAsync(expedienteId);
             var documentos = await _documentoRepository.GetByExpedienteIdAsync(expedienteId);
 
-            // TipoSalida efectivo: del acta si existe, del preliminar si no
             var tipoSalidaEfectivo = acta is not null
                 ? acta.TipoSalida
                 : expediente.TipoSalidaPreliminar;
 
             bool completo = tipoSalidaEfectivo is not null
                 ? EsDocumentacionCompleta(documentos, tipoSalidaEfectivo.Value)
-                : false; // Sin tipo definido aún → incompleto
+                : false;
 
             if (expediente.DocumentacionCompleta != completo)
             {
                 expediente.DocumentacionCompleta = completo;
                 expediente.FechaValidacionAdmision = completo ? DateTime.Now : null;
+                // Guardar el usuario que verificó el último documento cuando completa = true
+                // Limpiar cuando pasa a incompleta (rechazo/eliminación)
+                expediente.UsuarioAdmisionID = completo ? usuarioId : null;
                 expediente.FechaModificacion = DateTime.Now;
+
                 await _expedienteRepository.UpdateAsync(expediente);
 
                 _logger.LogInformation(
-                    "DocumentacionCompleta actualizada - ExpedienteID: {ID}, Completo: {Completo}",
-                    expedienteId, completo);
+                    "DocumentacionCompleta actualizada - ExpedienteID: {ID}, Completo: {Completo}, UsuarioID: {UsuarioID}",
+                    expedienteId, completo, usuarioId);
             }
 
             return completo;
@@ -274,7 +288,6 @@ namespace SisMortuorio.Business.Services
                 ?? throw new KeyNotFoundException($"Documento con ID {documentoId} no encontrado.");
 
             var (stream, contentType) = await _fileStorage.ObtenerArchivoAsync(documento.RutaArchivo);
-
             return (stream, contentType, documento.NombreArchivo);
         }
 
@@ -285,7 +298,7 @@ namespace SisMortuorio.Business.Services
         /// <summary>
         /// Evalúa si los documentos verificados cubren los requeridos según TipoSalida.
         /// - Familiar       → DNI_Familiar + DNI_Fallecido + CertificadoDefuncion
-        /// - AutoridadLegal → OficioLegal únicamente
+        /// - AutoridadLegal → OficioPolicial únicamente
         /// </summary>
         private static bool EsDocumentacionCompleta(
             List<DocumentoExpediente> documentos,
@@ -303,26 +316,31 @@ namespace SisMortuorio.Business.Services
                     TieneVerificado(TipoDocumentoExpediente.CertificadoDefuncion),
 
                 TipoSalida.AutoridadLegal =>
-                    TieneVerificado(TipoDocumentoExpediente.OficioLegal),
+                    TieneVerificado(TipoDocumentoExpediente.OficioPolicial),
 
                 _ => false
             };
         }
+
+        /// <summary>
+        /// Evalúa documentación cuando TipoSalida aún no está definido.
+        /// Si tiene oficio legal verificado → caso AutoridadLegal completo.
+        /// Si tiene los 3 docs de familiar verificados → caso Familiar completo.
+        /// </summary>
         private static bool EsDocumentacionCompletaSinActa(List<DocumentoExpediente> documentos)
         {
             bool TieneVerificado(TipoDocumentoExpediente tipo) =>
                 documentos.Any(d => d.TipoDocumento == tipo
                                  && d.Estado == EstadoDocumentoExpediente.Verificado);
 
-            // Si tiene oficio legal verificado → caso AutoridadLegal
-            if (TieneVerificado(TipoDocumentoExpediente.OficioLegal))
+            if (TieneVerificado(TipoDocumentoExpediente.OficioPolicial))
                 return true;
 
-            // Caso Familiar: los 3 obligatorios verificados
             return TieneVerificado(TipoDocumentoExpediente.DNI_Familiar)
                 && TieneVerificado(TipoDocumentoExpediente.DNI_Fallecido)
                 && TieneVerificado(TipoDocumentoExpediente.CertificadoDefuncion);
         }
+
         /// <summary>
         /// Construye el estado visual de un tipo de documento para el ResumenDTO.
         /// Toma el documento más reciente del tipo especificado.
@@ -353,7 +371,7 @@ namespace SisMortuorio.Business.Services
         /// <summary>
         /// Genera nombre único de archivo para evitar colisiones en filesystem.
         /// Formato: {CodigoExpediente}_{TipoDocumento}_{Timestamp}{Extension}
-        /// Ejemplo: SGM-2025-00001_DNI_Familiar_20250115143022.pdf
+        /// Ejemplo: SGM202500001_DNIFamiliar_20250115143022.pdf
         /// </summary>
         private static string GenerarNombreArchivo(
             string codigoExpediente,
@@ -368,6 +386,7 @@ namespace SisMortuorio.Business.Services
 
         /// <summary>
         /// Valida formato y tamaño del archivo antes de guardar.
+        /// Formatos: .pdf, .jpg, .jpeg, .png — Máximo 5 MB.
         /// </summary>
         private static void ValidarArchivo(IFormFile archivo)
         {
@@ -401,7 +420,7 @@ namespace SisMortuorio.Business.Services
                     TipoDocumentoExpediente.DNI_Familiar => "DNI del Familiar",
                     TipoDocumentoExpediente.DNI_Fallecido => "DNI del Fallecido",
                     TipoDocumentoExpediente.CertificadoDefuncion => "Certificado de Defunción (SINADEF)",
-                    TipoDocumentoExpediente.OficioLegal => "Oficio Legal (PNP/Fiscal)",
+                    TipoDocumentoExpediente.OficioPolicial => "Oficio Policial",
                     TipoDocumentoExpediente.ActaLevantamiento => "Acta de Levantamiento",
                     TipoDocumentoExpediente.Otro => "Documento Adicional",
                     _ => doc.TipoDocumento.ToString()

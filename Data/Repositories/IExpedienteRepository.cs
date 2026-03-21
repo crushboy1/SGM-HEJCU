@@ -15,7 +15,6 @@ namespace SisMortuorio.Data.Repositories
         Task<Expediente> CreateAsync(Expediente expediente);
         Task UpdateAsync(Expediente expediente);
         Task<bool> ExistsHCAsync(string hc);
-        Task<bool> ExistsCertificadoSINADEFAsync(string certificado);
         Task<int> GetCountByServicioAsync(string servicio);
         Task<List<Expediente>> GetPendientesValidacionAdmisionAsync();
         Task<List<Expediente>> GetPendientesRecojoAsync();

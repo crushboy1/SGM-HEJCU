@@ -305,7 +305,7 @@ namespace SisMortuorio.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<string>("NumeroOficioLegal")
+                    b.Property<string>("NumeroOficioPolicial")
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
@@ -366,7 +366,7 @@ namespace SisMortuorio.Migrations
 
                     b.HasIndex("NumeroCertificadoDefuncion");
 
-                    b.HasIndex("NumeroOficioLegal");
+                    b.HasIndex("NumeroOficioPolicial");
 
                     b.HasIndex("TipoAutoridad");
 

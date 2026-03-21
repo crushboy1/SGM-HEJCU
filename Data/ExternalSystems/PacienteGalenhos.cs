@@ -22,9 +22,5 @@
 
         // Datos financieros
         public string FuenteFinanciamiento { get; set; } = string.Empty;  // "SIS" o "PARTICULAR"
-
-        // Cruce con SIGEM
-        public string? ServicioFallecimiento { get; set; }
-        public DateTime? FechaHoraFallecimiento { get; set; }
     }
 }

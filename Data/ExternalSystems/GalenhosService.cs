@@ -94,7 +94,7 @@ namespace SisMortuorio.Data.ExternalSystems
                 Nombres = "NN",
                 FechaNacimiento = new DateTime(1980, 1, 1), // Estimado
                 Sexo = "M",
-                FuenteFinanciamiento = "SIS"
+                FuenteFinanciamiento = "PendientePago"
             },
             new PacienteGalenhos
             {
@@ -108,6 +108,35 @@ namespace SisMortuorio.Data.ExternalSystems
                 FechaNacimiento = new DateTime(1990, 8, 20),
                 Sexo = "M",
                 FuenteFinanciamiento = "PARTICULAR"
+            },
+
+            // Caso Externo
+            new PacienteGalenhos
+            {
+                HC = "111222",
+                NumeroCuenta = "CTA-2025-007",
+                TipoDocumentoID = 1,
+                NumeroDocumento = "44332211",
+                ApellidoPaterno = "Quispe",
+                ApellidoMaterno = "Huanca",
+                Nombres = "Pedro Aurelio",
+                FechaNacimiento = new DateTime(1958, 4, 12),
+                Sexo = "M",
+                FuenteFinanciamiento = "SIS"
+            },
+            // Caso CausaViolenta (accidente) - tiene par en SIGEM
+            new PacienteGalenhos
+            {
+                HC = "333444",
+                NumeroCuenta = "CTA-2025-008",
+                TipoDocumentoID = 1,
+                NumeroDocumento = "99887766",
+                ApellidoPaterno = "Villanueva",
+                ApellidoMaterno = "Paredes",
+                Nombres = "Luis Enrique",
+                FechaNacimiento = new DateTime(1975, 11, 30),
+                Sexo = "M",
+                FuenteFinanciamiento = "SOAT"
             }
         };
 
