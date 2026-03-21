@@ -273,25 +273,7 @@ namespace SisMortuorio.Controllers
         }
 
         /// <summary>
-        /// Validar si certificado SINADEF es único
-        /// </summary>
-        [HttpGet("validar-sinadef/{certificado}")]
-        [ProducesResponseType(typeof(bool), 200)]
-        public async Task<IActionResult> ValidarSINADEF(string certificado)
-        {
-            try
-            {
-                var esUnico = await _expedienteService.ValidarCertificadoSINADEFUnicoAsync(certificado);
-                return Ok(new { certificado, esUnico });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error al validar certificado SINADEF {Certificado}", certificado);
-                return StatusCode(500, new { message = "Error interno del servidor" });
-            }
-        }
-        /// <summary>
-        /// Validar documentación completa por Admisión (3 juegos de copias + deudas)
+        /// Validar documentación completa por Admisión (juegos de copias + deudas)
         /// Transición: EnBandeja → PendienteRetiro
         /// </summary>
         [HttpPost("{id}/validar-documentacion")]
@@ -340,7 +322,7 @@ namespace SisMortuorio.Controllers
         /// Estado: EnBandeja y DocumentacionCompleta = false
         /// </summary>
         [HttpGet("pendientes-validacion-admision")]
-        [Authorize(Roles = "Admision,Administrador")]
+        [Authorize(Roles = "Admision,JefeGuardia,Administrador")]
         [ProducesResponseType(typeof(List<ExpedienteDTO>), 200)]
         public async Task<IActionResult> GetPendientesValidacionAdmision()
         {

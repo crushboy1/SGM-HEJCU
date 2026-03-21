@@ -2,18 +2,21 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
-// DTO de Salida (Lo que envía el Vigilante)
+/** DTO de entrada — campos del brazalete pre-llenados por el sistema + confirmación manual */
 export interface VerificacionRequest {
   codigoExpedienteBrazalete: string;
+  // Campos informativos (pre-llenados automáticamente desde datosExpediente)
   hcBrazalete: string;
-  tipoDocumentoBrazalete: string;   
+  tipoDocumentoBrazalete: string;
   numeroDocumentoBrazalete: string;
   nombreCompletoBrazalete: string;
   servicioBrazalete: string;
+  // Única confirmación manual del Vigilante
+  brazaletePresente: boolean;
   observaciones?: string;
 }
 
-// DTO de Respuesta
+/** DTO de respuesta */
 export interface VerificacionResultado {
   verificacionID: number;
   aprobada: boolean;
@@ -22,12 +25,6 @@ export interface VerificacionResultado {
   motivoRechazo?: string;
   solicitudCorreccionID?: number;
 }
-//// Campos de validación (para mostrar qué falló si es necesario)
-//hcCoincide ?: boolean;
-//dniCoincide ?: boolean;
-//nombreCoincide ?: boolean;
-//servicioCoincide ?: boolean;
-//codigoExpedienteCoincide ?: boolean;
 
 @Injectable({
   providedIn: 'root'
@@ -36,17 +33,12 @@ export class VerificacionService {
   private http = inject(HttpClient);
   private apiUrl = 'https://localhost:7153/api';
 
-  /**
-   * Consulta datos del QR para mostrarlos en la tablet del vigilante
-   */
+  /** Consulta datos del expediente por código QR para mostrarlos en pantalla */
   consultarPorQR(codigoQR: string): Observable<any> {
-    // Usamos el endpoint público de consulta QR
     return this.http.get<any>(`${this.apiUrl}/QR/consultar/${codigoQR}`);
   }
 
-  /**
-   * Registra la verificación (Ingreso físico al mortuorio)
-   */
+  /** Registra la verificación de ingreso físico al mortuorio */
   registrarIngreso(data: VerificacionRequest): Observable<VerificacionResultado> {
     return this.http.post<VerificacionResultado>(`${this.apiUrl}/Verificacion/ingreso`, data);
   }

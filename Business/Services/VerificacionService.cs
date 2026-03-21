@@ -37,32 +37,33 @@ namespace SisMortuorio.Business.Services
 
         public async Task<VerificacionResultadoDTO> VerificarIngresoAsync(VerificacionRequestDTO dto, int vigilanteId)
         {
-            // 1. Obtener el expediente por el CÓDIGO QR (que es el CodigoExpediente)
+            // 1. Obtener expediente por código QR
             var expediente = await _expedienteRepo.GetByCodigoQRAsync(dto.CodigoExpedienteBrazalete);
             if (expediente == null)
             {
-                _logger.LogWarning("Verificación Rechazada: QR No válido {QR}", dto.CodigoExpedienteBrazalete);
-                throw new InvalidOperationException($"QR Inválido. No se encontró expediente con código: {dto.CodigoExpedienteBrazalete}");
+                _logger.LogWarning("Verificación Rechazada: QR no válido {QR}", dto.CodigoExpedienteBrazalete);
+                throw new InvalidOperationException($"QR inválido. No se encontró expediente con código: {dto.CodigoExpedienteBrazalete}");
             }
 
             _logger.LogInformation("Iniciando verificación para Expediente {CodigoExpediente}", expediente.CodigoExpediente);
 
-            // 2. OBTENER ID DEL TÉCNICO DE AMBULANCIA
+            // 2. Obtener ID del Técnico de Ambulancia desde la última custodia
             var ultimaCustodia = await _custodiaRepo.GetUltimaTransferenciaAsync(expediente.ExpedienteID);
             if (ultimaCustodia == null || ultimaCustodia.UsuarioDestino.Rol.Name != "Ambulancia")
             {
-                _logger.LogWarning("Verificación Rechazada: No se encontró la custodia previa de 'Ambulancia' para el Exp {ExpedienteID}", expediente.ExpedienteID);
-                throw new InvalidOperationException($"No se puede verificar el ingreso. El expediente no registra la custodia de un Téc. de Ambulancia (Estado: {expediente.EstadoActual})");
+                _logger.LogWarning("Verificación Rechazada: No hay custodia previa de Ambulancia para Exp {ExpedienteID}", expediente.ExpedienteID);
+                throw new InvalidOperationException($"No se puede verificar el ingreso. El expediente no registra custodia de un Téc. de Ambulancia (Estado: {expediente.EstadoActual})");
             }
 
             int tecnicoAmbulanciaId = ultimaCustodia.UsuarioDestinoID;
 
-            // 3. Lógica de Comparación: Tipo Y Número de Documento
+            // 3. Calcular coincidencias (para auditoría — el frontend ya envía datos de la BD,
+            //    por lo que normalmente siempre serán true. Se guardan para trazabilidad.)
             bool documentoCoincide =
                 expediente.NumeroDocumento == dto.NumeroDocumentoBrazalete &&
                 expediente.TipoDocumento.ToString().Equals(dto.TipoDocumentoBrazalete, StringComparison.OrdinalIgnoreCase);
 
-            // 4. Crear Entidad VerificacionMortuorio
+            // 4. Construir entidad de verificación con log de auditoría completo
             var verificacion = new VerificacionMortuorio
             {
                 ExpedienteID = expediente.ExpedienteID,
@@ -70,26 +71,27 @@ namespace SisMortuorio.Business.Services
                 TecnicoAmbulanciaID = tecnicoAmbulanciaId,
                 FechaHoraVerificacion = DateTime.Now,
 
-                // Datos del Brazalete (leídos por el Vigilante)
+                // Datos del brazalete enviados por el frontend (auditoría)
                 CodigoExpedienteBrazalete = dto.CodigoExpedienteBrazalete,
                 HCBrazalete = dto.HCBrazalete,
-                TipoDocumentoBrazalete = dto.TipoDocumentoBrazalete,     
-                NumeroDocumentoBrazalete = dto.NumeroDocumentoBrazalete, 
+                TipoDocumentoBrazalete = dto.TipoDocumentoBrazalete,
+                NumeroDocumentoBrazalete = dto.NumeroDocumentoBrazalete,
                 NombreCompletoBrazalete = dto.NombreCompletoBrazalete,
                 ServicioBrazalete = dto.ServicioBrazalete,
 
-                // Comparaciones
+                // Flags de coincidencia (calculados aquí, guardados para historial)
                 CodigoExpedienteCoincide = expediente.CodigoExpediente == dto.CodigoExpedienteBrazalete,
                 HCCoincide = expediente.HC == dto.HCBrazalete,
-                DocumentoCoincide = documentoCoincide, 
+                DocumentoCoincide = documentoCoincide,
                 NombreCoincide = expediente.NombreCompleto.Equals(dto.NombreCompletoBrazalete, StringComparison.OrdinalIgnoreCase),
                 ServicioCoincide = expediente.ServicioFallecimiento == dto.ServicioBrazalete,
 
                 Observaciones = dto.Observaciones
             };
 
-            // 5. Determinar Happy Path o Sad Path
-            if (verificacion.TodosLosCamposCoinciden())
+            // 5. Happy path / Sad path según confirmación manual del brazalete físico
+            //    BrazaletePresente es la única validación que el sistema no puede hacer por sí solo.
+            if (dto.BrazaletePresente)
             {
                 return await HandleHappyPath(expediente, verificacion);
             }
@@ -101,19 +103,16 @@ namespace SisMortuorio.Business.Services
 
         private async Task<VerificacionResultadoDTO> HandleHappyPath(Expediente expediente, VerificacionMortuorio verificacion)
         {
-            // Validar estado
             if (!_stateMachine.CanFire(expediente, TriggerExpediente.VerificarIngresoMortuorio))
-            {
                 throw new InvalidOperationException($"Acción no permitida. El expediente {expediente.CodigoExpediente} está en estado '{expediente.EstadoActual}' y no puede ser verificado.");
-            }
 
             var estadoAnterior = expediente.EstadoActual;
 
-            // 1. Aprobar y guardar log de verificación
-            verificacion.Aprobar("Verificación de ingreso aprobada. Todos los datos coinciden.");
+            // 1. Aprobar y guardar log
+            verificacion.Aprobar("Verificación aprobada. Brazalete físico confirmado por el Vigilante.");
             var verificacionCreada = await _verificacionRepo.CreateAsync(verificacion);
 
-            // 2. Crear traspaso final de custodia (Ambulancia -> Vigilante)
+            // 2. Traspaso de custodia: Ambulancia → Vigilante
             await _custodiaRepo.CreateAsync(new CustodiaTransferencia
             {
                 ExpedienteID = expediente.ExpedienteID,
@@ -124,20 +123,19 @@ namespace SisMortuorio.Business.Services
                 Observaciones = "Custodia entregada en puerta de mortuorio tras verificación."
             });
 
-            // 3. Disparar State Machine
+            // 3. Disparar estado
             await _stateMachine.FireAsync(expediente, TriggerExpediente.VerificarIngresoMortuorio);
             await _expedienteRepo.UpdateAsync(expediente);
 
-            _logger.LogInformation("Verificación APROBADA para Expediente {CodigoExpediente}. Estado: {EstadoAnterior} -> {EstadoNuevo}",
+            _logger.LogInformation("Verificación APROBADA — Expediente {CodigoExpediente}. Estado: {EstadoAnterior} → {EstadoNuevo}",
                 expediente.CodigoExpediente, estadoAnterior, expediente.EstadoActual);
 
-            // 4. Devolver Resultado
             return new VerificacionResultadoDTO
             {
                 VerificacionID = verificacionCreada.VerificacionID,
                 FechaHoraVerificacion = verificacionCreada.FechaHoraVerificacion,
                 Aprobada = true,
-                MensajeResultado = "Verificación Exitosa. El expediente puede ingresar.",
+                MensajeResultado = "Verificación exitosa. El expediente puede ingresar al mortuorio.",
                 EstadoExpedienteNuevo = expediente.EstadoActual.ToString(),
                 HCCoincide = true,
                 DNICoincide = true,
@@ -149,37 +147,35 @@ namespace SisMortuorio.Business.Services
 
         private async Task<VerificacionResultadoDTO> HandleSadPath(Expediente expediente, VerificacionMortuorio verificacion)
         {
-            // Validar estado
             if (!_stateMachine.CanFire(expediente, TriggerExpediente.RechazarVerificacion))
-            {
                 throw new InvalidOperationException($"Acción no permitida. El expediente {expediente.CodigoExpediente} está en estado '{expediente.EstadoActual}' y no puede ser rechazado.");
-            }
 
             var estadoAnterior = expediente.EstadoActual;
-            var motivoRechazo = verificacion.GenerarResumenDiscrepancias();
 
-            // 1. Rechazar y guardar log de verificación
-            verificacion.Rechazar(motivoRechazo, "Datos del brazalete no coinciden con la base de datos.");
+            // El motivo de rechazo es por brazalete físico ausente/incorrecto
+            var motivoRechazo = string.IsNullOrWhiteSpace(verificacion.Observaciones)
+                ? "El Vigilante indicó que el brazalete físico no está presente o no coincide con el cuerpo."
+                : $"Brazalete físico no confirmado. Observación del Vigilante: {verificacion.Observaciones}";
+
+            // 1. Rechazar y guardar log
+            verificacion.Rechazar(motivoRechazo, "Brazalete físico no confirmado por el Vigilante.");
             var verificacionCreada = await _verificacionRepo.CreateAsync(verificacion);
 
-            // 2. Disparar State Machine
+            // 2. Disparar estado
             await _stateMachine.FireAsync(expediente, TriggerExpediente.RechazarVerificacion);
             await _expedienteRepo.UpdateAsync(expediente);
 
-            // 3. Crear Solicitud de Corrección (el "ticket")
+            // 3. Crear solicitud de corrección para Enfermería
             var datosJson = JsonSerializer.Serialize(new
             {
-                HC = new { DB = expediente.HC, Brazalete = verificacion.HCBrazalete },
-                // Actualizado para reflejar nuevos campos
-                Documento = new
+                MotivoFisico = motivoRechazo,
+                Expediente = new
                 {
-                    DB_Tipo = expediente.TipoDocumento.ToString(),
-                    DB_Num = expediente.NumeroDocumento,
-                    Brazalete_Tipo = verificacion.TipoDocumentoBrazalete,
-                    Brazalete_Num = verificacion.NumeroDocumentoBrazalete
-                },
-                Nombre = new { DB = expediente.NombreCompleto, Brazalete = verificacion.NombreCompletoBrazalete },
-                Servicio = new { DB = expediente.ServicioFallecimiento, Brazalete = verificacion.ServicioBrazalete }
+                    expediente.HC,
+                    Documento = new { Tipo = expediente.TipoDocumento.ToString(), Num = expediente.NumeroDocumento },
+                    expediente.NombreCompleto,
+                    expediente.ServicioFallecimiento
+                }
             });
 
             var solicitud = new SolicitudCorreccionExpediente
@@ -194,16 +190,15 @@ namespace SisMortuorio.Business.Services
             };
             var solicitudCreada = await _solicitudRepo.CreateAsync(solicitud);
 
-            _logger.LogWarning("Verificación RECHAZADA para Expediente {CodigoExpediente}. Motivo: {Motivo}. Estado: {EstadoAnterior} -> {EstadoNuevo}. Creada Solicitud de Corrección ID: {SolicitudID}",
+            _logger.LogWarning("Verificación RECHAZADA — Expediente {CodigoExpediente}. Motivo: {Motivo}. Estado: {EstadoAnterior} → {EstadoNuevo}. Solicitud corrección ID: {SolicitudID}",
                 expediente.CodigoExpediente, motivoRechazo, estadoAnterior, expediente.EstadoActual, solicitudCreada.SolicitudID);
 
-            // 4. Devolver Resultado
             return new VerificacionResultadoDTO
             {
                 VerificacionID = verificacionCreada.VerificacionID,
                 FechaHoraVerificacion = verificacionCreada.FechaHoraVerificacion,
                 Aprobada = false,
-                MensajeResultado = "Verificación Rechazada. Se generó una solicitud de corrección a Enfermería.",
+                MensajeResultado = "Verificación rechazada. Se notificó a Enfermería para revisar el brazalete.",
                 EstadoExpedienteNuevo = expediente.EstadoActual.ToString(),
                 HCCoincide = verificacion.HCCoincide,
                 DNICoincide = verificacion.DocumentoCoincide,
@@ -241,7 +236,7 @@ namespace SisMortuorio.Business.Services
                 Rechazadas = stats.Rechazadas,
                 PorcentajeAprobacion = stats.PorcentajeAprobacion,
                 ConDiscrepanciaHC = stats.ConDiscrepanciaHC,
-                ConDiscrepanciaDocumento = stats.ConDiscrepanciaDocumento, 
+                ConDiscrepanciaDocumento = stats.ConDiscrepanciaDocumento,
                 ConDiscrepanciaNombre = stats.ConDiscrepanciaNombre
             };
         }

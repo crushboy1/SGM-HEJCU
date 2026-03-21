@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 /**
@@ -12,20 +12,13 @@ import { Observable } from 'rxjs';
 export interface CreateActaRetiroDTO {
   expedienteID: number;
 
-  // ─────────────────────────────────────────────────────────
-  // DOCUMENTO LEGAL (CONDICIONAL SEGÚN TIPO)
-  // ─────────────────────────────────────────────────────────
-
-  /** N° Certificado SINADEF - OBLIGATORIO si tipoSalida = Familiar */
+  // ─── DOCUMENTO LEGAL (CONDICIONAL SEGÚN TIPO) ───────────
+  /** N° Certificado SINADEF - OBLIGATORIO si tipoSalida = Familiar Y no hay medicoExternoNombre */
   numeroCertificadoDefuncion?: string;
-
   /** N° Oficio Legal - OBLIGATORIO si tipoSalida = AutoridadLegal */
-  numeroOficioLegal?: string;
+  numeroOficioPolicial?: string;
 
-  // ─────────────────────────────────────────────────────────
-  // DATOS DEL FALLECIDO
-  // ─────────────────────────────────────────────────────────
-
+  // ─── DATOS DEL FALLECIDO ────────────────────────────────
   nombreCompletoFallecido: string;
   historiaClinica: string;
   tipoDocumentoFallecido: number;
@@ -33,31 +26,24 @@ export interface CreateActaRetiroDTO {
   servicioFallecimiento: string;
   fechaHoraFallecimiento: string;
 
-  // ─────────────────────────────────────────────────────────
-  // MÉDICO CERTIFICANTE
-  // ─────────────────────────────────────────────────────────
-
+  // ─── MÉDICO CERTIFICANTE (hospital) ─────────────────────
   medicoCertificaNombre: string;
   medicoCMP: string;
   medicoRNE?: string;
 
-  // ─────────────────────────────────────────────────────────
-  // JEFE DE GUARDIA
-  // ─────────────────────────────────────────────────────────
+  // ─── MÉDICO EXTERNO (opcional) ───────────────────────────
+  /** Aplica cuando causaViolentaODudosa = false y familia trae médico de cabecera */
+  medicoExternoNombre?: string;
+  medicoExternoCMP?: string;
 
+  // ─── JEFE DE GUARDIA ─────────────────────────────────────
   jefeGuardiaNombre: string;
   jefeGuardiaCMP: string;
 
-  // ─────────────────────────────────────────────────────────
-  // TIPO DE SALIDA
-  // ─────────────────────────────────────────────────────────
-
+  // ─── TIPO DE SALIDA ──────────────────────────────────────
   tipoSalida: 'Familiar' | 'AutoridadLegal';
 
-  // ─────────────────────────────────────────────────────────
-  // FAMILIAR (OBLIGATORIO si tipoSalida = Familiar)
-  // ─────────────────────────────────────────────────────────
-
+  // ─── FAMILIAR (OBLIGATORIO si tipoSalida = Familiar) ────
   familiarApellidoPaterno?: string;
   familiarApellidoMaterno?: string;
   familiarNombres?: string;
@@ -66,34 +52,41 @@ export interface CreateActaRetiroDTO {
   familiarParentesco?: string;
   familiarTelefono?: string;
 
-  // ─────────────────────────────────────────────────────────
-  // AUTORIDAD LEGAL (OBLIGATORIO si tipoSalida = AutoridadLegal)
-  // ─────────────────────────────────────────────────────────
-
+  // ─── AUTORIDAD LEGAL (OBLIGATORIO si tipoSalida = AutoridadLegal) ───
   autoridadApellidoPaterno?: string;
   autoridadApellidoMaterno?: string;
   autoridadNombres?: string;
   tipoAutoridad?: number; // 1=Policia, 2=Fiscal, 3=MedicoLegista
   autoridadTipoDocumento?: number;
   autoridadNumeroDocumento?: string;
+  /** Grado y cargo. Ej: "SO3 PNP", "Fiscal Provincial" */
   autoridadCargo?: string;
+  /** Comisaría o institución. Ej: "Comisaría San Antonio" */
   autoridadInstitucion?: string;
-  autoridadPlacaVehiculo?: string;
   autoridadTelefono?: string;
 
-  // ─────────────────────────────────────────────────────────
-  // DATOS ADICIONALES
-  // ─────────────────────────────────────────────────────────
-
+  // ─── DATOS ADICIONALES ───────────────────────────────────
   datosAdicionales?: string;
   destino?: string;
   observaciones?: string;
 
-  // ─────────────────────────────────────────────────────────
-  // USUARIO
-  // ─────────────────────────────────────────────────────────
-
+  // ─── USUARIO ─────────────────────────────────────────────
   usuarioAdmisionID: number;
+}
+
+// ═══════════════════════════════════════════════════════════
+// DTO PARA AUTORIZAR BYPASS DE DEUDA
+// Solo roles JefeGuardia y Administrador.
+// El usuarioAutorizaID viene del JWT en el backend.
+// ═══════════════════════════════════════════════════════════
+export interface AutorizarBypassDeudaRequest {
+  /** ID del expediente con deuda pendiente */
+  expedienteID: number;
+  /**
+   * Justificación obligatoria (mín. 10 chars).
+   * Ej: "PNP retira cuerpo sin familiar — caso legal urgente"
+   */
+  justificacion: string;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -116,17 +109,11 @@ export interface ActaRetiroDTO {
   expedienteID: number;
   codigoExpediente: string;
 
-  // ─────────────────────────────────────────────────────────
-  // DOCUMENTO LEGAL
-  // ─────────────────────────────────────────────────────────
-
+  // ─── DOCUMENTO LEGAL ─────────────────────────────────────
   numeroCertificadoDefuncion?: string;
-  numeroOficioLegal?: string;
+  numeroOficioPolicial?: string;
 
-  // ─────────────────────────────────────────────────────────
-  // DATOS DEL FALLECIDO
-  // ─────────────────────────────────────────────────────────
-
+  // ─── DATOS DEL FALLECIDO ────────────────────────────────
   nombreCompletoFallecido: string;
   historiaClinica: string;
   tipoDocumentoFallecido: string;
@@ -134,31 +121,45 @@ export interface ActaRetiroDTO {
   servicioFallecimiento: string;
   fechaHoraFallecimiento: Date;
 
-  // ─────────────────────────────────────────────────────────
-  // MÉDICO CERTIFICANTE
-  // ─────────────────────────────────────────────────────────
+  /**
+   * Edad al momento del fallecimiento.
+   * Leída desde Expediente — digitaliza cuaderno VigSup.
+   */
+  edad: number;
 
+  /**
+   * Diagnóstico final CIE-10.
+   * Leído desde Expediente — digitaliza cuaderno VigSup.
+   */
+  diagnosticoFinal?: string;
+
+  /**
+   * Indica si la causa es violenta o dudosa.
+   * true → bloquea médico externo y SINADEF en el formulario.
+   */
+  causaViolentaODudosa: boolean;
+
+  /** Tipo de expediente: "Interno" | "Externo" */
+  tipoExpediente: string;
+
+  // ─── MÉDICO CERTIFICANTE (hospital) ─────────────────────
   medicoCertificaNombre: string;
   medicoCMP: string;
   medicoRNE?: string;
 
-  // ─────────────────────────────────────────────────────────
-  // JEFE DE GUARDIA
-  // ─────────────────────────────────────────────────────────
+  // ─── MÉDICO EXTERNO (opcional) ───────────────────────────
+  /** Solo cuando causaViolentaODudosa = false */
+  medicoExternoNombre?: string;
+  medicoExternoCMP?: string;
 
+  // ─── JEFE DE GUARDIA ─────────────────────────────────────
   jefeGuardiaNombre: string;
   jefeGuardiaCMP: string;
 
-  // ─────────────────────────────────────────────────────────
-  // TIPO DE SALIDA
-  // ─────────────────────────────────────────────────────────
-
+  // ─── TIPO DE SALIDA ──────────────────────────────────────
   tipoSalida: string; // "Familiar" | "AutoridadLegal"
 
-  // ─────────────────────────────────────────────────────────
-  // FAMILIAR
-  // ─────────────────────────────────────────────────────────
-
+  // ─── FAMILIAR ────────────────────────────────────────────
   familiarApellidoPaterno?: string;
   familiarApellidoMaterno?: string;
   familiarNombres?: string;
@@ -168,10 +169,7 @@ export interface ActaRetiroDTO {
   familiarParentesco?: string;
   familiarTelefono?: string;
 
-  // ─────────────────────────────────────────────────────────
-  // AUTORIDAD LEGAL
-  // ─────────────────────────────────────────────────────────
-
+  // ─── AUTORIDAD LEGAL ─────────────────────────────────────
   autoridadApellidoPaterno?: string;
   autoridadApellidoMaterno?: string;
   autoridadNombres?: string;
@@ -181,80 +179,57 @@ export interface ActaRetiroDTO {
   autoridadNumeroDocumento?: string;
   autoridadCargo?: string;
   autoridadInstitucion?: string;
-  autoridadPlacaVehiculo?: string;
   autoridadTelefono?: string;
 
-  // ─────────────────────────────────────────────────────────
-  // DATOS ADICIONALES
-  // ─────────────────────────────────────────────────────────
+  // ─── BYPASS DE DEUDA ─────────────────────────────────────
+  /** true si JG/Admin autorizó retiro con deudas pendientes */
+  bypassDeudaAutorizado: boolean;
+  bypassDeudaJustificacion?: string;
+  /** Nombre del usuario que autorizó el bypass */
+  bypassDeudaUsuarioNombre?: string;
+  bypassDeudaFecha?: Date;
 
+  // ─── DATOS ADICIONALES ───────────────────────────────────
   datosAdicionales?: string;
   destino?: string;
   observaciones?: string;
 
-  // ─────────────────────────────────────────────────────────
-  // FIRMAS
-  // ─────────────────────────────────────────────────────────
-
+  // ─── FIRMAS ──────────────────────────────────────────────
   firmadoResponsable: boolean;
   fechaFirmaResponsable?: Date;
   firmadoAdmisionista: boolean;
   fechaFirmaAdmisionista?: Date;
   firmadoSupervisorVigilancia: boolean;
   fechaSupervisorVigilancia?: Date;
-
-  /** Helper: Nombre del responsable que firmó (desde backend) */
+  /** Helper: Nombre del responsable que firmó (calculado en backend) */
   nombreResponsableFirma?: string;
 
-  // ─────────────────────────────────────────────────────────
-  // ARCHIVOS PDF
-  // ─────────────────────────────────────────────────────────
-
+  // ─── ARCHIVOS PDF ────────────────────────────────────────
   rutaPDFSinFirmar?: string;
   nombreArchivoPDFSinFirmar?: string;
   tamañoPDFSinFirmarLegible?: string;
-
   rutaPDFFirmado?: string;
   nombreArchivoPDFFirmado?: string;
   tamañoPDFFirmadoLegible?: string;
 
-  // ─────────────────────────────────────────────────────────
-  // ESTADO (COMPUTED PROPERTIES DEL BACKEND)
-  // ─────────────────────────────────────────────────────────
-
+  // ─── ESTADO (computed desde backend) ─────────────────────
   estaCompleta: boolean;
   tieneTodasLasFirmas: boolean;
   tienePDFFirmado: boolean;
 
-  // ─────────────────────────────────────────────────────────
-  // AUDITORÍA
-  // ─────────────────────────────────────────────────────────
-
+  // ─── AUDITORÍA ───────────────────────────────────────────
   usuarioAdmisionNombre: string;
   fechaRegistro: Date;
   usuarioSubidaPDFNombre?: string;
   fechaSubidaPDF?: Date;
 
-  // ─────────────────────────────────────────────────────────
-  // RELACIÓN CON SALIDA
-  // ─────────────────────────────────────────────────────────
-
+  // ─── RELACIÓN CON SALIDA ─────────────────────────────────
   salidaMortuorioID?: number;
   fechaHoraSalida?: Date;
 }
 
 /**
  * Servicio para gestión de Actas de Retiro
- * Soporta casos de Familiar y AutoridadLegal
- * 
- * Endpoints:
- * - POST /api/ActaRetiro → Crear acta
- * - POST /api/ActaRetiro/{id}/generar-pdf → Generar PDF sin firmar
- * - GET /api/ActaRetiro/expediente/{expedienteId}/reimprimir-pdf → Reimprimir PDF
- * - POST /api/ActaRetiro/subir-pdf-firmado → Subir PDF firmado
- * - GET /api/ActaRetiro/{id} → Obtener por ID
- * - GET /api/ActaRetiro/expediente/{expedienteId} → Obtener por expediente
- * - GET /api/ActaRetiro/existe/{expedienteId} → Verificar si existe
  */
 @Injectable({
   providedIn: 'root'
@@ -267,21 +242,34 @@ export class ActaRetiroService {
   // CREAR
   // ═══════════════════════════════════════════════════════════
 
-  /**
-   * Crea una nueva acta de retiro (Familiar o AutoridadLegal)
-   */
+  /** Crea una nueva acta de retiro (Familiar o AutoridadLegal) */
   crear(dto: CreateActaRetiroDTO): Observable<ActaRetiroDTO> {
     return this.http.post<ActaRetiroDTO>(this.apiUrl, dto);
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // BYPASS DE DEUDA
+  // Solo JefeGuardia y Administrador pueden llamar este endpoint.
+  // El backend valida el rol desde el JWT.
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Autoriza excepcionalmente el retiro con deudas pendientes.
+   * Solo aplica para TipoSalidaPreliminar = AutoridadLegal.
+   * Cubre AMBAS deudas (económica y sangre).
+   */
+  autorizarBypassDeuda(dto: AutorizarBypassDeudaRequest): Observable<{ mensaje: string; expedienteID: number; autorizadoPor: string; fecha: Date }> {
+    return this.http.post<{ mensaje: string; expedienteID: number; autorizadoPor: string; fecha: Date }>(
+      `${this.apiUrl}/autorizar-bypass-deuda`,
+      dto
+    );
   }
 
   // ═══════════════════════════════════════════════════════════
   // GENERAR Y REIMPRIMIR PDF
   // ═══════════════════════════════════════════════════════════
 
-  /**
-   * Genera el PDF sin firmar del acta
-   * Retorna un Blob para descarga directa
-   */
+  /** Genera el PDF sin firmar del acta. Retorna Blob para descarga. */
   generarPDF(actaRetiroID: number): Observable<Blob> {
     return this.http.post(
       `${this.apiUrl}/${actaRetiroID}/generar-pdf`,
@@ -290,10 +278,7 @@ export class ActaRetiroService {
     );
   }
 
-  /**
-   * Reimprime el PDF sin firmar del acta de retiro
-   * Útil si se dañó la primera impresión o se necesita una copia adicional
-   */
+  /** Reimprime el PDF sin firmar del acta de retiro */
   reimprimirPDFPorExpediente(expedienteID: number): Observable<Blob> {
     return this.http.get(
       `${this.apiUrl}/expediente/${expedienteID}/reimprimir-pdf`,
@@ -305,66 +290,44 @@ export class ActaRetiroService {
   // SUBIR PDF FIRMADO
   // ═══════════════════════════════════════════════════════════
 
-  /**
-   * Sube el PDF firmado escaneado
-   */
+  /** Sube el PDF firmado escaneado */
   subirPDFFirmado(dto: UpdateActaRetiroPDFDTO): Observable<ActaRetiroDTO> {
-    return this.http.post<ActaRetiroDTO>(
-      `${this.apiUrl}/subir-pdf-firmado`,
-      dto
-    );
+    return this.http.post<ActaRetiroDTO>(`${this.apiUrl}/subir-pdf-firmado`, dto);
   }
 
   // ═══════════════════════════════════════════════════════════
   // CONSULTAS
   // ═══════════════════════════════════════════════════════════
 
-  /**
-   * Obtiene un acta por ID
-   */
   obtenerPorId(actaRetiroID: number): Observable<ActaRetiroDTO> {
     return this.http.get<ActaRetiroDTO>(`${this.apiUrl}/${actaRetiroID}`);
   }
 
-  /**
-   * Obtiene el acta asociada a un expediente
-   */
   obtenerPorExpediente(expedienteID: number): Observable<ActaRetiroDTO> {
-    return this.http.get<ActaRetiroDTO>(
-      `${this.apiUrl}/expediente/${expedienteID}`
-    );
+    return this.http.get<ActaRetiroDTO>(`${this.apiUrl}/expediente/${expedienteID}`);
   }
 
-  /**
-   * Verifica si existe un acta para un expediente
-   */
   existeActa(expedienteID: number): Observable<boolean> {
     return this.http.get<boolean>(`${this.apiUrl}/existe/${expedienteID}`);
   }
-  /**
- * Verifica si existe un acta con el certificado SINADEF especificado
- */
+
   verificarCertificadoSINADEF(numeroCertificado: string): Observable<boolean> {
     return this.http.get<boolean>(
       `${this.apiUrl}/existe-certificado/${encodeURIComponent(numeroCertificado)}`
     );
   }
 
-  /**
-   * Verifica si existe un acta con el número de oficio legal especificado
-   */
   verificarOficioLegal(numeroOficio: string): Observable<boolean> {
     return this.http.get<boolean>(
       `${this.apiUrl}/existe-oficio/${encodeURIComponent(numeroOficio)}`
     );
   }
+
   // ═══════════════════════════════════════════════════════════
   // HELPERS
   // ═══════════════════════════════════════════════════════════
 
-  /**
-   * Helper: Descarga un PDF (Blob) como archivo
-   */
+  /** Descarga un PDF (Blob) como archivo */
   descargarPDF(blob: Blob, nombreArchivo: string): void {
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -374,9 +337,7 @@ export class ActaRetiroService {
     window.URL.revokeObjectURL(url);
   }
 
-  /**
-   * Helper: Convierte un File a Base64 (para subir PDFs)
-   */
+  /** Convierte un File a Base64 (para subir PDFs) */
   fileToBase64(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -389,37 +350,24 @@ export class ActaRetiroService {
     });
   }
 
-  /**
-   * Helper: Obtiene tamaño de archivo legible (KB, MB)
-   */
   obtenerTamañoLegible(bytes: number): string {
     if (bytes === 0) return '0 Bytes';
-
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
   }
 
-  /**
-   * Helper: Obtiene descripción del tipo de autoridad
-   */
   obtenerDescripcionTipoAutoridad(tipo?: string): string {
     if (!tipo) return 'No especificado';
-
     const descripciones: Record<string, string> = {
       'Policia': 'Policía Nacional del Perú (PNP)',
       'Fiscal': 'Ministerio Público - Fiscalía',
       'MedicoLegista': 'Médico Legista'
     };
-
     return descripciones[tipo] || tipo;
   }
 
-  /**
-   * Helper: Genera el nombre completo desde apellidos y nombres
-   */
   generarNombreCompleto(
     apellidoPaterno: string,
     apellidoMaterno: string | undefined,

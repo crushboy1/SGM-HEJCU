@@ -359,7 +359,7 @@
         </li>
 
         <!-- Validar Admisión (Admisión) -->
-        <li *ngIf="userRole === 'Admision' || userRole === 'Administrador'">
+        <li *ngIf="userRole === 'Admision' || userRole === 'Administrador' || userRole === 'JefeGuardia'">
           <a routerLink="/administrativo/expedientes/validar-admision"
              routerLinkActive="bg-hospital-cyan text-white shadow-md"
              (click)="closeMobileSidebar()"

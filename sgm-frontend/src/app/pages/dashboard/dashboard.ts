@@ -17,12 +17,12 @@ import { EstadisticasBandejaDTO } from '../../models/notificacion.model';
  * Dashboard v2.0 - Panel de Control SGM
  * 
  * CHANGELOG v2.0:
- * - ✅ Filtros y paginación para tabla de expedientes
- * - ✅ Ordenamiento por columnas
- * - ✅ UIState optimizado para evitar recálculos
- * - ✅ SignalR con indicador de conexión en vivo
- * - ✅ Preparado para métricas específicas por rol (futuro)
- * - ✅ Debounce inteligente para actualizaciones masivas
+ * - Filtros y paginación para tabla de expedientes
+ * - Ordenamiento por columnas
+ * - UIState optimizado para evitar recálculos
+ * - SignalR con indicador de conexión en vivo
+ * - Preparado para métricas específicas por rol (futuro)
+ * - Debounce inteligente para actualizaciones masivas
  */
 
 // Interfaz para el estado visual (evita recálculos en el template)
@@ -318,7 +318,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.expedientes = data;
         this.expedientesRecientes = data.slice(0, 10);
 
-        // ⭐ NUEVO: Inicializar filtros y paginación
+        // ⭐Inicializar filtros y paginación
         this.aplicarFiltros();
 
         this.isLoadingExpedientes = false;
@@ -592,8 +592,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           text: 'El brazalete se ha descargado correctamente',
           toast: true,
           position: 'top-end',
-          showConfirmButton: false,
-          timer: 3000
+          showConfirmButton: true,
         });
       },
       error: (err) => {

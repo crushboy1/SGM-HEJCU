@@ -31,7 +31,7 @@
         /// Requerido cuando TipoSalida == AutoridadLegal (muerte violenta o menor a 24h).
         /// Reemplaza al CertificadoDefuncion en estos casos.
         /// </summary>
-        OficioLegal = 4,
+        OficioPolicial = 4,
 
         /// <summary>
         /// Acta de levantamiento del cuerpo emitida por autoridad competente.
@@ -41,9 +41,15 @@
         ActaLevantamiento = 5,
 
         /// <summary>
+        /// Epicrisis generada por médico de Traumashock.
+        /// Primer documento en casos externos (DOA).
+        /// Certifica el fallecimiento cuando no aplica SINADEF inicial.
+        /// </summary>
+        Epicrisis = 6,
+        /// <summary>
         /// Documento adicional no categorizado.
         /// Usar campo Observaciones para describir el contenido.
         /// </summary>
-        Otro = 6
+        Otro = 7
     }
 }

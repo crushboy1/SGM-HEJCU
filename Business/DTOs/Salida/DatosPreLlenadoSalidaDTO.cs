@@ -92,7 +92,7 @@ public class DatosPreLlenadoSalidaDTO
     /// <summary>
     /// Número de oficio legal. Ejemplo: "OF-2025-001234"
     /// </summary>
-    public string? NumeroOficioLegal { get; set; }
+    public string? NumeroOficioPolicial { get; set; }
 
     // ═══════════════════════════════════════════════════════════
     // FUNERARIA — campos editables por el Vigilante

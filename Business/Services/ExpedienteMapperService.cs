@@ -11,23 +11,24 @@ namespace SisMortuorio.Business.Services
     public class ExpedienteMapperService : IExpedienteMapperService
     {
         /// <summary>
-        /// Lógica centralizada para mapear Expediente -> ExpedienteDTO.
+        /// Mapea Expediente -> ExpedienteDTO.
+        /// Edad calculada al momento del fallecimiento, no a la fecha actual.
         /// </summary>
         public ExpedienteDTO? MapToExpedienteDTO(Expediente expediente)
         {
             if (expediente == null)
                 return null;
 
-            // Lógica de cálculo de edad
-            var edad = DateTime.Now.Year - expediente.FechaNacimiento.Year;
-            if (DateTime.Now < expediente.FechaNacimiento.AddYears(edad)) edad--;
+            // Edad al momento del fallecimiento
+            var fechaRef = expediente.FechaHoraFallecimiento;
+            var edad = fechaRef.Year - expediente.FechaNacimiento.Year;
+            if (fechaRef < expediente.FechaNacimiento.AddYears(edad)) edad--;
 
-            // Mapeo
             return new ExpedienteDTO
             {
                 ExpedienteID = expediente.ExpedienteID,
                 CodigoExpediente = expediente.CodigoExpediente,
-                TipoExpediente = expediente.TipoExpediente,
+                TipoExpediente = expediente.TipoExpediente.ToString(),
                 HC = expediente.HC,
                 TipoDocumento = expediente.TipoDocumento.ToString(),
                 NumeroDocumento = expediente.NumeroDocumento,
@@ -35,24 +36,35 @@ namespace SisMortuorio.Business.Services
                 FechaNacimiento = expediente.FechaNacimiento,
                 Edad = edad,
                 Sexo = expediente.Sexo,
-                TipoSeguro = expediente.TipoSeguro,
+                FuenteFinanciamiento = expediente.FuenteFinanciamiento.ToString(),
                 ServicioFallecimiento = expediente.ServicioFallecimiento,
                 NumeroCama = expediente.NumeroCama,
-                BandejaActualID = expediente.BandejaActualID,
-                CodigoBandeja = expediente.BandejaActual?.Codigo,
                 FechaHoraFallecimiento = expediente.FechaHoraFallecimiento,
                 MedicoCertificaNombre = expediente.MedicoCertificaNombre,
                 MedicoCMP = expediente.MedicoCMP,
                 MedicoRNE = expediente.MedicoRNE,
-                NumeroCertificadoSINADEF = expediente.NumeroCertificadoSINADEF,
+                MedicoExternoNombre = expediente.MedicoExternoNombre,
+                MedicoExternoCMP = expediente.MedicoExternoCMP,
+                EsNN = expediente.EsNN,
+                CausaViolentaODudosa = expediente.CausaViolentaODudosa,
+                Observaciones = expediente.Observaciones,
                 DiagnosticoFinal = expediente.DiagnosticoFinal,
                 TipoSalidaPreliminar = expediente.TipoSalidaPreliminar?.ToString(),
+                DocumentacionCompleta = expediente.DocumentacionCompleta,
+                FechaValidacionAdmision = expediente.FechaValidacionAdmision,
+                UsuarioAdmisionNombre = expediente.UsuarioAdmision?.NombreCompleto,
                 EstadoActual = expediente.EstadoActual.ToString(),
                 CodigoQR = expediente.CodigoQR,
                 FechaGeneracionQR = expediente.FechaGeneracionQR,
+                BandejaActualID = expediente.BandejaActualID,
+                CodigoBandeja = expediente.BandejaActual?.Codigo,
                 UsuarioCreador = expediente.UsuarioCreador?.NombreCompleto ?? "Usuario no disponible",
                 FechaCreacion = expediente.FechaCreacion,
                 FechaModificacion = expediente.FechaModificacion,
+                BypassDeudaAutorizado = expediente.BypassDeudaAutorizado,
+                BypassDeudaJustificacion = expediente.BypassDeudaJustificacion,
+                BypassDeudaUsuarioNombre = expediente.BypassDeudaUsuario?.NombreCompleto,
+                BypassDeudaFecha = expediente.BypassDeudaFecha,
                 Pertenencias = expediente.Pertenencias?.Select(p => new PertenenciaDTO
                 {
                     PertenenciaID = p.PertenenciaID,

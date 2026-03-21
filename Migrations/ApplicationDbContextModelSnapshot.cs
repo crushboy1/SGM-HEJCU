@@ -161,15 +161,24 @@ namespace SisMortuorio.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<string>("AutoridadPlacaVehiculo")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
                     b.Property<string>("AutoridadTelefono")
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
                     b.Property<int?>("AutoridadTipoDocumento")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("BypassDeudaAutorizado")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("BypassDeudaFecha")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("BypassDeudaJustificacion")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("BypassDeudaUsuarioID")
                         .HasColumnType("int");
 
                     b.Property<string>("DatosAdicionales")
@@ -282,6 +291,14 @@ namespace SisMortuorio.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
 
+                    b.Property<string>("MedicoExternoCMP")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("MedicoExternoNombre")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
                     b.Property<string>("MedicoRNE")
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
@@ -307,7 +324,7 @@ namespace SisMortuorio.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<string>("NumeroOficioLegal")
+                    b.Property<string>("NumeroOficioPolicial")
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
@@ -355,6 +372,8 @@ namespace SisMortuorio.Migrations
 
                     b.HasIndex("AutoridadNumeroDocumento");
 
+                    b.HasIndex("BypassDeudaUsuarioID");
+
                     b.HasIndex("ExpedienteID")
                         .IsUnique();
 
@@ -368,7 +387,7 @@ namespace SisMortuorio.Migrations
 
                     b.HasIndex("NumeroCertificadoDefuncion");
 
-                    b.HasIndex("NumeroOficioLegal");
+                    b.HasIndex("NumeroOficioPolicial");
 
                     b.HasIndex("TipoAutoridad");
 
@@ -469,9 +488,6 @@ namespace SisMortuorio.Migrations
                     b.Property<int>("ExpedienteID")
                         .HasColumnType("int");
 
-                    b.Property<int?>("ExpedienteID1")
-                        .HasColumnType("int");
-
                     b.Property<int?>("ExpedienteLegalID")
                         .HasColumnType("int");
 
@@ -528,11 +544,9 @@ namespace SisMortuorio.Migrations
                         .HasColumnType("nvarchar(20)");
 
                     b.Property<int>("TipoAutoridad")
-                        .HasMaxLength(30)
                         .HasColumnType("int");
 
                     b.Property<int>("TipoDocumento")
-                        .HasMaxLength(30)
                         .HasColumnType("int");
 
                     b.Property<int>("UsuarioRegistroID")
@@ -541,8 +555,6 @@ namespace SisMortuorio.Migrations
                     b.HasKey("AutoridadID");
 
                     b.HasIndex("ExpedienteID");
-
-                    b.HasIndex("ExpedienteID1");
 
                     b.HasIndex("ExpedienteLegalID");
 
@@ -981,9 +993,6 @@ namespace SisMortuorio.Migrations
                     b.Property<int>("ExpedienteID")
                         .HasColumnType("int");
 
-                    b.Property<int?>("ExpedienteID1")
-                        .HasColumnType("int");
-
                     b.Property<int?>("ExpedienteLegalID")
                         .HasColumnType("int");
 
@@ -1034,8 +1043,6 @@ namespace SisMortuorio.Migrations
 
                     b.HasIndex("ExpedienteID");
 
-                    b.HasIndex("ExpedienteID1");
-
                     b.HasIndex("ExpedienteLegalID");
 
                     b.HasIndex("FechaAdjunto");
@@ -1070,6 +1077,22 @@ namespace SisMortuorio.Migrations
                     b.Property<int?>("BandejaActualID")
                         .HasColumnType("int");
 
+                    b.Property<bool>("BypassDeudaAutorizado")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("BypassDeudaFecha")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("BypassDeudaJustificacion")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("BypassDeudaUsuarioID")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("CausaViolentaODudosa")
+                        .HasColumnType("bit");
+
                     b.Property<string>("CodigoExpediente")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -1087,6 +1110,9 @@ namespace SisMortuorio.Migrations
                         .HasColumnType("bit");
 
                     b.Property<bool>("Eliminado")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("EsNN")
                         .HasColumnType("bit");
 
                     b.Property<string>("EstadoActual")
@@ -1114,6 +1140,11 @@ namespace SisMortuorio.Migrations
 
                     b.Property<DateTime?>("FechaValidacionAdmision")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("FuenteFinanciamiento")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("HC")
                         .IsRequired()
@@ -1160,17 +1191,14 @@ namespace SisMortuorio.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.Property<string>("NumeroCertificadoSINADEF")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
                     b.Property<string>("NumeroDocumento")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<bool>("RequiereIntervencionLegal")
-                        .HasColumnType("bit");
+                    b.Property<string>("Observaciones")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<string>("ServicioFallecimiento")
                         .IsRequired()
@@ -1195,11 +1223,6 @@ namespace SisMortuorio.Migrations
                     b.Property<int?>("TipoSalidaPreliminar")
                         .HasColumnType("int");
 
-                    b.Property<string>("TipoSeguro")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
                     b.Property<int?>("UsuarioAdmisionID")
                         .HasColumnType("int");
 
@@ -1210,6 +1233,8 @@ namespace SisMortuorio.Migrations
 
                     b.HasIndex("BandejaActualID");
 
+                    b.HasIndex("BypassDeudaUsuarioID");
+
                     b.HasIndex("CodigoExpediente")
                         .IsUnique();
 
@@ -1218,10 +1243,6 @@ namespace SisMortuorio.Migrations
                         .HasFilter("[CodigoQR] IS NOT NULL");
 
                     b.HasIndex("HC");
-
-                    b.HasIndex("NumeroCertificadoSINADEF")
-                        .IsUnique()
-                        .HasFilter("[NumeroCertificadoSINADEF] IS NOT NULL");
 
                     b.HasIndex("NumeroDocumento");
 
@@ -1259,9 +1280,6 @@ namespace SisMortuorio.Migrations
                         .HasDefaultValue(1);
 
                     b.Property<int>("ExpedienteID")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("ExpedienteID1")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("FechaAutorizacion")
@@ -1321,10 +1339,6 @@ namespace SisMortuorio.Migrations
 
                     b.HasIndex("ExpedienteID")
                         .IsUnique();
-
-                    b.HasIndex("ExpedienteID1")
-                        .IsUnique()
-                        .HasFilter("[ExpedienteID1] IS NOT NULL");
 
                     b.HasIndex("FechaCreacion");
 
@@ -1847,6 +1861,11 @@ namespace SisMortuorio.Migrations
 
             modelBuilder.Entity("SisMortuorio.Data.Entities.ActaRetiro", b =>
                 {
+                    b.HasOne("SisMortuorio.Data.Entities.Usuario", "BypassDeudaUsuario")
+                        .WithMany()
+                        .HasForeignKey("BypassDeudaUsuarioID")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("SisMortuorio.Data.Entities.Expediente", "Expediente")
                         .WithOne()
                         .HasForeignKey("SisMortuorio.Data.Entities.ActaRetiro", "ExpedienteID")
@@ -1867,6 +1886,8 @@ namespace SisMortuorio.Migrations
                         .WithMany()
                         .HasForeignKey("UsuarioSubidaPDFID")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("BypassDeudaUsuario");
 
                     b.Navigation("Expediente");
 
@@ -1900,10 +1921,6 @@ namespace SisMortuorio.Migrations
                         .HasForeignKey("ExpedienteID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("SisMortuorio.Data.Entities.Expediente", null)
-                        .WithMany("AutoridadesExternas")
-                        .HasForeignKey("ExpedienteID1");
 
                     b.HasOne("SisMortuorio.Data.Entities.ExpedienteLegal", "ExpedienteLegal")
                         .WithMany("Autoridades")
@@ -2108,10 +2125,6 @@ namespace SisMortuorio.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("SisMortuorio.Data.Entities.Expediente", null)
-                        .WithMany("DocumentosLegales")
-                        .HasForeignKey("ExpedienteID1");
-
                     b.HasOne("SisMortuorio.Data.Entities.ExpedienteLegal", "ExpedienteLegal")
                         .WithMany("Documentos")
                         .HasForeignKey("ExpedienteLegalID")
@@ -2143,6 +2156,11 @@ namespace SisMortuorio.Migrations
                         .HasForeignKey("BandejaActualID")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("SisMortuorio.Data.Entities.Usuario", "BypassDeudaUsuario")
+                        .WithMany()
+                        .HasForeignKey("BypassDeudaUsuarioID")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("SisMortuorio.Data.Entities.Usuario", "UsuarioAdmision")
                         .WithMany()
                         .HasForeignKey("UsuarioAdmisionID")
@@ -2156,6 +2174,8 @@ namespace SisMortuorio.Migrations
 
                     b.Navigation("BandejaActual");
 
+                    b.Navigation("BypassDeudaUsuario");
+
                     b.Navigation("UsuarioAdmision");
 
                     b.Navigation("UsuarioCreador");
@@ -2168,10 +2188,6 @@ namespace SisMortuorio.Migrations
                         .HasForeignKey("SisMortuorio.Data.Entities.ExpedienteLegal", "ExpedienteID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("SisMortuorio.Data.Entities.Expediente", null)
-                        .WithOne("ExpedienteLegal")
-                        .HasForeignKey("SisMortuorio.Data.Entities.ExpedienteLegal", "ExpedienteID1");
 
                     b.HasOne("SisMortuorio.Data.Entities.Usuario", "JefeGuardia")
                         .WithMany()
@@ -2347,8 +2363,6 @@ namespace SisMortuorio.Migrations
                 {
                     b.Navigation("ActaRetiro");
 
-                    b.Navigation("AutoridadesExternas");
-
                     b.Navigation("CustodiaTransferencias");
 
                     b.Navigation("DeudaEconomica");
@@ -2356,10 +2370,6 @@ namespace SisMortuorio.Migrations
                     b.Navigation("DeudaSangre");
 
                     b.Navigation("Documentos");
-
-                    b.Navigation("DocumentosLegales");
-
-                    b.Navigation("ExpedienteLegal");
 
                     b.Navigation("HistorialBandejas");
 

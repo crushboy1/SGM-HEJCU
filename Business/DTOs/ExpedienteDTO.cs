@@ -14,7 +14,7 @@
         public DateTime FechaNacimiento { get; set; }
         public int Edad { get; set; }
         public string Sexo { get; set; } = string.Empty;
-        public string TipoSeguro { get; set; } = string.Empty;
+        public string FuenteFinanciamiento { get; set; } = string.Empty;
 
         // Datos del Fallecimiento
         public string ServicioFallecimiento { get; set; } = string.Empty;
@@ -23,7 +23,11 @@
         public string MedicoCertificaNombre { get; set; } = string.Empty;
         public string MedicoCMP { get; set; } = string.Empty;
         public string? MedicoRNE { get; set; }
-        public string? NumeroCertificadoSINADEF { get; set; }
+        public string? MedicoExternoNombre { get; set; }
+        public string? MedicoExternoCMP { get; set; }
+        public bool EsNN { get; set; }
+        public bool CausaViolentaODudosa { get; set; }
+        public string? Observaciones { get; set; }
         public string? DiagnosticoFinal { get; set; }
         public string? TipoSalidaPreliminar { get; set; }
         public bool DocumentacionCompleta { get; set; }
@@ -47,11 +51,15 @@
         /// Se llena dinámicamente en QRService.ConsultarPorQRAsync.
         /// </summary>
         public string? CodigoBandeja { get; set; }
-        /// <summary>
-        /// ID de la bandeja ocupada.
-        /// </summary>
-        public int? BandejaID { get; set; }
+    
         public int? BandejaActualID { get; set; }
+        // ─── BYPASS DE DEUDA ─────────────────────────────────────────
+        public bool BypassDeudaAutorizado { get; set; }
+        public string? BypassDeudaJustificacion { get; set; }
+        /// <summary>Nombre completo del usuario que autorizó el bypass.</summary>
+        public string? BypassDeudaUsuarioNombre { get; set; }
+        public DateTime? BypassDeudaFecha { get; set; }
+
     }
 
     public class PertenenciaDTO

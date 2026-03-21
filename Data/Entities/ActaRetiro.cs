@@ -40,20 +40,20 @@ public class ActaRetiro
 
     /// <summary>
     /// Número de Certificado de Defunción SINADEF
-    /// OBLIGATORIO si TipoSalida = Familiar
+    /// OBLIGATORIO si TipoSalida = Familiar Y no hay MedicoExterno
     /// Formato: 12 dígitos numéricos
     /// </summary>
     [MaxLength(50)]
     public string? NumeroCertificadoDefuncion { get; set; }
 
     /// <summary>
-    /// Número de Oficio Legal (PNP/Fiscalía)
+    /// Número de Oficio Policial
     /// OBLIGATORIO si TipoSalida = AutoridadLegal
     /// Reemplaza al Certificado SINADEF en casos externos
-    /// Ej: "OFICIO N° 1262-2025-REG.POL-LIMA/DIVTER-COMISARIA-SA"
+    /// Ej: "OFICIO N° 644-2026-REGPOLLIMA/DIVOPOS SUR1-COM SAN ANTONIO.SE"
     /// </summary>
     [MaxLength(150)]
-    public string? NumeroOficioLegal { get; set; }
+    public string? NumeroOficioPolicial { get; set; }
 
     /// <summary>
     /// Nombre completo del fallecido (denormalizado para PDF)
@@ -98,7 +98,7 @@ public class ActaRetiro
     public DateTime FechaHoraFallecimiento { get; set; }
 
     // ===================================================================
-    // MÉDICO CERTIFICANTE
+    // MÉDICO CERTIFICANTE (hospital)
     // ===================================================================
 
     /// <summary>
@@ -125,6 +125,26 @@ public class ActaRetiro
     public string? MedicoRNE { get; set; }
 
     // ===================================================================
+    // MÉDICO EXTERNO (opcional)
+    // Aplica cuando CausaViolentaODudosa = false y la familia trae
+    // médico de cabecera para generar SINADEF (casos < 24h o Externo DOA).
+    // Nunca aplica cuando CausaViolentaODudosa = true.
+    // ===================================================================
+
+    /// <summary>
+    /// Nombre completo del médico externo que certifica.
+    /// Solo si CausaViolentaODudosa = false y familia trae médico de cabecera.
+    /// </summary>
+    [MaxLength(300)]
+    public string? MedicoExternoNombre { get; set; }
+
+    /// <summary>
+    /// CMP del médico externo.
+    /// </summary>
+    [MaxLength(20)]
+    public string? MedicoExternoCMP { get; set; }
+
+    // ===================================================================
     // JEFE DE GUARDIA
     // ===================================================================
 
@@ -148,8 +168,8 @@ public class ActaRetiro
 
     /// <summary>
     /// Tipo de salida del mortuorio
-    /// - Familiar: Retiro por familiar directo (> 24h en hospital)
-    /// - AutoridadLegal: Retiro por PNP/Fiscal/Legista (< 24h o muerte violenta)
+    /// - Familiar: Retiro por familiar directo
+    /// - AutoridadLegal: Retiro por PNP/Fiscal/Legista (< 24h o muerte violenta/dudosa)
     /// </summary>
     [Required]
     public TipoSalida TipoSalida { get; set; } = TipoSalida.Familiar;
@@ -206,6 +226,7 @@ public class ActaRetiro
     /// </summary>
     [MaxLength(20)]
     public string? FamiliarTelefono { get; set; }
+
     // ===================================================================
     // RESPONSABLE - AUTORIDAD LEGAL
     // ===================================================================
@@ -255,25 +276,18 @@ public class ActaRetiro
     public string? AutoridadNumeroDocumento { get; set; }
 
     /// <summary>
-    /// Cargo de la autoridad
-    /// Ej: "Suboficial PNP", "Fiscal Provincial", "Médico Legista II"
+    /// Grado y cargo de la autoridad
+    /// Ej: "SO3 PNP", "Fiscal Provincial", "Médico Legista II"
     /// </summary>
     [MaxLength(100)]
     public string? AutoridadCargo { get; set; }
 
     /// <summary>
-    /// Institución de la autoridad
-    /// Ej: "Comisaría San Antonio", "Fiscalía de Turno Miraflores", "Morgue Central Lima"
+    /// Institución/Comisaría de la autoridad
+    /// Ej: "Comisaría San Antonio", "Fiscalía de Turno Miraflores"
     /// </summary>
     [MaxLength(200)]
     public string? AutoridadInstitucion { get; set; }
-
-    /// <summary>
-    /// Placa del vehículo oficial/patrullero
-    /// Ej: "PNP-1234", "A1B-987"
-    /// </summary>
-    [MaxLength(20)]
-    public string? AutoridadPlacaVehiculo { get; set; }
 
     /// <summary>
     /// Teléfono de contacto de la autoridad o institución
@@ -282,7 +296,44 @@ public class ActaRetiro
     public string? AutoridadTelefono { get; set; }
 
     // ===================================================================
-    // DATOS ADICIONALES (TRASLADO/OTRO)
+    // BYPASS DE DEUDA ECONÓMICA
+    // Autorización excepcional para crear acta con deuda pendiente.
+    // Solo roles: Admin, JefeGuardia, SoporteInformatica.
+    // El admisionista NO puede autorizar bypass — solo ejecuta el acta.
+    // El bypass se registra ANTES de crear el acta (flujo separado).
+    // ===================================================================
+
+    /// <summary>
+    /// Indica si se autorizó excepcionalmente el retiro con deuda económica pendiente.
+    /// Solo puede ser true si fue autorizado por JG/Admin/Soporte.
+    /// </summary>
+    public bool BypassDeudaAutorizado { get; set; } = false;
+
+    /// <summary>
+    /// Justificación obligatoria para el bypass de deuda.
+    /// Ej: "PNP retira cuerpo de fallecido sin deudohabiente identificado"
+    /// </summary>
+    [MaxLength(500)]
+    public string? BypassDeudaJustificacion { get; set; }
+
+    /// <summary>
+    /// ID del usuario que autorizó el bypass (JG/Admin/Soporte).
+    /// Nunca el admisionista.
+    /// </summary>
+    public int? BypassDeudaUsuarioID { get; set; }
+
+    /// <summary>
+    /// Navegación al usuario que autorizó el bypass
+    /// </summary>
+    public virtual Usuario? BypassDeudaUsuario { get; set; }
+
+    /// <summary>
+    /// Fecha y hora en que se autorizó el bypass
+    /// </summary>
+    public DateTime? BypassDeudaFecha { get; set; }
+
+    // ===================================================================
+    // DATOS ADICIONALES
     // ===================================================================
 
     /// <summary>
@@ -335,6 +386,7 @@ public class ActaRetiro
     /// Fecha y hora en que firmó el Supervisor de Vigilancia
     /// </summary>
     public DateTime? FechaSupervisorVigilancia { get; set; }
+
     /// <summary>
     /// Estado general del acta en el flujo
     /// Sincronizado con los campos de firma individuales
@@ -389,7 +441,6 @@ public class ActaRetiro
 
     /// <summary>
     /// Observaciones generales sobre el acta o el retiro
-    /// Ej: "Familiar presentó copia de DNI", "Se entregó un juego completo de documentos"
     /// </summary>
     [MaxLength(1000)]
     public string? Observaciones { get; set; }
@@ -445,23 +496,25 @@ public class ActaRetiro
     // ===================================================================
 
     /// <summary>
-    /// Verifica si el acta está completa (todos los campos obligatorios llenos)
-    /// </summary>
-    /// <summary>
-    /// Verifica si el acta está completa según el tipo de salida
+    /// Verifica si el acta está completa según el tipo de salida.
+    /// Para Familiar: SINADEF es obligatorio solo si no hay médico externo.
+    /// Para AutoridadLegal: requiere oficio + datos de autoridad.
     /// </summary>
     public bool EstaCompleta()
     {
-        // Datos básicos (siempre obligatorios)
         bool datosBasicos = !string.IsNullOrWhiteSpace(MedicoCertificaNombre) &&
                             !string.IsNullOrWhiteSpace(JefeGuardiaNombre);
 
         if (!datosBasicos) return false;
 
-        // Validar según tipo de salida
         if (TipoSalida == TipoSalida.Familiar)
         {
-            return !string.IsNullOrWhiteSpace(NumeroCertificadoDefuncion) &&
+            // Con médico externo: SINADEF puede llegar después, no es bloqueante
+            bool tieneSinadefOMedicoExterno =
+                !string.IsNullOrWhiteSpace(NumeroCertificadoDefuncion) ||
+                !string.IsNullOrWhiteSpace(MedicoExternoNombre);
+
+            return tieneSinadefOMedicoExterno &&
                    !string.IsNullOrWhiteSpace(FamiliarApellidoPaterno) &&
                    !string.IsNullOrWhiteSpace(FamiliarNombres) &&
                    !string.IsNullOrWhiteSpace(FamiliarNumeroDocumento) &&
@@ -469,7 +522,7 @@ public class ActaRetiro
         }
         else if (TipoSalida == TipoSalida.AutoridadLegal)
         {
-            return !string.IsNullOrWhiteSpace(NumeroOficioLegal) &&
+            return !string.IsNullOrWhiteSpace(NumeroOficioPolicial) &&
                    !string.IsNullOrWhiteSpace(AutoridadApellidoPaterno) &&
                    !string.IsNullOrWhiteSpace(AutoridadNombres) &&
                    !string.IsNullOrWhiteSpace(AutoridadNumeroDocumento) &&
@@ -481,8 +534,8 @@ public class ActaRetiro
     }
 
     /// <summary>
-    /// Genera el nombre completo del familiar
-    /// Debe llamarse antes de guardar en BD
+    /// Genera el nombre completo del familiar.
+    /// Debe llamarse antes de guardar en BD.
     /// </summary>
     public void GenerarNombreCompletoFamiliar()
     {
@@ -494,8 +547,8 @@ public class ActaRetiro
     }
 
     /// <summary>
-    /// Genera el nombre completo de la autoridad
-    /// Debe llamarse antes de guardar en BD
+    /// Genera el nombre completo de la autoridad.
+    /// Debe llamarse antes de guardar en BD.
     /// </summary>
     public void GenerarNombreCompletoAutoridad()
     {
@@ -507,7 +560,7 @@ public class ActaRetiro
     }
 
     /// <summary>
-    /// Verifica si el acta tiene todas las firmas requeridas 
+    /// Verifica si el acta tiene todas las firmas requeridas.
     /// </summary>
     public bool TieneTodasLasFirmas()
     {
@@ -515,7 +568,7 @@ public class ActaRetiro
     }
 
     /// <summary>
-    /// Verifica si el PDF firmado fue subido al sistema
+    /// Verifica si el PDF firmado fue subido al sistema.
     /// </summary>
     public bool TienePDFFirmado()
     {
@@ -523,13 +576,12 @@ public class ActaRetiro
     }
 
     /// <summary>
-    /// Marca el acta como firmada por las 3 partes
-    /// Se ejecuta al subir el PDF escaneado con todas las firmas
+    /// Marca el acta como firmada por las 3 partes.
+    /// Se ejecuta al subir el PDF escaneado con todas las firmas.
     /// </summary>
     /// <param name="usuarioSubidaID">Usuario que subió el PDF firmado</param>
     public void MarcarFirmadoCompleto(int usuarioSubidaID)
     {
-        // Firma del responsable (Familiar o Autoridad)
         FirmadoResponsable = true;
         FechaFirmaResponsable = DateTime.Now;
 
@@ -539,7 +591,6 @@ public class ActaRetiro
         FirmadoSupervisorVigilancia = true;
         FechaSupervisorVigilancia = DateTime.Now;
 
-        // Metadata de subida
         UsuarioSubidaPDFID = usuarioSubidaID;
         FechaSubidaPDF = DateTime.Now;
 
@@ -547,16 +598,15 @@ public class ActaRetiro
     }
 
     /// <summary>
-    /// Obtiene el nombre del responsable que debe firmar según el tipo de salida
+    /// Obtiene el nombre del responsable que debe firmar según el tipo de salida.
     /// Útil para mostrar en UI: "Firma del Familiar" vs "Firma de la Autoridad"
     /// </summary>
     public string ObtenerNombreResponsableFirma()
     {
         if (TipoSalida == TipoSalida.Familiar)
-        {
             return FamiliarNombreCompleto ?? "Familiar Responsable";
-        }
-        else if (TipoSalida == TipoSalida.AutoridadLegal)
+
+        if (TipoSalida == TipoSalida.AutoridadLegal)
         {
             var tipoAuth = TipoAutoridad switch
             {
@@ -565,74 +615,53 @@ public class ActaRetiro
                 TipoAutoridadExterna.MedicoLegista => "Médico Legista",
                 _ => "Autoridad"
             };
-            return $"{AutoridadNombreCompleto ?? tipoAuth}";
+            return AutoridadNombreCompleto ?? tipoAuth;
         }
 
         return "Responsable del Retiro";
     }
+
     /// <summary>
-    /// Obtiene el tamaño del PDF sin firmar en formato legible
+    /// Obtiene el tamaño del PDF sin firmar en formato legible.
     /// </summary>
     public string? ObtenerTamañoPDFSinFirmarLegible()
     {
         if (TamañoPDFSinFirmar is null) return null;
-
-        string[] sizes = ["B", "KB", "MB", "GB"];
-        double len = TamañoPDFSinFirmar.Value;
-        int order = 0;
-
-        while (len >= 1024 && order < sizes.Length - 1)
-        {
-            order++;
-            len /= 1024;
-        }
-
-        return $"{len:0.##} {sizes[order]}";
+        return FormatearBytes(TamañoPDFSinFirmar.Value);
     }
 
     /// <summary>
-    /// Obtiene el tamaño del PDF firmado en formato legible
+    /// Obtiene el tamaño del PDF firmado en formato legible.
     /// </summary>
     public string? ObtenerTamañoPDFFirmadoLegible()
     {
         if (TamañoPDFFirmado is null) return null;
-
-        string[] sizes = ["B", "KB", "MB", "GB"];
-        double len = TamañoPDFFirmado.Value;
-        int order = 0;
-
-        while (len >= 1024 && order < sizes.Length - 1)
-        {
-            order++;
-            len /= 1024;
-        }
-
-        return $"{len:0.##} {sizes[order]}";
+        return FormatearBytes(TamañoPDFFirmado.Value);
     }
 
     /// <summary>
-    /// Valida que el acta esté lista para generar el PDF
-    /// </summary>
-    /// <summary>
-    /// Valida que el acta esté lista para generar el PDF
+    /// Valida que el acta esté lista para generar el PDF.
     /// </summary>
     public string ValidarParaGenerarPDF()
     {
         if (!EstaCompleta())
             return "El acta no está completa. Faltan datos obligatorios.";
 
-        // Validar según tipo de salida
         if (TipoSalida == TipoSalida.Familiar)
         {
-            if (string.IsNullOrWhiteSpace(NumeroCertificadoDefuncion))
-                return "Falta el número de certificado SINADEF (obligatorio para retiros por familiar).";
+            bool tieneSinadefOMedicoExterno =
+                !string.IsNullOrWhiteSpace(NumeroCertificadoDefuncion) ||
+                !string.IsNullOrWhiteSpace(MedicoExternoNombre);
+
+            if (!tieneSinadefOMedicoExterno)
+                return "Debe proporcionar N° SINADEF o datos del médico externo para retiros por familiar.";
 
             if (string.IsNullOrWhiteSpace(FamiliarParentesco))
                 return "Debe especificar el parentesco del familiar.";
         }
         else if (TipoSalida == TipoSalida.AutoridadLegal)
         {
-            if (string.IsNullOrWhiteSpace(NumeroOficioLegal))
+            if (string.IsNullOrWhiteSpace(NumeroOficioPolicial))
                 return "Falta el número de oficio legal (obligatorio para retiros por autoridades).";
 
             if (string.IsNullOrWhiteSpace(AutoridadInstitucion))
@@ -643,5 +672,33 @@ public class ActaRetiro
         }
 
         return "OK";
+    }
+
+    /// <summary>
+    /// Verifica si el bypass de deuda está activo y es válido.
+    /// </summary>
+    public bool TieneBypassDeudaValido()
+    {
+        return BypassDeudaAutorizado &&
+               BypassDeudaUsuarioID.HasValue &&
+               !string.IsNullOrWhiteSpace(BypassDeudaJustificacion) &&
+               BypassDeudaFecha.HasValue;
+    }
+
+    // ===================================================================
+    // HELPERS PRIVADOS
+    // ===================================================================
+
+    private static string FormatearBytes(long bytes)
+    {
+        string[] sizes = ["B", "KB", "MB", "GB"];
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len /= 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
     }
 }

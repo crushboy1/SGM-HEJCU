@@ -1,7 +1,7 @@
 <div class="formulario-acta-retiro bg-white rounded-xl shadow-md border border-gray-200 p-6">
 
   <!-- ===================================================================
-       HEADER DEL FORMULARIO
+       HEADER
        =================================================================== -->
   <div class="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
     <div class="p-3 bg-cyan-100 rounded-xl">
@@ -9,8 +9,45 @@
     </div>
     <div>
       <h3 class="text-lg font-bold text-gray-800">{{ tituloFormulario }}</h3>
-      <p class="text-sm text-gray-500">
-        Complete los datos según el tipo de salida
+      <p class="text-sm text-gray-500">Complete los datos según el tipo de salida</p>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       ALERTA: CAUSA VIOLENTA O DUDOSA
+       Visible siempre que aplique — bloquea médico externo y SINADEF
+       =================================================================== -->
+  <div *ngIf="expediente.causaViolentaODudosa"
+       class="mb-6 flex gap-3 p-4 bg-red-50 border border-red-300 rounded-xl">
+    <app-icon name="alert-triangle" [size]="20" class="text-hospital-red shrink-0 mt-0.5"></app-icon>
+    <div>
+      <p class="text-sm font-bold text-red-700">Muerte violenta o de causa dudosa</p>
+      <p class="text-xs text-red-600 mt-0.5">
+        Este caso requiere intervención de Autoridad Legal (PNP/Fiscal).
+        No aplica certificado SINADEF ni médico externo.
+      </p>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       BADGE: BYPASS DE DEUDA AUTORIZADO
+       Visible cuando JG/Admin autorizó retiro con deudas pendientes
+       =================================================================== -->
+  <div *ngIf="expediente.bypassDeudaAutorizado"
+       class="mb-6 flex gap-3 p-4 bg-yellow-50 border border-yellow-300 rounded-xl">
+    <app-icon name="shield" [size]="20" class="text-yellow-600 shrink-0 mt-0.5"></app-icon>
+    <div>
+      <p class="text-sm font-bold text-yellow-700">Excepción de deuda autorizada</p>
+      <p class="text-xs text-yellow-600 mt-0.5">
+        El retiro fue autorizado con deudas pendientes por
+        <span class="font-semibold">{{ expediente.bypassDeudaUsuarioNombre || 'Autoridad' }}</span>.
+        <span *ngIf="expediente.bypassDeudaFecha">
+          Fecha: {{ expediente.bypassDeudaFecha | date:'dd/MM/yyyy HH:mm' }}.
+        </span>
+      </p>
+      <p *ngIf="expediente.bypassDeudaJustificacion"
+         class="text-xs text-yellow-700 mt-1 italic">
+        "{{ expediente.bypassDeudaJustificacion }}"
       </p>
     </div>
   </div>
@@ -18,105 +55,109 @@
   <form (ngSubmit)="crear()" class="space-y-6">
 
     <!-- ===================================================================
-       SECCIÓN 1: DATOS DEL FALLECIDO (Solo Lectura)
-       =================================================================== -->
-    <div class="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-      <h4 class="font-semibold text-gray-800 flex items-center gap-2 mb-3">
-        <app-icon name="user" [size]="16" class="text-gray-600"></app-icon>
+         SECCIÓN 1: DATOS DEL FALLECIDO (Solo Lectura)
+         Digitaliza cuaderno de control de permanencia (VigSup)
+         =================================================================== -->
+    <div class="p-4 bg-gray-50 rounded-xl border border-gray-200">
+      <h4 class="font-semibold text-gray-800 flex items-center gap-2 mb-4">
+        <app-icon name="user" [size]="16" class="text-gray-500"></app-icon>
         <span>Datos del Fallecido</span>
       </h4>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-        <!-- Nombre Completo -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-2">
+          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
             Nombre Completo
           </label>
-          <input type="text"
-                 [value]="formData.nombreCompletoPaciente"
-                 readonly
-                 class="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed text-gray-700">
+          <input type="text" [value]="formData.nombreCompletoPaciente" readonly
+                 class="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-100 cursor-not-allowed text-gray-700 text-sm">
         </div>
 
-        <!-- HC -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-2">
-            <app-icon name="hash" [size]="14" class="inline-block mr-1 text-gray-400"></app-icon>
+          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+            <app-icon name="hash" [size]="12" class="inline-block mr-1"></app-icon>
             Historia Clínica
           </label>
-          <input type="text"
-                 [value]="formData.hc"
-                 readonly
-                 class="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed font-mono text-gray-700">
+          <input type="text" [value]="formData.hc" readonly
+                 class="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-100 cursor-not-allowed font-mono text-gray-700 text-sm">
         </div>
 
-        <!-- DNI Paciente -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-2">
-            <app-icon name="credit-card" [size]="14" class="inline-block mr-1 text-gray-400"></app-icon>
+          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+            <app-icon name="credit-card" [size]="12" class="inline-block mr-1"></app-icon>
             DNI
           </label>
-          <input type="text"
-                 [value]="formData.dniPaciente"
-                 readonly
-                 class="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed font-mono text-gray-700">
+          <input type="text" [value]="formData.dniPaciente" readonly
+                 class="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-100 cursor-not-allowed font-mono text-gray-700 text-sm">
         </div>
 
-        <!-- Servicio -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-2">
-            <app-icon name="building-2" [size]="14" class="inline-block mr-1 text-gray-400"></app-icon>
-            Servicio de Fallecimiento
+          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+            <app-icon name="building-2" [size]="12" class="inline-block mr-1"></app-icon>
+            Servicio
+          </label>
+          <input type="text" [value]="formData.servicioFallecimiento" readonly
+                 class="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-100 cursor-not-allowed text-gray-700 text-sm">
+        </div>
+
+        <!-- Edad — digitaliza cuaderno VigSup -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+            Edad al Fallecimiento
+          </label>
+          <div class="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-100 text-gray-700 text-sm flex items-center gap-2">
+            <span class="font-semibold">{{ edadPaciente > 0 ? edadPaciente + ' años' : 'No calculada' }}</span>
+            <span class="text-xs text-gray-400">(cuaderno control permanencia)</span>
+          </div>
+        </div>
+
+        <!-- Diagnóstico Final — digitaliza cuaderno VigSup -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+            Diagnóstico Final (CIE-10)
           </label>
           <input type="text"
-                 [value]="formData.servicioFallecimiento"
+                 [value]="diagnosticoFinal || 'No registrado'"
                  readonly
-                 class="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed text-gray-700">
+                 class="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-100 cursor-not-allowed text-gray-700 text-sm">
         </div>
 
       </div>
     </div>
 
     <!-- ===================================================================
-       SECCIÓN 2: MÉDICO CERTIFICANTE (READONLY)
-       =================================================================== -->
-    <div class="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-      <h4 class="font-semibold text-gray-800 flex items-center gap-2 mb-3">
-        <app-icon name="user" [size]="16" class="text-gray-600"></app-icon>
+         SECCIÓN 2: MÉDICO CERTIFICANTE (Readonly)
+         =================================================================== -->
+    <div class="p-4 bg-gray-50 rounded-xl border border-gray-200">
+      <h4 class="font-semibold text-gray-800 flex items-center gap-2 mb-4">
+        <app-icon name="user" [size]="16" class="text-gray-500"></app-icon>
         <span>Médico Certificante</span>
       </h4>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-        <!-- Nombre Médico -->
         <div class="md:col-span-2">
-          <label class="block text-sm font-semibold text-gray-700 mb-2">
+          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
             Nombre Completo
           </label>
           <input type="text"
                  [value]="formData.nombreMedicoCertificante || 'No registrado'"
                  readonly
-                 class="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed text-gray-700">
+                 class="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-100 cursor-not-allowed text-gray-700 text-sm">
         </div>
-
-        <!-- CMP -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-2">
-            CMP
-          </label>
+          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">CMP</label>
           <input type="text"
                  [value]="formData.cmpMedicoCertificante || 'N/A'"
                  readonly
-                 class="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed font-mono text-gray-700">
+                 class="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-100 cursor-not-allowed font-mono text-gray-700 text-sm">
         </div>
-
       </div>
     </div>
 
     <!-- ===================================================================
-   SECCIÓN 3: TIPO DE SALIDA
-   =================================================================== -->
+         SECCIÓN 3: TIPO DE SALIDA
+         =================================================================== -->
     <div>
       <h4 class="font-semibold text-gray-800 flex items-center gap-2 mb-3">
         <app-icon name="info" [size]="16" class="text-hospital-cyan"></app-icon>
@@ -124,7 +165,7 @@
         <span class="text-red-500">*</span>
       </h4>
 
-      <!-- Bloqueado: viene pre-definido desde gestion de documentos -->
+      <!-- Bloqueado -->
       <div *ngIf="tipoSalidaBloqueado"
            class="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg">
         <div class="flex items-center gap-3">
@@ -136,100 +177,191 @@
             <p class="text-sm font-semibold text-gray-800">
               {{ formData.tipoSalida === 'AutoridadLegal' ? 'Autoridad Legal' : 'Retiro por Familiar' }}
             </p>
-            <p class="text-xs text-gray-500">
-              Definido al gestionar la documentacion
-            </p>
+            <p class="text-xs text-gray-500">Definido al gestionar la documentación</p>
           </div>
         </div>
         <div class="flex items-center gap-1.5 px-2.5 py-1 bg-gray-200 rounded-lg">
-          <app-icon name="lock" [size]="12" class="text-gray-500"></app-icon>
+          <app-icon name="ban" [size]="12" class="text-gray-500"></app-icon>
           <span class="text-xs text-gray-500 font-medium">Bloqueado</span>
         </div>
       </div>
 
-      <!-- Editable: no hay tipo preliminar definido -->
-      <div *ngIf="!tipoSalidaBloqueado" class="flex gap-4">
-        <label class="flex items-center gap-2 cursor-pointer px-4 py-3 border-2 rounded-lg transition-all"
-               [ngClass]="formData.tipoSalida === 'Familiar'
-             ? 'border-hospital-cyan bg-cyan-50'
-             : 'border-gray-300 hover:border-gray-400'">
-          <input type="radio"
-                 name="tipoSalida"
-                 value="Familiar"
-                 [(ngModel)]="formData.tipoSalida"
-                 class="w-4 h-4 text-hospital-cyan">
+      <!-- Editable -->
+      <div *ngIf="!tipoSalidaBloqueado" class="flex flex-col sm:flex-row gap-3">
+        <label class="flex items-center gap-2 cursor-pointer px-4 py-3 border-2 rounded-lg transition-all flex-1"
+               [ngClass]="formData.tipoSalida === 'Familiar' ? 'border-hospital-cyan bg-cyan-50' : 'border-gray-300 hover:border-gray-400'">
+          <input type="radio" name="tipoSalida" value="Familiar"
+                 [(ngModel)]="formData.tipoSalida" class="w-4 h-4 text-hospital-cyan">
+          <app-icon name="users" [size]="16" class="text-gray-600"></app-icon>
           <span class="font-medium text-gray-700">Retiro por Familiar</span>
         </label>
 
-        <label class="flex items-center gap-2 cursor-pointer px-4 py-3 border-2 rounded-lg transition-all"
-               [ngClass]="formData.tipoSalida === 'AutoridadLegal'
-             ? 'border-hospital-cyan bg-cyan-50'
-             : 'border-gray-300 hover:border-gray-400'">
-          <input type="radio"
-                 name="tipoSalida"
-                 value="AutoridadLegal"
-                 [(ngModel)]="formData.tipoSalida"
-                 class="w-4 h-4 text-hospital-cyan">
+        <label class="flex items-center gap-2 cursor-pointer px-4 py-3 border-2 rounded-lg transition-all flex-1"
+               [ngClass]="formData.tipoSalida === 'AutoridadLegal' ? 'border-hospital-cyan bg-cyan-50' : 'border-gray-300 hover:border-gray-400'">
+          <input type="radio" name="tipoSalida" value="AutoridadLegal"
+                 [(ngModel)]="formData.tipoSalida" class="w-4 h-4 text-hospital-cyan">
+          <app-icon name="shield" [size]="16" class="text-gray-600"></app-icon>
           <span class="font-medium text-gray-700">Autoridad Legal</span>
         </label>
       </div>
-
     </div>
 
     <!-- ===================================================================
-       SECCIÓN 4: CERTIFICADO/OFICIO
-       =================================================================== -->
+         SECCIÓN 4: MÉDICO EXTERNO + CERTIFICADO / OFICIO
+         Orden: primero checkbox médico externo (si aplica),
+         luego SINADEF siempre obligatorio para Familiar.
+         El médico externo ES quien genera el SINADEF — ambos van juntos.
+         =================================================================== -->
+    <!-- MÉDICO EXTERNO (solo Familiar + no violenta) -->
+    <div *ngIf="medicoExternoHabilitado"
+         class="border rounded-xl transition-all"
+         [ngClass]="tieneMedicoExterno ? 'border-orange-300 bg-orange-50' : 'border-gray-200 bg-white'">
+
+      <!-- Cabecera checkbox -->
+      <label class="flex items-center gap-3 p-4 cursor-pointer select-none">
+        <input type="checkbox"
+               name="tieneMedicoExterno"
+               [(ngModel)]="tieneMedicoExterno"
+               (ngModelChange)="onToggleMedicoExterno($event)"
+               class="w-4 h-4 rounded accent-orange-500 cursor-pointer flex-shrink-0">
+        <span class="flex-1 font-semibold text-sm"
+              [ngClass]="tieneMedicoExterno ? 'text-orange-800' : 'text-gray-700'">
+          La familia trae médico externo para certificar el SINADEF
+        </span>
+        <span class="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0"
+              [ngClass]="tieneMedicoExterno ? 'bg-orange-200 text-orange-800' : 'bg-gray-100 text-gray-500'">
+          {{ tieneMedicoExterno ? 'Habilitado' : 'No aplica' }}
+        </span>
+        <app-icon [name]="tieneMedicoExterno ? 'chevron-up' : 'chevron-down'"
+                  [size]="16"
+                  [ngClass]="tieneMedicoExterno ? 'text-orange-600' : 'text-gray-400'"
+                  class="flex-shrink-0">
+        </app-icon>
+      </label>
+
+      <!-- Contenido expandido -->
+      <div *ngIf="tieneMedicoExterno" class="px-4 pb-4 space-y-4">
+
+        <p class="text-xs text-orange-700 bg-orange-100 rounded-lg px-3 py-2 flex items-start gap-2">
+          <app-icon name="info" [size]="14" class="text-orange-500 flex-shrink-0 mt-0.5"></app-icon>
+          El médico externo genera el SINADEF en el portal antes de venir a Admisión.
+          Debe traer el número de certificado SINADEF al momento del registro.
+          Sin ese número no es posible completar el acta.
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          <div class="md:col-span-2">
+            <label for="medicoExternoNombre"
+                   class="block text-sm font-semibold text-gray-700 mb-2">
+              Nombre Completo del Médico Externo
+              <span class="text-red-500"> *</span>
+            </label>
+            <input type="text"
+                   id="medicoExternoNombre"
+                   name="medicoExternoNombre"
+                   [(ngModel)]="formData.medicoExternoNombre"
+                   (input)="clearError('medicoExternoNombre')"
+                   placeholder="Ej: GARCIA LOPEZ, Carlos Alberto"
+                   maxlength="200"
+                   class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition-all text-sm bg-white"
+                   [ngClass]="errors['medicoExternoNombre'] ? 'border-red-500' : 'border-orange-200'">
+            <p *ngIf="errors['medicoExternoNombre']"
+               class="mt-1.5 text-sm text-red-600 flex items-center gap-1">
+              <app-icon name="circle-x" [size]="14"></app-icon>
+              {{ errors['medicoExternoNombre'] }}
+            </p>
+            <p *ngIf="!errors['medicoExternoNombre']" class="mt-1.5 text-xs text-gray-400">
+              Médico de cabecera de la familia — distinto al médico del hospital
+            </p>
+          </div>
+
+          <div>
+            <label for="medicoExternoCMP"
+                   class="block text-sm font-semibold text-gray-700 mb-2">
+              CMP del Médico Externo
+              <span class="text-red-500"> *</span>
+            </label>
+            <input type="text"
+                   id="medicoExternoCMP"
+                   name="medicoExternoCMP"
+                   [(ngModel)]="formData.medicoExternoCMP"
+                   (input)="clearError('medicoExternoCMP')"
+                   placeholder="N° Colegiatura CMP"
+                   maxlength="20"
+                   class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition-all font-mono text-sm bg-white"
+                   [ngClass]="errors['medicoExternoCMP'] ? 'border-red-500' : 'border-orange-200'">
+            <p *ngIf="errors['medicoExternoCMP']"
+               class="mt-1.5 text-sm text-red-600 flex items-center gap-1">
+              <app-icon name="circle-x" [size]="14"></app-icon>
+              {{ errors['medicoExternoCMP'] }}
+            </p>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- CERTIFICADO / OFICIO -->
     <div class="space-y-4">
 
-      <!-- SINADEF -->
+      <!-- SINADEF — Familiar, siempre obligatorio -->
       <div *ngIf="formData.tipoSalida === 'Familiar'">
-        <label for="numeroCertificadoDefuncion" class="block text-sm font-semibold text-gray-700 mb-2">
-          <app-icon name="file-badge" [size]="14" class="inline-block mr-1 text-gray-400"></app-icon>
-          N° Certificado de Defunción SINADEF *
+        <label for="numeroCertificadoDefuncion"
+               class="block text-sm font-semibold text-gray-700 mb-2">
+          N° Certificado SINADEF
+          <span class="text-red-500"> *</span>
         </label>
         <input type="text"
                id="numeroCertificadoDefuncion"
                name="numeroCertificadoDefuncion"
                [(ngModel)]="formData.numeroCertificadoDefuncion"
-               (input)="onCertificadoSINADEFChange($event.target.value)"
-               placeholder="Ej: 2025-12345678"
+               (input)="onCertificadoSINADEFChange($any($event.target).value)"
+               placeholder="Ej: 2001159764"
                maxlength="50"
-               class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all font-mono"
-               [ngClass]="errors['numeroCertificadoDefuncion'] ? 'border-red-500' : 'border-gray-300'">
-
-        <p *ngIf="errors['numeroCertificadoDefuncion']" class="mt-1.5 text-sm text-red-600 flex items-center gap-1">
+               class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all font-mono text-sm"
+               [ngClass]="errors['numeroCertificadoDefuncion'] ? 'border-red-500 bg-red-50' : 'border-gray-300'">
+        <p *ngIf="errors['numeroCertificadoDefuncion']"
+           class="mt-1.5 text-sm text-red-600 flex items-center gap-1">
           <app-icon name="circle-x" [size]="14"></app-icon>
           {{ errors['numeroCertificadoDefuncion'] }}
         </p>
+        <p *ngIf="!errors['numeroCertificadoDefuncion']" class="mt-1.5 text-xs text-gray-400">
+          Número del certificado generado en el portal SINADEF
+        </p>
       </div>
 
-      <!-- OFICIO LEGAL -->
+      <!-- OFICIO LEGAL — AutoridadLegal, siempre obligatorio -->
       <div *ngIf="formData.tipoSalida === 'AutoridadLegal'">
-        <label for="numeroOficioLegal" class="block text-sm font-semibold text-gray-700 mb-2">
-          <app-icon name="file-text" [size]="14" class="inline-block mr-1 text-gray-400"></app-icon>
-          N° de Oficio Legal *
+        <label for="numeroOficioPolicial"
+               class="block text-sm font-semibold text-gray-700 mb-2">
+          N° de Oficio Legal
+          <span class="text-red-500"> *</span>
         </label>
         <input type="text"
-               id="numeroOficioLegal"
-               name="numeroOficioLegal"
-               [(ngModel)]="formData.numeroOficioLegal"
-               (input)="onOficioLegalChange($event.target.value)"
-               placeholder="Ej: OF-2025-001234"
-               maxlength="50"
-               class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all font-mono"
-               [ngClass]="errors['numeroOficioLegal'] ? 'border-red-500' : 'border-gray-300'">
-
-        <p *ngIf="errors['numeroOficioLegal']" class="mt-1.5 text-sm text-red-600 flex items-center gap-1">
+               id="numeroOficioPolicial"
+               name="numeroOficioPolicial"
+               [(ngModel)]="formData.numeroOficioPolicial"
+               (input)="onOficioLegalChange($any($event.target).value)"
+               placeholder="Ej: 644-2026-REGPOLLIMA/DIVOPOS SUR1-COM SAN ANTONIO.SE"
+               maxlength="150"
+               class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all font-mono text-sm"
+               [ngClass]="errors['numeroOficioPolicial'] ? 'border-red-500 bg-red-50' : 'border-gray-300'">
+        <p *ngIf="errors['numeroOficioPolicial']"
+           class="mt-1.5 text-sm text-red-600 flex items-center gap-1">
           <app-icon name="circle-x" [size]="14"></app-icon>
-          {{ errors['numeroOficioLegal'] }}
+          {{ errors['numeroOficioPolicial'] }}
+        </p>
+        <p *ngIf="!errors['numeroOficioPolicial']" class="mt-1.5 text-xs text-gray-400">
+          Copie el número del oficio físico presentado por el efectivo
         </p>
       </div>
 
     </div>
 
     <!-- ===================================================================
-       SECCIÓN 5: JEFE DE GUARDIA
-       =================================================================== -->
+         SECCIÓN 6: JEFE DE GUARDIA
+         =================================================================== -->
     <div class="space-y-4">
       <h4 class="font-semibold text-gray-800 flex items-center gap-2">
         <app-icon name="shield" [size]="16" class="text-hospital-cyan"></app-icon>
@@ -239,9 +371,9 @@
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-        <!-- Nombre Jefe de Guardia -->
         <div>
-          <label for="nombreJefeGuardia" class="block text-sm font-semibold text-gray-700 mb-2">
+          <label for="nombreJefeGuardia"
+                 class="block text-sm font-semibold text-gray-700 mb-2">
             Nombre Completo *
           </label>
           <input type="text"
@@ -249,21 +381,20 @@
                  name="nombreJefeGuardia"
                  [(ngModel)]="formData.nombreJefeGuardia"
                  (input)="clearError('nombreJefeGuardia')"
-                 placeholder="Ej: Dr. Juan Pérez García"
+                 placeholder="Ej: DURAN VARGAS, Raul Elias"
                  maxlength="200"
-                 required
-                 class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all"
-                 [ngClass]="errors['nombreJefeGuardia'] ? 'border-red-500' : 'border-gray-300'">
-
-          <p *ngIf="errors['nombreJefeGuardia']" class="mt-1.5 text-sm text-red-600 flex items-center gap-1">
+                 class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all text-sm"
+                 [ngClass]="errors['nombreJefeGuardia'] ? 'border-red-500 bg-red-50' : 'border-gray-300'">
+          <p *ngIf="errors['nombreJefeGuardia']"
+             class="mt-1.5 text-sm text-red-600 flex items-center gap-1">
             <app-icon name="circle-x" [size]="14"></app-icon>
             {{ errors['nombreJefeGuardia'] }}
           </p>
         </div>
 
-        <!-- CMP Jefe de Guardia -->
         <div>
-          <label for="cmpJefeGuardia" class="block text-sm font-semibold text-gray-700 mb-2">
+          <label for="cmpJefeGuardia"
+                 class="block text-sm font-semibold text-gray-700 mb-2">
             <app-icon name="hash" [size]="14" class="inline-block mr-1 text-gray-400"></app-icon>
             CMP *
           </label>
@@ -274,11 +405,10 @@
                  (input)="clearError('cmpJefeGuardia')"
                  placeholder="000000"
                  maxlength="6"
-                 required
-                 class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all font-mono"
-                 [ngClass]="errors['cmpJefeGuardia'] ? 'border-red-500' : 'border-gray-300'">
-
-          <p *ngIf="errors['cmpJefeGuardia']" class="mt-1.5 text-sm text-red-600 flex items-center gap-1">
+                 class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all font-mono text-sm"
+                 [ngClass]="errors['cmpJefeGuardia'] ? 'border-red-500 bg-red-50' : 'border-gray-300'">
+          <p *ngIf="errors['cmpJefeGuardia']"
+             class="mt-1.5 text-sm text-red-600 flex items-center gap-1">
             <app-icon name="circle-x" [size]="14"></app-icon>
             {{ errors['cmpJefeGuardia'] }}
           </p>
@@ -291,8 +421,8 @@
     </div>
 
     <!-- ===================================================================
-       SECCIÓN 6A: FAMILIAR RESPONSABLE
-       =================================================================== -->
+         SECCIÓN 7A: FAMILIAR RESPONSABLE
+         =================================================================== -->
     <div *ngIf="formData.tipoSalida === 'Familiar'" class="space-y-4">
       <h4 class="font-semibold text-gray-800 flex items-center gap-2">
         <app-icon name="users" [size]="16" class="text-hospital-cyan"></app-icon>
@@ -302,9 +432,9 @@
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-        <!-- Nombre Familiar -->
-        <div>
-          <label for="nombreFamiliar" class="block text-sm font-semibold text-gray-700 mb-2">
+        <div class="md:col-span-2">
+          <label for="nombreFamiliar"
+                 class="block text-sm font-semibold text-gray-700 mb-2">
             Nombre Completo *
           </label>
           <input type="text"
@@ -312,12 +442,12 @@
                  name="nombreFamiliar"
                  [(ngModel)]="formData.nombreFamiliar"
                  (input)="clearError('nombreFamiliar')"
-                 placeholder="Apellido Paterno Apellido Materno, Nombres"
+                 placeholder="APELLIDO PATERNO APELLIDO MATERNO, Nombres"
                  maxlength="200"
-                 class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all"
-                 [ngClass]="errors['nombreFamiliar'] ? 'border-red-500' : 'border-gray-300'">
-
-          <p *ngIf="errors['nombreFamiliar']" class="mt-1.5 text-sm text-red-600 flex items-center gap-1">
+                 class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all text-sm"
+                 [ngClass]="errors['nombreFamiliar'] ? 'border-red-500 bg-red-50' : 'border-gray-300'">
+          <p *ngIf="errors['nombreFamiliar']"
+             class="mt-1.5 text-sm text-red-600 flex items-center gap-1">
             <app-icon name="circle-x" [size]="14"></app-icon>
             {{ errors['nombreFamiliar'] }}
           </p>
@@ -326,31 +456,31 @@
           </p>
         </div>
 
-        <!-- Tipo de Documento Familiar -->
         <div>
-          <label for="tipoDocumentoFamiliar" class="block text-sm font-semibold text-gray-700 mb-2">
+          <label for="tipoDocumentoFamiliar"
+                 class="block text-sm font-semibold text-gray-700 mb-2">
             Tipo de Documento *
           </label>
           <select id="tipoDocumentoFamiliar"
                   name="tipoDocumentoFamiliar"
                   [(ngModel)]="formData.tipoDocumentoFamiliar"
                   (change)="clearError('tipoDocumentoFamiliar')"
-                  class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all bg-white"
+                  class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all bg-white text-sm"
                   [ngClass]="errors['tipoDocumentoFamiliar'] ? 'border-red-500' : 'border-gray-300'">
             <option [value]="tipo.value" *ngFor="let tipo of tiposDocumentoFamiliar">
               {{ tipo.label }}
             </option>
           </select>
-
-          <p *ngIf="errors['tipoDocumentoFamiliar']" class="mt-1.5 text-sm text-red-600 flex items-center gap-1">
+          <p *ngIf="errors['tipoDocumentoFamiliar']"
+             class="mt-1.5 text-sm text-red-600 flex items-center gap-1">
             <app-icon name="circle-x" [size]="14"></app-icon>
             {{ errors['tipoDocumentoFamiliar'] }}
           </p>
         </div>
 
-        <!-- Número de Documento Familiar -->
         <div>
-          <label for="dniFamiliar" class="block text-sm font-semibold text-gray-700 mb-2">
+          <label for="dniFamiliar"
+                 class="block text-sm font-semibold text-gray-700 mb-2">
             <app-icon name="credit-card" [size]="14" class="inline-block mr-1 text-gray-400"></app-icon>
             Número de Documento *
           </label>
@@ -361,25 +491,25 @@
                  (input)="clearError('dniFamiliar')"
                  [placeholder]="obtenerPlaceholderDocumento(formData.tipoDocumentoFamiliar)"
                  maxlength="20"
-                 class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all font-mono"
-                 [ngClass]="errors['dniFamiliar'] ? 'border-red-500' : 'border-gray-300'">
-
-          <p *ngIf="errors['dniFamiliar']" class="mt-1.5 text-sm text-red-600 flex items-center gap-1">
+                 class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all font-mono text-sm"
+                 [ngClass]="errors['dniFamiliar'] ? 'border-red-500 bg-red-50' : 'border-gray-300'">
+          <p *ngIf="errors['dniFamiliar']"
+             class="mt-1.5 text-sm text-red-600 flex items-center gap-1">
             <app-icon name="circle-x" [size]="14"></app-icon>
             {{ errors['dniFamiliar'] }}
           </p>
         </div>
 
-        <!-- Parentesco -->
         <div>
-          <label for="parentesco" class="block text-sm font-semibold text-gray-700 mb-2">
+          <label for="parentesco"
+                 class="block text-sm font-semibold text-gray-700 mb-2">
             Parentesco *
           </label>
           <select id="parentesco"
                   name="parentesco"
                   [(ngModel)]="formData.parentesco"
                   (change)="clearError('parentesco')"
-                  class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all bg-white"
+                  class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all bg-white text-sm"
                   [ngClass]="errors['parentesco'] ? 'border-red-500' : 'border-gray-300'">
             <option value="">Seleccione parentesco</option>
             <option value="Cónyuge">Cónyuge</option>
@@ -392,16 +522,16 @@
             <option value="Primo/a">Primo/a</option>
             <option value="Otro">Otro</option>
           </select>
-
-          <p *ngIf="errors['parentesco']" class="mt-1.5 text-sm text-red-600 flex items-center gap-1">
+          <p *ngIf="errors['parentesco']"
+             class="mt-1.5 text-sm text-red-600 flex items-center gap-1">
             <app-icon name="circle-x" [size]="14"></app-icon>
             {{ errors['parentesco'] }}
           </p>
         </div>
 
-        <!-- Teléfono -->
-        <div class="md:col-span-2">
-          <label for="telefonoFamiliar" class="block text-sm font-semibold text-gray-700 mb-2">
+        <div>
+          <label for="telefonoFamiliar"
+                 class="block text-sm font-semibold text-gray-700 mb-2">
             Teléfono de Contacto
           </label>
           <input type="text"
@@ -410,20 +540,16 @@
                  [(ngModel)]="formData.telefonoFamiliar"
                  placeholder="999999999"
                  maxlength="9"
-                 class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all font-mono">
-
-          <p class="mt-1.5 text-xs text-gray-400">
-            9 dígitos numéricos (opcional)
-          </p>
+                 class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all font-mono text-sm">
+          <p class="mt-1.5 text-xs text-gray-400">9 dígitos (opcional)</p>
         </div>
 
       </div>
-
     </div>
 
     <!-- ===================================================================
-       SECCIÓN 6B: AUTORIDAD LEGAL
-       =================================================================== -->
+         SECCIÓN 7B: AUTORIDAD LEGAL
+         =================================================================== -->
     <div *ngIf="formData.tipoSalida === 'AutoridadLegal'" class="space-y-4">
       <h4 class="font-semibold text-gray-800 flex items-center gap-2">
         <app-icon name="shield" [size]="16" class="text-orange-600"></app-icon>
@@ -433,53 +559,49 @@
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-        <!-- Tipo de Autoridad -->
         <div>
-          <label for="tipoAutoridad" class="block text-sm font-semibold text-gray-700 mb-2">
+          <label for="tipoAutoridad"
+                 class="block text-sm font-semibold text-gray-700 mb-2">
             Tipo de Autoridad *
           </label>
           <select id="tipoAutoridad"
                   name="tipoAutoridad"
                   [(ngModel)]="formData.tipoAutoridad"
                   (change)="clearError('tipoAutoridad')"
-                  class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all bg-white"
+                  class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all bg-white text-sm"
                   [ngClass]="errors['tipoAutoridad'] ? 'border-red-500' : 'border-gray-300'">
-            <option [value]="tipo.value" *ngFor="let tipo of tiposAutoridad">
-              {{ tipo.label }}
-            </option>
+            <option [value]="tipo.value" *ngFor="let tipo of tiposAutoridad">{{ tipo.label }}</option>
           </select>
-
-          <p *ngIf="errors['tipoAutoridad']" class="mt-1.5 text-sm text-red-600 flex items-center gap-1">
+          <p *ngIf="errors['tipoAutoridad']"
+             class="mt-1.5 text-sm text-red-600 flex items-center gap-1">
             <app-icon name="circle-x" [size]="14"></app-icon>
             {{ errors['tipoAutoridad'] }}
           </p>
         </div>
 
-        <!-- Tipo de Documento Autoridad -->
         <div>
-          <label for="tipoDocumentoAutoridad" class="block text-sm font-semibold text-gray-700 mb-2">
+          <label for="tipoDocumentoAutoridad"
+                 class="block text-sm font-semibold text-gray-700 mb-2">
             Tipo de Documento *
           </label>
           <select id="tipoDocumentoAutoridad"
                   name="tipoDocumentoAutoridad"
                   [(ngModel)]="formData.tipoDocumentoAutoridad"
                   (change)="clearError('tipoDocumentoAutoridad')"
-                  class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all bg-white"
+                  class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all bg-white text-sm"
                   [ngClass]="errors['tipoDocumentoAutoridad'] ? 'border-red-500' : 'border-gray-300'">
-            <option [value]="tipo.value" *ngFor="let tipo of tiposDocumento">
-              {{ tipo.label }}
-            </option>
+            <option [value]="tipo.value" *ngFor="let tipo of tiposDocumento">{{ tipo.label }}</option>
           </select>
-
-          <p *ngIf="errors['tipoDocumentoAutoridad']" class="mt-1.5 text-sm text-red-600 flex items-center gap-1">
+          <p *ngIf="errors['tipoDocumentoAutoridad']"
+             class="mt-1.5 text-sm text-red-600 flex items-center gap-1">
             <app-icon name="circle-x" [size]="14"></app-icon>
             {{ errors['tipoDocumentoAutoridad'] }}
           </p>
         </div>
 
-        <!-- Nombre Autoridad -->
         <div class="md:col-span-2">
-          <label for="nombreAutoridad" class="block text-sm font-semibold text-gray-700 mb-2">
+          <label for="nombreAutoridad"
+                 class="block text-sm font-semibold text-gray-700 mb-2">
             Nombre Completo *
           </label>
           <input type="text"
@@ -487,23 +609,20 @@
                  name="nombreAutoridad"
                  [(ngModel)]="formData.nombreAutoridad"
                  (input)="clearError('nombreAutoridad')"
-                 placeholder="Apellido Paterno Apellido Materno, Nombres"
+                 placeholder="APELLIDO PATERNO APELLIDO MATERNO, Nombres"
                  maxlength="200"
-                 class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all"
-                 [ngClass]="errors['nombreAutoridad'] ? 'border-red-500' : 'border-gray-300'">
-
-          <p *ngIf="errors['nombreAutoridad']" class="mt-1.5 text-sm text-red-600 flex items-center gap-1">
+                 class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all text-sm"
+                 [ngClass]="errors['nombreAutoridad'] ? 'border-red-500 bg-red-50' : 'border-gray-300'">
+          <p *ngIf="errors['nombreAutoridad']"
+             class="mt-1.5 text-sm text-red-600 flex items-center gap-1">
             <app-icon name="circle-x" [size]="14"></app-icon>
             {{ errors['nombreAutoridad'] }}
           </p>
-          <p *ngIf="!errors['nombreAutoridad']" class="mt-1.5 text-xs text-gray-400">
-            Formato: APELLIDOS, Nombres
-          </p>
         </div>
 
-        <!-- Documento de Identidad Autoridad -->
         <div>
-          <label for="documentoAutoridad" class="block text-sm font-semibold text-gray-700 mb-2">
+          <label for="documentoAutoridad"
+                 class="block text-sm font-semibold text-gray-700 mb-2">
             <app-icon name="credit-card" [size]="14" class="inline-block mr-1 text-gray-400"></app-icon>
             Número de Documento *
           </label>
@@ -514,40 +633,40 @@
                  (input)="clearError('documentoAutoridad')"
                  [placeholder]="obtenerPlaceholderDocumento(formData.tipoDocumentoAutoridad)"
                  maxlength="20"
-                 class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all font-mono"
-                 [ngClass]="errors['documentoAutoridad'] ? 'border-red-500' : 'border-gray-300'">
-
-          <p *ngIf="errors['documentoAutoridad']" class="mt-1.5 text-sm text-red-600 flex items-center gap-1">
+                 class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all font-mono text-sm"
+                 [ngClass]="errors['documentoAutoridad'] ? 'border-red-500 bg-red-50' : 'border-gray-300'">
+          <p *ngIf="errors['documentoAutoridad']"
+             class="mt-1.5 text-sm text-red-600 flex items-center gap-1">
             <app-icon name="circle-x" [size]="14"></app-icon>
             {{ errors['documentoAutoridad'] }}
           </p>
         </div>
 
-        <!-- Cargo -->
         <div>
-          <label for="cargoAutoridad" class="block text-sm font-semibold text-gray-700 mb-2">
-            Cargo *
+          <label for="cargoAutoridad"
+                 class="block text-sm font-semibold text-gray-700 mb-2">
+            Grado / Cargo *
           </label>
           <input type="text"
                  id="cargoAutoridad"
                  name="cargoAutoridad"
                  [(ngModel)]="formData.cargoAutoridad"
                  (input)="clearError('cargoAutoridad')"
-                 placeholder="Ej: Sub Oficial, Fiscal Provincial, Médico Legista"
+                 placeholder="Ej: SO3 PNP, Fiscal Provincial"
                  maxlength="100"
-                 class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all"
-                 [ngClass]="errors['cargoAutoridad'] ? 'border-red-500' : 'border-gray-300'">
-
-          <p *ngIf="errors['cargoAutoridad']" class="mt-1.5 text-sm text-red-600 flex items-center gap-1">
+                 class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all text-sm"
+                 [ngClass]="errors['cargoAutoridad'] ? 'border-red-500 bg-red-50' : 'border-gray-300'">
+          <p *ngIf="errors['cargoAutoridad']"
+             class="mt-1.5 text-sm text-red-600 flex items-center gap-1">
             <app-icon name="circle-x" [size]="14"></app-icon>
             {{ errors['cargoAutoridad'] }}
           </p>
         </div>
 
-        <!-- Institución -->
-        <div>
-          <label for="institucionAutoridad" class="block text-sm font-semibold text-gray-700 mb-2">
-            Institución *
+        <div class="md:col-span-2">
+          <label for="institucionAutoridad"
+                 class="block text-sm font-semibold text-gray-700 mb-2">
+            Comisaría / Institución *
           </label>
           <input type="text"
                  id="institucionAutoridad"
@@ -556,58 +675,37 @@
                  (input)="clearError('institucionAutoridad')"
                  placeholder="Ej: Comisaría San Antonio - Miraflores"
                  maxlength="200"
-                 class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all"
-                 [ngClass]="errors['institucionAutoridad'] ? 'border-red-500' : 'border-gray-300'">
-
-          <p *ngIf="errors['institucionAutoridad']" class="mt-1.5 text-sm text-red-600 flex items-center gap-1">
+                 class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all text-sm"
+                 [ngClass]="errors['institucionAutoridad'] ? 'border-red-500 bg-red-50' : 'border-gray-300'">
+          <p *ngIf="errors['institucionAutoridad']"
+             class="mt-1.5 text-sm text-red-600 flex items-center gap-1">
             <app-icon name="circle-x" [size]="14"></app-icon>
             {{ errors['institucionAutoridad'] }}
           </p>
         </div>
 
-        <!-- Placa Vehículo (Opcional) -->
         <div>
-          <label for="placaVehiculoAutoridad" class="block text-sm font-semibold text-gray-700 mb-2">
-            Placa del Vehículo
-          </label>
-          <input type="text"
-                 id="placaVehiculoAutoridad"
-                 name="placaVehiculoAutoridad"
-                 [(ngModel)]="formData.placaVehiculoAutoridad"
-                 placeholder="ABC-123"
-                 maxlength="10"
-                 class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all font-mono uppercase">
-
-          <p class="mt-1.5 text-xs text-gray-400">
-            Placa del vehículo de la autoridad (opcional)
-          </p>
-        </div>
-
-        <!-- Teléfono Autoridad -->
-        <div>
-          <label for="telefonoAutoridad" class="block text-sm font-semibold text-gray-700 mb-2">
+          <label for="telefonoAutoridad"
+                 class="block text-sm font-semibold text-gray-700 mb-2">
             Teléfono de Contacto
           </label>
           <input type="text"
                  id="telefonoAutoridad"
                  name="telefonoAutoridad"
                  [(ngModel)]="formData.telefonoAutoridad"
-                 placeholder="999 999 999"
+                 placeholder="999999999"
                  maxlength="9"
-                 class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all font-mono">
-
-          <p class="mt-1.5 text-xs text-gray-400">
-            9 dígitos numéricos (opcional)
-          </p>
+                 class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all font-mono text-sm">
+          <p class="mt-1.5 text-xs text-gray-400">9 dígitos (opcional)</p>
         </div>
 
       </div>
     </div>
 
     <!-- ===================================================================
-       SECCIÓN 7: DATOS ADICIONALES (OPCIONAL - SIEMPRE VISIBLE)
-       =================================================================== -->
-    <div class="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+         SECCIÓN 8: DATOS ADICIONALES
+         =================================================================== -->
+    <div class="p-4 bg-blue-50 rounded-xl border border-blue-200 space-y-4">
       <h4 class="font-semibold text-gray-800 flex items-center gap-2">
         <app-icon name="info" [size]="16" class="text-blue-600"></app-icon>
         <span>Información Adicional</span>
@@ -616,9 +714,9 @@
 
       <div class="grid grid-cols-1 gap-4">
 
-        <!-- Destino del Cuerpo -->
         <div>
-          <label for="destinoCuerpo" class="block text-sm font-semibold text-gray-700 mb-2">
+          <label for="destinoCuerpo"
+                 class="block text-sm font-semibold text-gray-700 mb-2">
             <app-icon name="map-pin" [size]="14" class="inline-block mr-1 text-gray-400"></app-icon>
             Destino del Cuerpo
           </label>
@@ -626,17 +724,17 @@
                  id="destinoCuerpo"
                  name="destinoCuerpo"
                  [(ngModel)]="formData.destinoCuerpo"
-                 placeholder="Ej: Cementerio Parque del Recuerdo, Morgue Central"
+                 placeholder="Ej: Cementerio El Ángel, Morgue Central de Lima, Surco"
                  maxlength="200"
-                 class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all">
+                 class="w-full px-4 py-2.5 border border-blue-200 rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all bg-white text-sm">
           <p class="mt-1.5 text-xs text-gray-400">
-            Cementerio, funeraria o destino final del cuerpo
+            Destino final declarado por el responsable del retiro
           </p>
         </div>
 
-        <!-- Observaciones -->
         <div>
-          <label for="observaciones" class="block text-sm font-semibold text-gray-700 mb-2">
+          <label for="observaciones"
+                 class="block text-sm font-semibold text-gray-700 mb-2">
             <app-icon name="file-text" [size]="14" class="inline-block mr-1 text-gray-400"></app-icon>
             Observaciones
           </label>
@@ -646,36 +744,32 @@
                     placeholder="Información adicional relevante..."
                     rows="3"
                     maxlength="500"
-                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all resize-none"></textarea>
-          <p class="mt-1.5 text-xs text-gray-400">
-            Máximo 500 caracteres
-          </p>
+                    class="w-full px-4 py-2.5 border border-blue-200 rounded-lg focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition-all resize-none bg-white text-sm"></textarea>
+          <p class="mt-1.5 text-xs text-gray-400">Máximo 500 caracteres</p>
         </div>
 
       </div>
     </div>
 
     <!-- ===================================================================
-       FOOTER: BOTONES DE ACCIÓN
-       =================================================================== -->
-    <div class="flex items-center gap-3 pt-4 border-t border-gray-200">
+         FOOTER: BOTONES
+         =================================================================== -->
+    <div class="flex flex-col sm:flex-row items-center gap-3 pt-4 border-t border-gray-200">
 
-      <!-- Botón Cancelar -->
       <button type="button"
               (click)="cancelarFormulario()"
               [disabled]="isSubmitting"
-              class="flex-1 px-4 py-2.5 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg
+              class="w-full sm:w-auto flex-1 px-4 py-2.5 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg
                      hover:bg-gray-50 hover:border-gray-400 transition-all
                      disabled:opacity-50 disabled:cursor-not-allowed
                      flex items-center justify-center gap-2">
         <app-icon name="x" [size]="18"></app-icon>
-        Cancelar
+        <span>Cancelar</span>
       </button>
 
-      <!-- Botón Crear Acta -->
       <button type="submit"
               [disabled]="!puedeCrear"
-              class="flex-1 px-4 py-2.5 bg-hospital-cyan text-white font-semibold rounded-lg
+              class="w-full sm:w-auto flex-1 px-4 py-2.5 bg-hospital-cyan text-white font-semibold rounded-lg
                      hover:bg-cyan-700 shadow-md hover:shadow-lg transition-all
                      disabled:opacity-50 disabled:cursor-not-allowed
                      flex items-center justify-center gap-2">

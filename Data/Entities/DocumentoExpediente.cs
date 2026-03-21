@@ -15,7 +15,7 @@ namespace SisMortuorio.Data.Entities;
 /// 
 /// DOCUMENTOS REQUERIDOS según TipoSalida:
 /// - Familiar → DNI_Familiar + DNI_Fallecido + CertificadoDefuncion
-/// - AutoridadLegal → OficioLegal
+/// - AutoridadLegal → OficioPolicial
 /// </summary>
 public class DocumentoExpediente
 {

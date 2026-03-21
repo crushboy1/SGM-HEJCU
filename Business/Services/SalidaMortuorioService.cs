@@ -98,12 +98,6 @@ public class SalidaMortuorioService(
         var validacionReferencias = salida.ValidarReferencias();
         if (validacionReferencias != "OK")
             throw new InvalidOperationException(validacionReferencias);
-
-        if (acta.TipoSalida == TipoSalida.AutoridadLegal &&
-         string.IsNullOrWhiteSpace(salida.PlacaVehiculo))
-        {
-            salida.PlacaVehiculo = acta.AutoridadPlacaVehiculo;
-        }
         salida.ActaRetiro = acta;
         var validacionDocumentacion = salida.ValidarDocumentacion();
         if (validacionDocumentacion != "Documentación completa")
@@ -363,7 +357,7 @@ public class SalidaMortuorioService(
                     ?? $"{acta.AutoridadApellidoPaterno} {acta.AutoridadApellidoMaterno}, {acta.AutoridadNombres}".Trim();
                 responsableDocumento = $"{acta.AutoridadTipoDocumento} {acta.AutoridadNumeroDocumento}".Trim();
                 responsableTelefono = acta.AutoridadTelefono;
-                numeroOficio = acta.NumeroOficioLegal;
+                numeroOficio = acta.NumeroOficioPolicial;
                 tipoAutoridad = acta.TipoAutoridad?.ToString();
                 autoridadInstitucion = acta.AutoridadInstitucion;
             }

@@ -1,144 +1,258 @@
-<div class="min-h-screen bg-gray-900 flex items-center justify-center p-4">
+<div class="min-h-screen bg-gray-900 flex items-start md:items-center justify-center p-4 py-6">
 
-  <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden">
+  <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
 
-    <!-- Header -->
-    <div class="bg-hospital-blue p-6 text-white flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="bg-white/20 p-2 rounded-lg">
-          <app-icon name="shield" [size]="32"></app-icon>
+    <!-- ============================================================
+         HEADER
+         ============================================================ -->
+    <div class="bg-hospital-cyan p-5 text-white">
+      <div class="flex items-center justify-between">
+
+        <div class="flex items-center gap-3">
+          <div class="bg-white/20 p-2 rounded-lg">
+            <app-icon name="scan-line" [size]="28"></app-icon>
+          </div>
+          <div>
+            <h1 class="text-lg font-bold leading-tight">Verificar Ingreso QR</h1>
+            <p class="text-cyan-100 text-xs">Vigilancia Mortuorio</p>
+          </div>
         </div>
-        <div>
-          <h1 class="text-xl font-bold">Control de Acceso</h1>
-          <p class="text-blue-100 text-sm">Vigilancia Mortuorio</p>
+
+        <!-- Indicador de paso -->
+        <div class="flex items-center gap-1.5">
+          <span class="flex items-center justify-center h-7 w-7 rounded-full text-xs font-bold border-2 transition-all"
+                [ngClass]="paso === 'escanear'
+                  ? 'bg-white text-hospital-cyan border-white'
+                  : 'bg-green-400 border-green-400 text-white'">
+            <app-icon *ngIf="paso !== 'escanear'" name="check" [size]="14"></app-icon>
+            <span *ngIf="paso === 'escanear'">1</span>
+          </span>
+          <div class="w-6 h-0.5 rounded"
+               [ngClass]="paso === 'validar' ? 'bg-white' : 'bg-white/30'"></div>
+          <span class="flex items-center justify-center h-7 w-7 rounded-full text-xs font-bold border-2 transition-all"
+                [ngClass]="paso === 'validar'
+                  ? 'bg-white text-hospital-cyan border-white'
+                  : 'bg-white/20 border-white/40 text-white/60'">
+            2
+          </span>
         </div>
-      </div>
-      <div class="text-right">
-        <div class="text-2xl font-bold">{{ paso === 'escanear' ? '1/2' : '2/2' }}</div>
+
       </div>
     </div>
 
-    <!-- Paso 1: Escanear -->
-    <div *ngIf="paso === 'escanear'" class="p-8">
-      <div class="text-center py-10">
-        <div class="inline-block p-6 bg-gray-100 rounded-full mb-4 animate-pulse">
-          <app-icon name="qr-code" [size]="64" className="text-gray-400"></app-icon>
-        </div>
-        <h2 class="text-2xl font-bold text-gray-800 mb-2">Escanear Brazalete</h2>
-        <p class="text-gray-500 mb-8">Apunte el lector al código QR del fallecido</p>
+    <!-- ============================================================
+         PASO 1 — ESCANEAR QR
+         ============================================================ -->
+    <div *ngIf="paso === 'escanear'" class="p-6 md:p-8 animate-fade-in">
 
-        <div class="max-w-md mx-auto">
-          <div class="relative">
-            <input type="text" [(ngModel)]="codigoQRInput"
-                   id="qr-input-verification"
-                   class="w-full pl-12 pr-4 py-4 border-2 border-gray-300 rounded-xl text-lg focus:border-hospital-blue focus:ring-0 transition-colors"
-                   placeholder="Código QR (Simulado)"
-                   (keyup.enter)="buscarQR()">
-            <div class="absolute left-4 top-5 text-gray-400">
-              <app-icon name="search" [size]="24"></app-icon>
+      <div class="text-center mb-6">
+        <div class="inline-flex items-center justify-center h-20 w-20 rounded-2xl bg-cyan-50 border-2 border-cyan-200 mb-4"
+             [class.animate-pulse]="!isLoading">
+          <app-icon name="qr-code" [size]="44" class="text-hospital-cyan"></app-icon>
+        </div>
+        <h2 class="text-xl font-bold text-gray-800">Escanear Brazalete</h2>
+        <p class="text-sm text-gray-500 mt-1">Apunte el lector al código QR del fallecido</p>
+      </div>
+
+      <!-- Input QR -->
+      <div class="space-y-3">
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
+            <app-icon name="search" [size]="20"></app-icon>
+          </div>
+          <input type="text"
+                 [(ngModel)]="codigoQRInput"
+                 (keyup.enter)="buscarQR()"
+                 placeholder="Escanee o ingrese el código QR..."
+                 autofocus
+                 class="w-full pl-11 pr-4 py-4 border-2 border-gray-300 rounded-xl text-base font-mono
+                   focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan transition
+                   placeholder:font-sans placeholder:text-gray-400 placeholder:text-sm">
+        </div>
+
+        <button (click)="buscarQR()"
+                [disabled]="isLoading || !codigoQRInput.trim()"
+                class="w-full py-4 bg-hospital-cyan hover:bg-cyan-700 active:scale-95
+                 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100
+                 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg text-base">
+          <app-icon [name]="isLoading ? 'loader' : 'search'" [size]="20"
+                    [class.animate-spin]="isLoading"></app-icon>
+          {{ isLoading ? 'BUSCANDO...' : 'VERIFICAR DATOS' }}
+        </button>
+      </div>
+
+      <!-- Tip -->
+      <div class="mt-5 p-3 bg-blue-50 rounded-lg border border-blue-200 flex items-start gap-2.5">
+        <app-icon name="info" [size]="16" class="text-blue-500 flex-shrink-0 mt-0.5"></app-icon>
+        <p class="text-xs text-blue-700">
+          Al enfocar el campo y escanear, el lector ingresará el código automáticamente.
+        </p>
+      </div>
+
+    </div>
+
+    <!-- ============================================================
+         PASO 2 — VALIDAR Y CONFIRMAR
+         ============================================================ -->
+    <div *ngIf="paso === 'validar' && datosExpediente" class="animate-fade-in">
+
+      <!-- Alertas especiales -->
+      <div *ngIf="esNN || esCausaViolenta" class="px-5 pt-5 space-y-2">
+
+        <div *ngIf="esNN"
+             class="flex items-start gap-3 p-3 bg-amber-50 border border-amber-300 rounded-xl">
+          <app-icon name="alert-triangle" [size]="18" class="text-amber-500 flex-shrink-0 mt-0.5"></app-icon>
+          <div>
+            <p class="text-sm font-bold text-amber-800">Paciente No Identificado (NN)</p>
+            <p class="text-xs text-amber-700 mt-0.5">
+              Verifique que la etiqueta interna de la bolsa coincida con este expediente.
+            </p>
+          </div>
+        </div>
+
+        <div *ngIf="esCausaViolenta"
+             class="flex items-start gap-3 p-3 bg-red-50 border border-red-300 rounded-xl">
+          <app-icon name="shield-alert" [size]="18" class="text-red-500 flex-shrink-0 mt-0.5"></app-icon>
+          <div>
+            <p class="text-sm font-bold text-red-800">Causa Violenta o Dudosa</p>
+            <p class="text-xs text-red-700 mt-0.5">
+              Requiere intervención policial para el retiro.
+            </p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Datos del expediente -->
+      <div class="p-5 bg-cyan-50 border-b border-cyan-100"
+           [class.mt-3]="esNN || esCausaViolenta">
+
+        <div class="flex justify-between items-start mb-3">
+          <div class="min-w-0 flex-1 mr-3">
+            <div class="text-[10px] text-gray-500 font-bold uppercase">Nombres</div>
+            <h2 class="text-lg font-bold text-gray-800 leading-tight">
+              {{ datosExpediente.nombreCompleto }}
+            </h2>
+          </div>
+          <div class="text-right flex-shrink-0">
+            <div class="text-[10px] text-gray-500 font-bold uppercase">Código</div>
+            <div class="text-base font-mono font-bold text-hospital-cyan">
+              {{ datosExpediente.codigoExpediente }}
             </div>
           </div>
-
-          <button (click)="buscarQR()"
-                  [disabled]="isLoading"
-                  class="w-full mt-4 bg-hospital-blue text-white font-bold py-4 rounded-xl shadow-lg hover:bg-blue-600 transition-transform active:scale-95 disabled:opacity-50 flex justify-center items-center gap-2">
-            <app-icon *ngIf="isLoading" name="refresh-cw" [size]="20" className="animate-spin"></app-icon>
-            {{ isLoading ? 'BUSCANDO...' : 'VERIFICAR DATOS' }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Paso 2: Validar -->
-    <div *ngIf="paso === 'validar'" class="p-0 animate-fade-in">
-
-      <div class="p-6 bg-blue-50 border-b border-blue-100">
-        <div class="flex justify-between items-start mb-4">
-          <div>
-            <span class="bg-blue-200 text-blue-800 text-xs font-bold px-2 py-1 rounded uppercase">Expediente</span>
-            <h2 class="text-2xl font-bold text-gray-800 mt-1">{{ datosExpediente?.nombreCompleto }}</h2>
-          </div>
-          <div class="text-right">
-            <div class="text-xs text-gray-500 font-bold uppercase">Código</div>
-            <div class="text-lg font-mono font-bold text-hospital-blue">{{ datosExpediente?.codigoExpediente }}</div>
-          </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-4 text-sm">
+        <!-- Grid de datos -->
+        <div class="grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm">
+
           <div>
-            <span class="text-gray-500 block">Historia Clínica</span>
-            <span class="font-bold text-gray-800">{{ datosExpediente?.hc }}</span>
+            <span class="text-gray-500 text-xs block">Historia Clínica</span>
+            <span class="font-bold text-gray-800 font-mono">{{ datosExpediente.hc }}</span>
           </div>
+
           <div>
-            <span class="text-gray-500 block">Documento</span>
-            <span class="font-bold text-gray-800">{{ datosExpediente?.tipoDocumento }}: {{ datosExpediente?.numeroDocumento }}</span>
+            <span class="text-gray-500 text-xs block">Documento</span>
+            <span class="font-bold text-gray-800 font-mono">{{ documentoDisplay }}</span>
           </div>
+
           <div>
-            <span class="text-gray-500 block">Procedencia</span>
-            <span class="font-bold text-gray-800">{{ datosExpediente?.servicioFallecimiento }}</span>
+            <span class="text-gray-500 text-xs block">Servicio de Origen</span>
+            <span class="font-bold text-gray-800">{{ datosExpediente.servicioFallecimiento }}</span>
           </div>
+
           <div>
-            <span class="text-gray-500 block">Estado Actual</span>
-            <!-- CORRECCIÓN: Uso de Badge unificado -->
-            <span [class]="getBadgeClasses(datosExpediente?.estadoActual)">
-              {{ datosExpediente?.estadoActual }}
+            <span class="text-gray-500 text-xs block">Estado</span>
+            <span [class]="getBadgeClasses(datosExpediente.estadoActual)"
+                  class="px-2 py-0.5 rounded-full text-xs font-semibold">
+              {{ datosExpediente.estadoActual }}
             </span>
           </div>
+
         </div>
+
+        <!-- Sello validación automática -->
+        <div class="mt-3 flex items-center gap-1.5 pt-2 border-t border-cyan-200">
+          <app-icon name="check-circle" [size]="13" class="text-green-500"></app-icon>
+          <span class="text-[11px] text-green-700 font-medium">
+            Datos verificados automáticamente contra la base de datos del SGM
+          </span>
+        </div>
+
       </div>
 
-      <div class="p-6">
-        <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
-          <app-icon name="clipboard-list" [size]="20"></app-icon>
-          Validación Física
+      <!-- Confirmación manual -->
+      <div class="p-5">
+
+        <h3 class="font-bold text-gray-700 mb-3 flex items-center gap-2 text-sm">
+          <app-icon name="eye" [size]="18" class="text-hospital-cyan"></app-icon>
+          Confirmación Visual del Vigilante
         </h3>
 
-        <div class="space-y-3">
-          <label class="flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all"
-                 [class]="checks.hc ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-blue-300'">
-            <input type="checkbox" [(ngModel)]="checks.hc" class="w-6 h-6 text-green-600 rounded focus:ring-green-500 mr-4">
-            <span class="font-medium text-gray-700">La Historia Clínica coincide</span>
-          </label>
+        <label class="flex items-start gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all"
+               [ngClass]="brazaletePresente
+                 ? 'border-green-500 bg-green-50'
+                 : 'border-gray-200 bg-white hover:border-hospital-cyan hover:bg-cyan-50'">
 
-          <label class="flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all"
-                 [class]="checks.documento ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-blue-300'">
-            <input type="checkbox" [(ngModel)]="checks.documento" class="w-6 h-6 text-green-600 rounded focus:ring-green-500 mr-4">
-            <span class="font-medium text-gray-700">El Documento (DNI/Otro) coincide</span>
-          </label>
+          <input type="checkbox"
+                 [(ngModel)]="brazaletePresente"
+                 class="h-6 w-6 rounded border-gray-300 focus:ring-green-500
+                        cursor-pointer accent-green-600 flex-shrink-0 mt-0.5">
 
-          <label class="flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all"
-                 [class]="checks.nombre ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-blue-300'">
-            <input type="checkbox" [(ngModel)]="checks.nombre" class="w-6 h-6 text-green-600 rounded focus:ring-green-500 mr-4">
-            <span class="font-medium text-gray-700">El Nombre Completo coincide</span>
-          </label>
+          <span class="min-w-0 flex-1">
+            <span class="block text-sm font-semibold text-gray-800 leading-snug">
+              El brazalete físico está presente en el cuerpo y coincide visualmente con los datos mostrados
+            </span>
+            <span class="block text-xs text-gray-500 mt-1">
+              Verifique: nombre legible, código QR íntegro, cuerpo correcto.
+            </span>
+          </span>
 
-          <label class="flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all"
-                 [class]="checks.servicio ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-blue-300'">
-            <input type="checkbox" [(ngModel)]="checks.servicio" class="w-6 h-6 text-green-600 rounded focus:ring-green-500 mr-4">
-            <span class="font-medium text-gray-700">El Servicio de Origen coincide</span>
-          </label>
-        </div>
+          <span *ngIf="brazaletePresente" class="flex-shrink-0 text-green-500">
+            <app-icon name="check-circle" [size]="24"></app-icon>
+          </span>
 
-        <div class="grid grid-cols-2 gap-4 mt-8">
+        </label>
+
+        <!-- Botones de acción -->
+        <div class="grid grid-cols-2 gap-3 mt-5">
+
           <button (click)="rechazarIngreso()"
-                  class="py-4 border-2 border-red-500 text-red-600 rounded-xl font-bold hover:bg-red-50 transition-colors flex flex-col items-center justify-center">
-            <app-icon name="circle-x" [size]="24" className="mb-1"></app-icon>
-            RECHAZAR
-          </button>
-          <button (click)="confirmarIngreso()"
                   [disabled]="isLoading"
-                  class="py-4 bg-green-600 text-white rounded-xl font-bold shadow-lg hover:bg-green-700 transition-transform active:scale-95 flex flex-col items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
-            <app-icon *ngIf="!isLoading" name="circle-check" [size]="24" className="mb-1"></app-icon>
-            <app-icon *ngIf="isLoading" name="refresh-cw" [size]="24" className="mb-1 animate-spin"></app-icon>
-            <span>{{ isLoading ? 'PROCESANDO...' : 'AUTORIZAR INGRESO' }}</span>
+                  class="py-4 border-2 border-red-400 text-red-600 rounded-xl font-bold
+                   hover:bg-red-50 active:scale-95 transition-all
+                   flex flex-col items-center justify-center gap-1 disabled:opacity-50">
+            <app-icon name="x-circle" [size]="22"></app-icon>
+            <span class="text-sm">RECHAZAR</span>
+          </button>
+
+          <button (click)="confirmarIngreso()"
+                  [disabled]="isLoading || !brazaletePresente"
+                  class="py-4 rounded-xl font-bold shadow-lg active:scale-95 transition-all
+                   flex flex-col items-center justify-center gap-1
+                   disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+                  [ngClass]="brazaletePresente && !isLoading
+              ? 'bg-green-600 hover:bg-green-700 text-white'
+              : 'bg-gray-200 text-gray-400'">
+            <app-icon [name]="isLoading ? 'loader' : 'log-in'" [size]="22"
+                      [class.animate-spin]="isLoading"></app-icon>
+            <span class="text-sm">{{ isLoading ? 'PROCESANDO...' : 'AUTORIZAR' }}</span>
+          </button>
+
+        </div>
+
+        <!-- Cancelar -->
+        <div class="text-center mt-4">
+          <button (click)="cancelar()"
+                  [disabled]="isLoading"
+                  class="text-sm text-gray-400 hover:text-gray-600 underline transition-colors disabled:opacity-50">
+            ← Cancelar y volver a escanear
           </button>
         </div>
 
-        <div class="text-center mt-4">
-          <button (click)="cancelar()" class="text-sm text-gray-400 underline hover:text-white transition-colors">Cancelar revisión</button>
-        </div>
       </div>
+
     </div>
 
   </div>
+
 </div>

@@ -8,6 +8,13 @@ import { Observable } from 'rxjs';
  */
 export interface RegistrarSalidaRequest {
   expedienteID: number;
+
+  /**
+   * ID del Acta de Retiro asociada. OBLIGATORIO.
+   * El backend lo requiere para vincular la salida con el acta firmada.
+   */
+  actaRetiroID: number;
+
   expedienteLegalID?: number;
 
   // Funeraria — solo TipoSalida = Familiar
@@ -19,7 +26,7 @@ export interface RegistrarSalidaRequest {
   ayudanteFuneraria?: string;
   dniAyudante?: string;
 
-  // Vehículo y destino
+  // Vehículo y destino — ambos tipos de salida
   placaVehiculo?: string;
   destino?: string;
 
@@ -43,13 +50,14 @@ export interface SalidaDTO {
   vigilanteNombre: string;
   nombreFuneraria?: string;
   destino?: string;
+  tiempoPermanenciaMinutos?: number;
+  bandejaLiberadaID?: number;
   incidenteRegistrado: boolean;
   detalleIncidente?: string;
 }
 
 /**
  * Estadísticas de salidas del mortuorio.
- * Coincide con EstadisticasSalidaDTO.cs
  */
 export interface EstadisticasSalidaDTO {
   totalSalidas: number;
@@ -71,10 +79,8 @@ export class SalidaService {
 
   /**
    * Registra la salida de un cuerpo del mortuorio.
-   * Libera automáticamente la bandeja asignada y envía notificación SignalR.
-   * 
-   * @param data - Datos de la salida y responsable
-   * @returns Observable con SalidaDTO del registro creado
+   * Requiere actaRetiroID para vincular con el acta firmada.
+   * Libera automáticamente la bandeja y envía notificación SignalR.
    */
   registrarSalida(data: RegistrarSalidaRequest): Observable<SalidaDTO> {
     return this.http.post<SalidaDTO>(`${this.apiUrl}/registrar`, data);
@@ -82,42 +88,39 @@ export class SalidaService {
 
   /**
    * Obtiene la salida registrada de un expediente específico.
-   * 
-   * @param expedienteId - ID del expediente
-   * @returns Observable con SalidaDTO o null si no existe
    */
   getSalidaPorExpediente(expedienteId: number): Observable<SalidaDTO | null> {
-    return this.http.get<SalidaDTO | null>(`${this.apiUrl}/expediente/${expedienteId}`);
+    return this.http.get<SalidaDTO | null>(
+      `${this.apiUrl}/expediente/${expedienteId}`
+    );
   }
 
   /**
    * Obtiene estadísticas de salidas en un rango de fechas.
-   * 
-   * @param fechaInicio - Fecha inicial (opcional)
-   * @param fechaFin - Fecha final (opcional)
-   * @returns Observable con EstadisticasSalidaDTO
    */
-  getEstadisticas(fechaInicio?: Date, fechaFin?: Date): Observable<EstadisticasSalidaDTO> {
+  getEstadisticas(
+    fechaInicio?: Date,
+    fechaFin?: Date
+  ): Observable<EstadisticasSalidaDTO> {
     let params: any = {};
     if (fechaInicio) params.fechaInicio = fechaInicio.toISOString();
     if (fechaFin) params.fechaFin = fechaFin.toISOString();
-
-    return this.http.get<EstadisticasSalidaDTO>(`${this.apiUrl}/estadisticas`, { params });
+    return this.http.get<EstadisticasSalidaDTO>(
+      `${this.apiUrl}/estadisticas`, { params }
+    );
   }
 
   /**
    * Obtiene lista de salidas en un rango de fechas.
-   * 
-   * @param fechaInicio - Fecha inicial
-   * @param fechaFin - Fecha final
-   * @returns Observable con array de SalidaDTO
    */
-  getSalidasPorFechas(fechaInicio: Date, fechaFin: Date): Observable<SalidaDTO[]> {
+  getSalidasPorFechas(
+    fechaInicio: Date,
+    fechaFin: Date
+  ): Observable<SalidaDTO[]> {
     const params = {
       fechaInicio: fechaInicio.toISOString(),
       fechaFin: fechaFin.toISOString()
     };
-
     return this.http.get<SalidaDTO[]>(`${this.apiUrl}/rango`, { params });
   }
 }

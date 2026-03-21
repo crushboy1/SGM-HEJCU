@@ -42,6 +42,17 @@ export class FormularioActaRetiroComponent implements OnInit {
   // ===================================================================
   isSubmitting = false;
 
+  /**
+   * Controla el acordeón de médico externo.
+   * false por defecto — el admisionista lo activa solo si la familia trae médico propio.
+   * Al desmarcar limpia los campos para no enviar datos residuales al backend.
+   */
+  tieneMedicoExterno = false;
+
+  // Datos del expediente para mostrar en readonly (digitaliza cuaderno VigSup)
+  edadPaciente: number = 0;
+  diagnosticoFinal: string = '';
+
   // FORM DATA
   formData = {
     // Datos del fallecido (readonly)
@@ -55,12 +66,16 @@ export class FormularioActaRetiroComponent implements OnInit {
 
     // CERTIFICADO/OFICIO
     numeroCertificadoDefuncion: '',
-    numeroOficioLegal: '',
+    numeroOficioPolicial: '',
 
-    // Médico certificante (readonly)
+    // Médico certificante (readonly — viene del expediente)
     nombreMedicoCertificante: '',
     cmpMedicoCertificante: '',
     rneMedicoCertificante: '',
+
+    // Médico externo (opcional — solo cuando causaViolentaODudosa = false)
+    medicoExternoNombre: '',
+    medicoExternoCMP: '',
 
     // Jefe de Guardia
     nombreJefeGuardia: '',
@@ -80,10 +95,9 @@ export class FormularioActaRetiroComponent implements OnInit {
     documentoAutoridad: '',
     cargoAutoridad: '',
     institucionAutoridad: '',
-    placaVehiculoAutoridad: '',
     telefonoAutoridad: '',
 
-    // Datos adicionales (opcionales)
+    // Datos adicionales
     destinoCuerpo: '',
     observaciones: ''
   };
@@ -129,12 +143,41 @@ export class FormularioActaRetiroComponent implements OnInit {
   }
 
   // ═══════════════════════════════════════════════════════════
+  // GETTERS
+  // ═══════════════════════════════════════════════════════════
+
+  /** true si el tipo de salida viene definido desde gestión de documentos */
+  get tipoSalidaBloqueado(): boolean {
+    return !!this.expediente?.tipoSalidaPreliminar;
+  }
+
+  /**
+   * true si se puede mostrar el bloque de médico externo.
+   * Bloqueado cuando CausaViolentaODudosa = true (siempre AutoridadLegal + PNP).
+   */
+  get medicoExternoHabilitado(): boolean {
+    return !this.expediente?.causaViolentaODudosa &&
+      this.formData.tipoSalida === 'Familiar';
+  }
+
+  /** SINADEF siempre obligatorio para Familiar.
+   * El médico externo genera el SINADEF antes de venir — sin excepción. */
+  get sinadefRequerido(): boolean {
+    return this.formData.tipoSalida === 'Familiar';
+  }
+
+  get puedeCrear(): boolean {
+    return !this.isSubmitting;
+  }
+
+  get tituloFormulario(): string {
+    return 'Crear Acta de Retiro';
+  }
+
+  // ═══════════════════════════════════════════════════════════
   // VALIDACIÓN EN TIEMPO REAL DE DOCUMENTOS
   // ═══════════════════════════════════════════════════════════
 
-  /**
-   * Inicializa la validación en tiempo real de certificados y oficios
-   */
   private inicializarValidacionDocumentos(): void {
     // Validar certificado SINADEF (con debounce)
     this.certificadoSubject
@@ -154,9 +197,7 @@ export class FormularioActaRetiroComponent implements OnInit {
             this.clearError('numeroCertificadoDefuncion');
           }
         },
-        error: (err) => {
-          console.error('❌ Error al verificar certificado SINADEF:', err);
-        }
+        error: (err) => console.error('❌ Error al verificar certificado SINADEF:', err)
       });
 
     // Validar oficio legal (con debounce)
@@ -171,35 +212,28 @@ export class FormularioActaRetiroComponent implements OnInit {
       .subscribe({
         next: (existe) => {
           if (existe) {
-            this.errors['numeroOficioLegal'] =
+            this.errors['numeroOficioPolicial'] =
               'Este número de oficio ya está registrado en otra acta';
           } else {
-            this.clearError('numeroOficioLegal');
+            this.clearError('numeroOficioPolicial');
           }
         },
-        error: (err) => {
-          console.error('❌ Error al verificar oficio legal:', err);
-        }
+        error: (err) => console.error('❌ Error al verificar oficio legal:', err)
       });
   }
 
-  /**
-   * Valida certificado SINADEF mientras el usuario escribe
-   */
   onCertificadoSINADEFChange(value: string): void {
     if (value.trim().length >= 10) {
       this.certificadoSubject.next(value.trim());
     }
   }
 
-  /**
-   * Valida oficio legal mientras el usuario escribe
-   */
   onOficioLegalChange(value: string): void {
     if (value.trim().length >= 5) {
       this.oficioSubject.next(value.trim());
     }
   }
+
   // ===================================================================
   // INICIALIZACIÓN
   // ===================================================================
@@ -208,14 +242,19 @@ export class FormularioActaRetiroComponent implements OnInit {
     this.formData.dniPaciente = this.expediente.numeroDocumento || '';
     this.formData.nombreCompletoPaciente = this.expediente.nombreCompleto;
     this.formData.servicioFallecimiento = this.expediente.servicioFallecimiento || '';
-    this.formData.numeroCertificadoDefuncion = this.expediente.numeroCertificadoSINADEF || '';
+    this.formData.numeroCertificadoDefuncion = '';
     this.formData.nombreMedicoCertificante = this.expediente.medicoCertificaNombre || '';
-    this.formData.cmpMedicoCertificante = this.expediente.medicoCertificaCMP || '';
-    this.formData.rneMedicoCertificante = this.expediente.medicoCertificaRNE || '';
+    this.formData.cmpMedicoCertificante = this.expediente.medicoCMP || '';
+    this.formData.rneMedicoCertificante = this.expediente.medicoRNE || '';
+
+    // Edad y diagnóstico para mostrar readonly (digitalizan cuaderno VigSup)
+    this.edadPaciente = this.expediente.edad ?? 0;
+    this.diagnosticoFinal = this.expediente.diagnosticoFinal || '';
 
     if (this.expediente.tipoSalidaPreliminar) {
-      this.formData.tipoSalida = this.expediente.tipoSalidaPreliminar;
+      this.formData.tipoSalida = this.expediente.tipoSalidaPreliminar as 'Familiar' | 'AutoridadLegal';
     }
+
     console.log('✅ Datos del expediente pre-llenados:', this.formData);
   }
 
@@ -225,18 +264,31 @@ export class FormularioActaRetiroComponent implements OnInit {
   private validarFormulario(): boolean {
     this.errors = {};
 
-    // Validar Certificado/Oficio según tipo
+    // Validar SINADEF / Oficio según tipo de salida
     if (this.formData.tipoSalida === 'Familiar') {
+      // SINADEF siempre obligatorio para Familiar
       if (!this.formData.numeroCertificadoDefuncion.trim()) {
-        this.errors['numeroCertificadoDefuncion'] = 'El N° de Certificado SINADEF es requerido';
+        this.errors['numeroCertificadoDefuncion'] =
+          'El N° de Certificado SINADEF es obligatorio';
       }
+
+      // Si hay médico externo, nombre y CMP son obligatorios
+      if (this.tieneMedicoExterno) {
+        if (!this.formData.medicoExternoNombre.trim()) {
+          this.errors['medicoExternoNombre'] = 'El nombre del médico externo es obligatorio';
+        }
+        if (!this.formData.medicoExternoCMP.trim()) {
+          this.errors['medicoExternoCMP'] = 'El CMP del médico externo es obligatorio';
+        }
+      }
+
     } else if (this.formData.tipoSalida === 'AutoridadLegal') {
-      if (!this.formData.numeroOficioLegal.trim()) {
-        this.errors['numeroOficioLegal'] = 'El N° de Oficio Legal es requerido';
+      if (!this.formData.numeroOficioPolicial.trim()) {
+        this.errors['numeroOficioPolicial'] = 'El N° de Oficio Legal es requerido';
       }
     }
 
-    // Validar Jefe de Guardia (siempre obligatorio)
+    // Jefe de Guardia (siempre obligatorio)
     if (!this.formData.nombreJefeGuardia.trim()) {
       this.errors['nombreJefeGuardia'] = 'El nombre del Jefe de Guardia es requerido';
     }
@@ -247,12 +299,8 @@ export class FormularioActaRetiroComponent implements OnInit {
       this.errors['cmpJefeGuardia'] = 'El CMP debe tener 6 dígitos';
     }
 
-    // ═══════════════════════════════════════════════════════════
-    // VALIDAR SEGÚN TIPO DE SALIDA
-    // ═══════════════════════════════════════════════════════════
-
+    // Validar según tipo de salida
     if (this.formData.tipoSalida === 'Familiar') {
-      // Validar Familiar
       if (!this.formData.nombreFamiliar.trim()) {
         this.errors['nombreFamiliar'] = 'El nombre del familiar es requerido';
       }
@@ -264,45 +312,34 @@ export class FormularioActaRetiroComponent implements OnInit {
       } else if (this.formData.tipoDocumentoFamiliar === 1 && !/^\d{8}$/.test(this.formData.dniFamiliar)) {
         this.errors['dniFamiliar'] = 'El DNI debe tener 8 dígitos';
       }
-
       if (!this.formData.parentesco.trim()) {
         this.errors['parentesco'] = 'El parentesco es requerido';
       }
-
-      // Teléfono opcional para Familiar
       if (this.formData.telefonoFamiliar.trim() && !/^\d{9}$/.test(this.formData.telefonoFamiliar)) {
         this.errors['telefonoFamiliar'] = 'El teléfono debe tener 9 dígitos';
       }
 
     } else if (this.formData.tipoSalida === 'AutoridadLegal') {
-      // Validar Autoridad Legal
       if (!this.formData.tipoAutoridad) {
         this.errors['tipoAutoridad'] = 'Seleccione el tipo de autoridad';
       }
-
       if (!this.formData.tipoDocumentoAutoridad) {
         this.errors['tipoDocumentoAutoridad'] = 'Seleccione el tipo de documento';
       }
-
       if (!this.formData.nombreAutoridad.trim()) {
         this.errors['nombreAutoridad'] = 'El nombre de la autoridad es requerido';
       }
-
       if (!this.formData.documentoAutoridad.trim()) {
         this.errors['documentoAutoridad'] = 'El documento de identidad es requerido';
       } else if (this.formData.tipoDocumentoAutoridad === 1 && !/^\d{8}$/.test(this.formData.documentoAutoridad)) {
         this.errors['documentoAutoridad'] = 'El DNI debe tener 8 dígitos';
       }
-
       if (!this.formData.cargoAutoridad.trim()) {
-        this.errors['cargoAutoridad'] = 'El cargo es requerido';
+        this.errors['cargoAutoridad'] = 'El cargo es requerido (ej: SO3 PNP)';
       }
-
       if (!this.formData.institucionAutoridad.trim()) {
-        this.errors['institucionAutoridad'] = 'La institución es requerida';
+        this.errors['institucionAutoridad'] = 'La institución/comisaría es requerida';
       }
-
-      // Placa y teléfono opcionales para Autoridad
       if (this.formData.telefonoAutoridad.trim() && !/^\d{9}$/.test(this.formData.telefonoAutoridad)) {
         this.errors['telefonoAutoridad'] = 'El teléfono debe tener 9 dígitos';
       }
@@ -314,6 +351,20 @@ export class FormularioActaRetiroComponent implements OnInit {
   clearError(campo: string): void {
     if (this.errors[campo]) {
       delete this.errors[campo];
+    }
+  }
+
+  /**
+   * Callback al marcar/desmarcar el checkbox de médico externo.
+   * Al desmarcar: limpia los campos para no enviar datos residuales.
+   * Al marcar: simplemente habilita la sección — SINADEF pasa a opcional.
+   */
+  onToggleMedicoExterno(habilitado: boolean): void {
+    if (!habilitado) {
+      this.formData.medicoExternoNombre = '';
+      this.formData.medicoExternoCMP = '';
+      this.clearError('medicoExternoNombre');
+      this.clearError('medicoExternoCMP');
     }
   }
 
@@ -331,7 +382,6 @@ export class FormularioActaRetiroComponent implements OnInit {
       return;
     }
 
-    // Confirmación con resumen CONDICIONAL
     const confirmacion = await Swal.fire({
       icon: 'question',
       title: 'Confirmar Creación de Acta',
@@ -348,9 +398,6 @@ export class FormularioActaRetiroComponent implements OnInit {
     this.ejecutarCreacion();
   }
 
-  /**
-   * Genera HTML de confirmación según tipo de salida
-   */
   private generarHTMLConfirmacion(): string {
     let html = `
       <div class="text-left text-sm space-y-2">
@@ -358,17 +405,28 @@ export class FormularioActaRetiroComponent implements OnInit {
         <p class="text-gray-600">${this.formData.nombreCompletoPaciente}</p>
     `;
 
+    if (this.edadPaciente > 0) {
+      html += `<p class="text-gray-500 text-xs">Edad: ${this.edadPaciente} años</p>`;
+    }
+
     if (this.formData.tipoSalida === 'Familiar') {
       html += `
         <p class="font-semibold text-gray-800 mt-3">Familiar responsable:</p>
         <p class="text-gray-600">${this.formData.nombreFamiliar}</p>
-        <p class="text-gray-500 text-xs">DNI: ${this.formData.dniFamiliar} - ${this.formData.parentesco}</p>
+        <p class="text-gray-500 text-xs">DNI: ${this.formData.dniFamiliar} — ${this.formData.parentesco}</p>
       `;
+      if (this.formData.medicoExternoNombre.trim()) {
+        html += `
+          <p class="font-semibold text-gray-800 mt-3">Médico externo:</p>
+          <p class="text-gray-600">${this.formData.medicoExternoNombre}</p>
+          <p class="text-gray-500 text-xs">CMP: ${this.formData.medicoExternoCMP}</p>
+        `;
+      }
     } else {
       html += `
         <p class="font-semibold text-gray-800 mt-3">Autoridad Legal:</p>
         <p class="text-gray-600">${this.formData.nombreAutoridad}</p>
-        <p class="text-gray-500 text-xs">${this.formData.cargoAutoridad} - ${this.formData.institucionAutoridad}</p>
+        <p class="text-gray-500 text-xs">${this.formData.cargoAutoridad} — ${this.formData.institucionAutoridad}</p>
       `;
     }
 
@@ -382,26 +440,23 @@ export class FormularioActaRetiroComponent implements OnInit {
     return html;
   }
 
-  /**
-   * Ejecuta la creación del acta en el backend
-   */
   private ejecutarCreacion(): void {
     this.isSubmitting = true;
 
     const usuarioId = this.authService.getUserId();
+    const tieneMedicoExterno = this.tieneMedicoExterno;
 
     const dto: CreateActaRetiroDTO = {
       expedienteID: this.expediente.expedienteID,
 
-      // Tipo de salida
       tipoSalida: this.formData.tipoSalida,
 
       // Documento legal (condicional)
       numeroCertificadoDefuncion: this.formData.tipoSalida === 'Familiar'
-        ? this.formData.numeroCertificadoDefuncion
+        ? this.formData.numeroCertificadoDefuncion || undefined
         : undefined,
-      numeroOficioLegal: this.formData.tipoSalida === 'AutoridadLegal'
-        ? this.formData.numeroOficioLegal
+      numeroOficioPolicial: this.formData.tipoSalida === 'AutoridadLegal'
+        ? this.formData.numeroOficioPolicial
         : undefined,
 
       // Datos del fallecido
@@ -417,98 +472,74 @@ export class FormularioActaRetiroComponent implements OnInit {
       medicoCMP: this.formData.cmpMedicoCertificante,
       medicoRNE: this.formData.rneMedicoCertificante || undefined,
 
+      // Médico externo (solo si aplica y tipoSalida = Familiar)
+      medicoExternoNombre: this.formData.tipoSalida === 'Familiar' && tieneMedicoExterno
+        ? this.formData.medicoExternoNombre
+        : undefined,
+      medicoExternoCMP: this.formData.tipoSalida === 'Familiar' && tieneMedicoExterno
+        ? this.formData.medicoExternoCMP
+        : undefined,
+
       // Jefe de Guardia
       jefeGuardiaNombre: this.formData.nombreJefeGuardia,
       jefeGuardiaCMP: this.formData.cmpJefeGuardia,
 
-      // ═══════════════════════════════════════════════════════════
-      // FAMILIAR (solo si tipoSalida = Familiar)
-      // ═══════════════════════════════════════════════════════════
+      // Familiar
       familiarApellidoPaterno: this.formData.tipoSalida === 'Familiar'
-        ? this.extraerApellidoPaterno(this.formData.nombreFamiliar)
-        : undefined,
+        ? this.extraerApellidoPaterno(this.formData.nombreFamiliar) : undefined,
       familiarApellidoMaterno: this.formData.tipoSalida === 'Familiar'
-        ? this.extraerApellidoMaterno(this.formData.nombreFamiliar)
-        : undefined,
+        ? this.extraerApellidoMaterno(this.formData.nombreFamiliar) : undefined,
       familiarNombres: this.formData.tipoSalida === 'Familiar'
-        ? this.extraerNombres(this.formData.nombreFamiliar)
-        : undefined,
+        ? this.extraerNombres(this.formData.nombreFamiliar) : undefined,
       familiarTipoDocumento: this.formData.tipoSalida === 'Familiar'
-        ? this.formData.tipoDocumentoFamiliar
-        : undefined,
+        ? this.formData.tipoDocumentoFamiliar : undefined,
       familiarNumeroDocumento: this.formData.tipoSalida === 'Familiar'
-        ? this.formData.dniFamiliar
-        : undefined,
+        ? this.formData.dniFamiliar : undefined,
       familiarParentesco: this.formData.tipoSalida === 'Familiar'
-        ? this.formData.parentesco
-        : undefined,
+        ? this.formData.parentesco : undefined,
       familiarTelefono: this.formData.tipoSalida === 'Familiar'
-        ? this.formData.telefonoFamiliar || undefined
-        : undefined,
+        ? this.formData.telefonoFamiliar || undefined : undefined,
 
-      // ═══════════════════════════════════════════════════════════
-      // AUTORIDAD LEGAL (solo si tipoSalida = AutoridadLegal)
-      // ═══════════════════════════════════════════════════════════
+      // Autoridad Legal
       autoridadApellidoPaterno: this.formData.tipoSalida === 'AutoridadLegal'
-        ? this.extraerApellidoPaterno(this.formData.nombreAutoridad)
-        : undefined,
+        ? this.extraerApellidoPaterno(this.formData.nombreAutoridad) : undefined,
       autoridadApellidoMaterno: this.formData.tipoSalida === 'AutoridadLegal'
-        ? this.extraerApellidoMaterno(this.formData.nombreAutoridad)
-        : undefined,
+        ? this.extraerApellidoMaterno(this.formData.nombreAutoridad) : undefined,
       autoridadNombres: this.formData.tipoSalida === 'AutoridadLegal'
-        ? this.extraerNombres(this.formData.nombreAutoridad)
-        : undefined,
+        ? this.extraerNombres(this.formData.nombreAutoridad) : undefined,
       tipoAutoridad: this.formData.tipoSalida === 'AutoridadLegal'
-        ? this.formData.tipoAutoridad
-        : undefined,
+        ? this.formData.tipoAutoridad : undefined,
       autoridadTipoDocumento: this.formData.tipoSalida === 'AutoridadLegal'
-        ? this.formData.tipoDocumentoAutoridad
-        : undefined,
+        ? this.formData.tipoDocumentoAutoridad : undefined,
       autoridadNumeroDocumento: this.formData.tipoSalida === 'AutoridadLegal'
-        ? this.formData.documentoAutoridad
-        : undefined,
+        ? this.formData.documentoAutoridad : undefined,
       autoridadCargo: this.formData.tipoSalida === 'AutoridadLegal'
-        ? this.formData.cargoAutoridad
-        : undefined,
+        ? this.formData.cargoAutoridad : undefined,
       autoridadInstitucion: this.formData.tipoSalida === 'AutoridadLegal'
-        ? this.formData.institucionAutoridad
-        : undefined,
-      autoridadPlacaVehiculo: this.formData.tipoSalida === 'AutoridadLegal'
-        ? this.formData.placaVehiculoAutoridad || undefined
-        : undefined,
+        ? this.formData.institucionAutoridad : undefined,
       autoridadTelefono: this.formData.tipoSalida === 'AutoridadLegal'
-        ? this.formData.telefonoAutoridad || undefined
-        : undefined,
+        ? this.formData.telefonoAutoridad || undefined : undefined,
 
-      // Datos adicionales
-      datosAdicionales: undefined,
       destino: this.formData.destinoCuerpo || undefined,
       observaciones: this.formData.observaciones || undefined,
-
-      // Usuario
       usuarioAdmisionID: usuarioId
     };
-
-    console.log('📤 Enviando DTO al backend:', dto);
 
     this.actaRetiroService.crear(dto).subscribe({
       next: (actaCreada) => {
         this.isSubmitting = false;
-
         Swal.fire({
           icon: 'success',
           title: 'Acta Creada Exitosamente',
           text: 'El acta de retiro ha sido registrada correctamente',
-          showConfirmButton: true
+          showConfirmButton: true,
+          confirmButtonColor: '#0891B2'
         });
-
         this.actaCreada.emit(actaCreada);
       },
       error: (err) => {
         this.isSubmitting = false;
         console.error('❌ Error al crear acta:', err);
-        console.error('📋 DTO enviado:', dto);
-
         Swal.fire({
           icon: 'error',
           title: 'Error al Crear Acta',
@@ -519,21 +550,8 @@ export class FormularioActaRetiroComponent implements OnInit {
     });
   }
 
-  private mapearTipoDocumento(tipo: string): number {
-    const mapeo: Record<string, number> = {
-      'DNI': 1,
-      'CE': 2,
-      'Pasaporte': 3,
-      'RUC': 4,
-      'NN': 5
-    };
-    return mapeo[tipo] || 1;
-  }
-
   async cancelarFormulario(): Promise<void> {
-    const hayCambios = this.formHaCambiado();
-
-    if (hayCambios) {
+    if (this.formHaCambiado()) {
       const confirmacion = await Swal.fire({
         icon: 'warning',
         title: '¿Cancelar Creación?',
@@ -544,10 +562,8 @@ export class FormularioActaRetiroComponent implements OnInit {
         confirmButtonColor: '#EF4444',
         cancelButtonColor: '#6B7280'
       });
-
       if (!confirmacion.isConfirmed) return;
     }
-
     this.onCancelar.emit();
   }
 
@@ -557,6 +573,7 @@ export class FormularioActaRetiroComponent implements OnInit {
       this.formData.cmpJefeGuardia.trim() !== '' ||
       this.formData.nombreFamiliar.trim() !== '' ||
       this.formData.dniFamiliar.trim() !== '' ||
+      this.formData.medicoExternoNombre.trim() !== '' ||
       this.formData.nombreAutoridad.trim() !== '' ||
       this.formData.documentoAutoridad.trim() !== '' ||
       this.formData.destinoCuerpo.trim() !== '' ||
@@ -565,23 +582,15 @@ export class FormularioActaRetiroComponent implements OnInit {
   }
 
   // ===================================================================
-  // GETTERS
-  // ===================================================================
-  get puedeCrear(): boolean {
-    return !this.isSubmitting;
-  }
-
-  get tituloFormulario(): string {
-    return 'Crear Acta de Retiro';
-  }
-  /** true si el tipo de salida viene definido desde gestion de documentos */
-  get tipoSalidaBloqueado(): boolean {
-    return !!this.expediente?.tipoSalidaPreliminar;
-  }
-
-  // ===================================================================
   // HELPERS
   // ===================================================================
+  private mapearTipoDocumento(tipo: string): number {
+    const mapeo: Record<string, number> = {
+      'DNI': 1, 'CE': 2, 'Pasaporte': 3, 'RUC': 4, 'NN': 5
+    };
+    return mapeo[tipo] || 1;
+  }
+
   private extraerApellidoPaterno(nombreCompleto: string): string {
     if (!nombreCompleto) return '';
     const partes = nombreCompleto.split(',');
@@ -589,8 +598,7 @@ export class FormularioActaRetiroComponent implements OnInit {
       const apellidos = partes[0].trim().split(' ');
       return apellidos[0] || '';
     }
-    const palabras = nombreCompleto.trim().split(' ');
-    return palabras[0] || '';
+    return nombreCompleto.trim().split(' ')[0] || '';
   }
 
   private extraerApellidoMaterno(nombreCompleto: string): string {
@@ -607,14 +615,9 @@ export class FormularioActaRetiroComponent implements OnInit {
   private extraerNombres(nombreCompleto: string): string {
     if (!nombreCompleto) return '';
     const partes = nombreCompleto.split(',');
-    if (partes.length > 1) {
-      return partes[1].trim();
-    }
+    if (partes.length > 1) return partes[1].trim();
     const palabras = nombreCompleto.trim().split(' ');
-    if (palabras.length > 2) {
-      return palabras.slice(2).join(' ');
-    }
-    return palabras[palabras.length - 1] || '';
+    return palabras.length > 2 ? palabras.slice(2).join(' ') : palabras[palabras.length - 1] || '';
   }
 
   obtenerPlaceholderDocumento(tipoDocumento: number): string {

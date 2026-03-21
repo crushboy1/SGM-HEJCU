@@ -343,17 +343,17 @@ namespace SisMortuorio.Data.Entities
         {
             string estadoTexto = Estado switch
             {
-                EstadoBandeja.Disponible => "🟢Disponible",
-                EstadoBandeja.Ocupada => $" Ocupada (Expediente: {ExpedienteID})",
-                EstadoBandeja.Mantenimiento => "🟡 En Mantenimiento",
-                EstadoBandeja.FueraDeServicio => " Fuera de Servicio",
+                EstadoBandeja.Disponible => "Disponible",
+                EstadoBandeja.Ocupada => $"Ocupada (Expediente: {ExpedienteID})",
+                EstadoBandeja.Mantenimiento => "En Mantenimiento",
+                EstadoBandeja.FueraDeServicio => "Fuera de Servicio",
                 _ => " Estado Desconocido"
             };
 
             if (EstaOcupada() && TiempoOcupada().HasValue)
             {
                 var horas = TiempoOcupada()!.Value.TotalHours;
-                string alerta = horas >= 48 ? "URGENTE" : horas >= 24 ? " ATENCIÓN" : "";
+                string alerta = horas >= 48 ? "URGENTE" : horas >= 24 ? "ATENCIÓN" : "";
                 estadoTexto += $" - {horas:F1}h {alerta}";
             }
 

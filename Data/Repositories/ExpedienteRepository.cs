@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SisMortuorio.Data.Entities;
 using SisMortuorio.Data.Entities.Enums;
-using System.Reflection.Metadata.Ecma335;
 
 namespace SisMortuorio.Data.Repositories
 {
@@ -18,11 +17,15 @@ namespace SisMortuorio.Data.Repositories
         {
             return await _context.Expedientes
                 .Include(e => e.UsuarioCreador)
+                .Include(e => e.UsuarioAdmision)
                 .Include(e => e.Pertenencias)
                 .Include(e => e.CustodiaTransferencias)
                 .Include(e => e.BandejaActual)
                 .Include(e => e.Documentos)
-                .ThenInclude(d => d.UsuarioSubio)
+                    .ThenInclude(d => d.UsuarioSubio)
+                .Include(e => e.DeudaEconomica)
+                .Include(e => e.DeudaSangre)
+                .Include(e => e.BypassDeudaUsuario)
                 .FirstOrDefaultAsync(e => e.ExpedienteID == id && !e.Eliminado);
         }
 
@@ -95,7 +98,6 @@ namespace SisMortuorio.Data.Repositories
             _context.Expedientes.Add(expediente);
             await _context.SaveChangesAsync();
 
-            // Recargar con relaciones
             var expedienteCreado = await _context.Expedientes
                 .Include(e => e.UsuarioCreador)
                 .Include(e => e.Pertenencias)
@@ -117,27 +119,21 @@ namespace SisMortuorio.Data.Repositories
                 .AnyAsync(e => e.HC == hc && !e.Eliminado);
         }
 
-        public async Task<bool> ExistsCertificadoSINADEFAsync(string certificado)
-        {
-            return await _context.Expedientes
-                .AnyAsync(e => e.NumeroCertificadoSINADEF == certificado && !e.Eliminado);
-        }
-
         public async Task<int> GetCountByServicioAsync(string servicio)
         {
             return await _context.Expedientes
                 .CountAsync(e => e.ServicioFallecimiento == servicio && !e.Eliminado);
         }
+
         public async Task<Expediente?> GetUltimoExpedienteDelAñoAsync(int año)
         {
-            var añoStr = año.ToString();
-            var prefijo = $"SGM-{añoStr}-";
-
+            var prefijo = $"SGM-{año}-";
             return await _context.Expedientes
                 .Where(e => !e.Eliminado && e.CodigoExpediente.StartsWith(prefijo))
-                .OrderByDescending(e => e.ExpedienteID) // Usar ID en lugar de código
+                .OrderByDescending(e => e.ExpedienteID)
                 .FirstOrDefaultAsync();
         }
+
         public async Task<Expediente?> GetByCodigoQRAsync(string codigoQR)
         {
             return await _context.Expedientes
@@ -146,14 +142,18 @@ namespace SisMortuorio.Data.Repositories
                 .Include(e => e.BandejaActual)
                 .FirstOrDefaultAsync(e => e.CodigoQR == codigoQR && !e.Eliminado);
         }
+
         public async Task<List<Expediente>> GetPendientesValidacionAdmisionAsync()
         {
             return await _context.Expedientes
                 .Include(e => e.Documentos)
-                .ThenInclude(d => d.UsuarioSubio)
+                    .ThenInclude(d => d.UsuarioSubio)
                 .Include(e => e.UsuarioCreador)
                 .Include(e => e.Pertenencias)
                 .Include(e => e.BandejaActual)
+                .Include(e => e.DeudaEconomica)
+                .Include(e => e.DeudaSangre)
+                .Include(e => e.BypassDeudaUsuario)
                 .Where(e => !e.Eliminado &&
                             (e.EstadoActual == EstadoExpediente.EnBandeja ||
                              e.EstadoActual == EstadoExpediente.PendienteRetiro ||
@@ -161,6 +161,7 @@ namespace SisMortuorio.Data.Repositories
                 .OrderByDescending(e => e.FechaCreacion)
                 .ToListAsync();
         }
+
         public async Task<List<Expediente>> GetPendientesRecojoAsync()
         {
             return await _context.Expedientes
@@ -172,13 +173,10 @@ namespace SisMortuorio.Data.Repositories
                     e.EstadoActual == EstadoExpediente.EnPiso ||
                     e.EstadoActual == EstadoExpediente.PendienteDeRecojo ||
                     e.EstadoActual == EstadoExpediente.EnTrasladoMortuorio ||
-                    e.EstadoActual == EstadoExpediente.PendienteAsignacionBandeja) 
+                    e.EstadoActual == EstadoExpediente.PendienteAsignacionBandeja)
                 .OrderBy(e => e.FechaHoraFallecimiento)
                 .ToListAsync();
         }
-        // ===================================================================
-        // BÚSQUEDA SIMPLE (para módulos de deudas)
-        // ===================================================================
 
         public async Task<Expediente?> GetByHCMasRecienteAsync(string hc)
         {
@@ -202,5 +200,4 @@ namespace SisMortuorio.Data.Repositories
                 .FirstOrDefaultAsync();
         }
     }
-
 }

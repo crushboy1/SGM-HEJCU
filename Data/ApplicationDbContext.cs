@@ -97,7 +97,11 @@ namespace SisMortuorio.Data
                 entity.Property(e => e.CodigoExpediente).HasMaxLength(20).IsRequired();
                 entity.HasIndex(e => e.CodigoExpediente).IsUnique();
 
-                entity.Property(e => e.TipoExpediente).HasMaxLength(20).IsRequired();
+                entity.Property(e => e.TipoExpediente)
+                    .HasConversion<string>()
+                    .HasMaxLength(20)
+                    .IsRequired();
+
                 entity.Property(e => e.HC).HasMaxLength(20).IsRequired();
 
                 // Enum TipoDocumentoIdentidad → String
@@ -115,7 +119,7 @@ namespace SisMortuorio.Data
                 entity.Property(e => e.NombreCompleto).HasMaxLength(300).IsRequired();
 
                 entity.Property(e => e.Sexo).HasMaxLength(1).IsRequired();
-                entity.Property(e => e.TipoSeguro).HasMaxLength(50).IsRequired();
+                entity.Property(e => e.FuenteFinanciamiento).HasConversion<string>().HasMaxLength(20).IsRequired();
                 entity.Property(e => e.ServicioFallecimiento).HasMaxLength(100).IsRequired();
                 entity.Property(e => e.NumeroCama).HasMaxLength(20);
 
@@ -123,7 +127,6 @@ namespace SisMortuorio.Data
                 entity.Property(e => e.MedicoCertificaNombre).HasMaxLength(200).IsRequired();
                 entity.Property(e => e.MedicoCMP).HasMaxLength(10).IsRequired();
                 entity.Property(e => e.MedicoRNE).HasMaxLength(10);
-                entity.Property(e => e.NumeroCertificadoSINADEF).HasMaxLength(50);
                 entity.Property(e => e.DiagnosticoFinal).HasMaxLength(500);
 
                 // Casos externos
@@ -144,9 +147,6 @@ namespace SisMortuorio.Data
                 // Índices
                 entity.HasIndex(e => e.HC);
                 entity.HasIndex(e => e.NumeroDocumento);
-                entity.HasIndex(e => e.NumeroCertificadoSINADEF)
-                    .IsUnique()
-                    .HasFilter("[NumeroCertificadoSINADEF] IS NOT NULL");
                 entity.HasIndex(e => e.CodigoQR)
                     .IsUnique()
                     .HasFilter("[CodigoQR] IS NOT NULL");
@@ -179,25 +179,10 @@ namespace SisMortuorio.Data
                     .HasForeignKey<VerificacionMortuorio>(v => v.ExpedienteID)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                entity.HasOne(e => e.ExpedienteLegal)
-                    .WithOne(el => el.Expediente)
-                    .HasForeignKey<ExpedienteLegal>(el => el.ExpedienteID)
-                    .OnDelete(DeleteBehavior.Cascade);
-
                 entity.HasMany(e => e.HistorialBandejas)
                     .WithOne(bh => bh.Expediente)
                     .HasForeignKey(bh => bh.ExpedienteID)
                     .OnDelete(DeleteBehavior.Restrict);
-
-                entity.HasMany(e => e.DocumentosLegales)
-                    .WithOne(dl => dl.Expediente)
-                    .HasForeignKey(dl => dl.ExpedienteID)
-                    .OnDelete(DeleteBehavior.Cascade);
-
-                entity.HasMany(e => e.AutoridadesExternas)
-                    .WithOne(ae => ae.Expediente)
-                    .HasForeignKey(ae => ae.ExpedienteID)
-                    .OnDelete(DeleteBehavior.Cascade);
 
                 // Relación 1:N con DocumentoExpediente
                 entity.HasMany(e => e.Documentos)
@@ -534,46 +519,6 @@ namespace SisMortuorio.Data
             });
 
             // ═══════════════════════════════════════════════════════════
-            //  CONFIGURACIÓN AUTORIDADEXTERNA 
-            // ═══════════════════════════════════════════════════════════
-
-            modelBuilder.Entity<AutoridadExterna>(entity =>
-            {
-                entity.HasKey(a => a.AutoridadID);
-
-                // Enum TipoAutoridadExterna → String
-                entity.Property(a => a.TipoAutoridad)
-                    .HasConversion<string>()
-                    .HasMaxLength(30)
-                    .IsRequired();
-
-                // Enum TipoDocumentoIdentidad → String
-                entity.Property(a => a.TipoDocumento)
-                    .HasConversion<string>()
-                    .HasMaxLength(30)
-                    .IsRequired();
-
-                entity.Property(a => a.ApellidoPaterno).HasMaxLength(100).IsRequired();
-                entity.Property(a => a.ApellidoMaterno).HasMaxLength(100).IsRequired();
-                entity.Property(a => a.Nombres).HasMaxLength(100).IsRequired();
-                entity.Property(a => a.NombreCompleto).HasMaxLength(300).IsRequired();
-                entity.Property(a => a.NumeroDocumento).HasMaxLength(50).IsRequired();
-                entity.Property(a => a.CodigoEspecial).HasMaxLength(50);
-                entity.Property(a => a.Institucion).HasMaxLength(200).IsRequired();
-                entity.Property(a => a.PlacaVehiculo).HasMaxLength(20);
-                entity.Property(a => a.Telefono).HasMaxLength(20);
-                entity.Property(a => a.Cargo).HasMaxLength(100);
-                entity.Property(a => a.NumeroDocumentoOficial).HasMaxLength(100);
-                entity.Property(a => a.Observaciones).HasMaxLength(1000);
-
-                // Relaciones
-                entity.HasOne(a => a.UsuarioRegistro)
-                    .WithMany()
-                    .HasForeignKey(a => a.UsuarioRegistroID)
-                    .OnDelete(DeleteBehavior.Restrict);
-            });
-
-            // ═══════════════════════════════════════════════════════════
             // EXPEDIENTE LEGAL
             // ═══════════════════════════════════════════════════════════
 
@@ -735,7 +680,7 @@ namespace SisMortuorio.Data
 
                 // Documentos legales
                 entity.HasIndex(a => a.NumeroCertificadoDefuncion);
-                entity.HasIndex(a => a.NumeroOficioLegal);
+                entity.HasIndex(a => a.NumeroOficioPolicial);
 
                 // Documentos de responsables
                 entity.HasIndex(a => a.FamiliarNumeroDocumento);

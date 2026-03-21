@@ -1,55 +1,95 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
-import { Observable, map } from 'rxjs';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Observable } from 'rxjs';
 
 // ===================================================================
 // INTERFACES
 // ===================================================================
 
+/** Mapea ExpedienteDTO (lectura) */
 export interface Expediente {
   expedienteID: number;
   codigoExpediente: string;
-  nombreCompleto: string;
   hc: string;
+  tipoExpediente: 'Interno' | 'Externo';
+  tipoDocumento: string;
+  numeroDocumento: string;
+  apellidoPaterno: string;
+  apellidoMaterno: string;
+  nombres: string;
+  nombreCompleto: string;
+  edad: number;
+  sexo: string;
+  fuenteFinanciamiento: string;
+  esNN: boolean;
+  causaViolentaODudosa: boolean;
   servicioFallecimiento: string;
-  fechaHoraFallecimiento: string;
-  estadoActual: string;
   numeroCama?: string;
-  medicoCertificaNombre?: string;
+  fechaHoraFallecimiento: string;
   diagnosticoFinal?: string;
-  tipoDocumento?: string;
-  numeroDocumento?: string;
-  tipoExpediente?: string;
+  medicoCertificaNombre: string;
+  medicoCMP: string;
+  medicoRNE?: string;
+  medicoExternoNombre?: string;
+  medicoExternoCMP?: string;
+  observaciones?: string;
+  estadoActual: string;
+  codigoQR?: string;
+  bandejaActualID?: number;
+  codigoBandeja?: string;
   tipoSalidaPreliminar?: 'Familiar' | 'AutoridadLegal' | null;
   documentacionCompleta: boolean;
   fechaValidacionAdmision?: string;
   usuarioAdmisionNombre?: string;
-  codigoBandeja?: string;
-  numeroCertificadoSINADEF?: string;
-  medicoCertificaCMP?: string;
-  medicoCertificaRNE?: string;
+
+  // ─── BYPASS DE DEUDA ─────────────────────────────────────
+  /** true si JG/Admin autorizó retiro con deudas pendientes.
+   * Solo aplica para TipoSalidaPreliminar = AutoridadLegal. */
+  bypassDeudaAutorizado?: boolean;
+  bypassDeudaJustificacion?: string;
+  /** Nombre del usuario que autorizó el bypass */
+  bypassDeudaUsuarioNombre?: string;
+  bypassDeudaFecha?: string;
 }
 
+/** Mapea CreateExpedienteDTO del backend */
 export interface CreateExpedienteDTO {
   hc: string;
-  tipoDocumento: number;
+  tipoDocumento: number;           // TipoDocumentoIdentidad (enum int)
   numeroDocumento: string;
   apellidoPaterno: string;
   apellidoMaterno: string;
   nombres: string;
   fechaNacimiento: string;
   sexo: string;
-  tipoSeguro: string;
-  tipoExpediente: string;
+  fuenteFinanciamiento: number;    // FuenteFinanciamiento (enum int)
+  tipoExpediente: number;          // TipoIngreso (enum int: Interno=1, Externo=2)
+  esNN: boolean;
+  causaViolentaODudosa: boolean;
   servicioFallecimiento: string;
   numeroCama?: string | null;
   fechaHoraFallecimiento: string;
-  diagnosticoFinal: string;
+  diagnosticoFinal?: string | null;
   medicoCertificaNombre: string;
   medicoCMP: string;
   medicoRNE?: string | null;
-  numeroCertificadoSINADEF?: string | null;
-  pertenencias: CreatePertenenciaDTO[];
+  medicoExternoNombre?: string | null;
+  medicoExternoCMP?: string | null;
+  observaciones?: string | null;
+  pertenencias?: CreatePertenenciaDTO[] | null;
+}
+
+/** Mapea UpdateExpedienteDTO del backend */
+export interface UpdateExpedienteDTO {
+  diagnosticoFinal?: string | null;
+  medicoCertificaNombre?: string | null;
+  medicoCMP?: string | null;
+  medicoRNE?: string | null;
+  causaViolentaODudosa?: boolean;
+  medicoExternoNombre?: string | null;
+  medicoExternoCMP?: string | null;
+  fuenteFinanciamiento?: number | null;
+  observaciones?: string | null;
 }
 
 export interface CreatePertenenciaDTO {
@@ -57,8 +97,18 @@ export interface CreatePertenenciaDTO {
   observaciones?: string | null;
 }
 
+/** Parámetros para buscar expedientes */
+export interface BuscarExpedientesParams {
+  hc?: string;
+  numeroDocumento?: string;
+  servicio?: string;
+  fechaDesde?: string;
+  fechaHasta?: string;
+  estado?: number;
+}
+
 // ===================================================================
-// SERVICIO FRONTEND
+// SERVICIO
 // ===================================================================
 
 @Injectable({
@@ -66,75 +116,46 @@ export interface CreatePertenenciaDTO {
 })
 export class ExpedienteService {
   private http = inject(HttpClient);
-  private apiUrl = 'https://localhost:7153/api';
+  private readonly apiUrl = 'https://localhost:7153/api';
 
-  /**
-   * Obtiene todos los expedientes (para el Dashboard)
-   */
   getAll(): Observable<Expediente[]> {
     return this.http.get<Expediente[]>(`${this.apiUrl}/Expedientes`);
   }
 
-  /**
- * Obtiene un expediente por ID (Para ver detalles o editar)
- */
   getById(id: number): Observable<Expediente> {
-    return this.http.get<any>(`${this.apiUrl}/Expedientes/${id}`).pipe(
-      map(response => ({
-        ...response,
-        medicoCertificaCMP: response.medicoCMP || response.medicoCertificaCMP,
-        medicoCertificaRNE: response.medicoRNE || response.medicoCertificaRNE
-      } as Expediente))
-    );
+    return this.http.get<Expediente>(`${this.apiUrl}/Expedientes/${id}`);
   }
-  /**
- * Busca expedientes usando filtros (HC, DNI, etc.)
- * Se usa para que Banco de Sangre/Cuentas encuentren al paciente por sus datos históricos.
- */
-  buscarExpedientes(filtros: { hc?: string, dni?: string, estado?: string }): Observable<Expediente[]> {
+
+  buscarExpedientes(filtros: BuscarExpedientesParams): Observable<Expediente[]> {
     let params = new HttpParams();
-
     if (filtros.hc) params = params.set('hc', filtros.hc);
-    if (filtros.dni) params = params.set('dni', filtros.dni);
-    if (filtros.estado) params = params.set('estado', filtros.estado);
-
-    // Asumiendo que tu Controller expone el GetByFiltrosAsync en la raíz con query params
-    // GET /api/Expedientes?hc=12345&dni=...
-    return this.http.get<Expediente[]>(`${this.apiUrl}/Expedientes`, { params });
+    if (filtros.numeroDocumento) params = params.set('numeroDocumento', filtros.numeroDocumento);
+    if (filtros.servicio) params = params.set('servicio', filtros.servicio);
+    if (filtros.fechaDesde) params = params.set('fechaDesde', filtros.fechaDesde);
+    if (filtros.fechaHasta) params = params.set('fechaHasta', filtros.fechaHasta);
+    if (filtros.estado != null) params = params.set('estado', String(filtros.estado));
+    return this.http.get<Expediente[]>(`${this.apiUrl}/Expedientes/buscar`, { params });
   }
-  /**
- * Búsqueda simple por HC, DNI o Código
- * Retorna UN SOLO expediente
- */
+
   buscarSimple(filtros: {
     hc?: string;
     dni?: string;
     codigoExpediente?: string;
   }): Observable<Expediente> {
     let params = new HttpParams();
-
     if (filtros.hc) params = params.set('hc', filtros.hc);
     if (filtros.dni) params = params.set('dni', filtros.dni);
     if (filtros.codigoExpediente) params = params.set('codigoExpediente', filtros.codigoExpediente);
-
-    return this.http.get<Expediente>(`${this.apiUrl}/expedientes/buscar-simple`, { params });
+    return this.http.get<Expediente>(`${this.apiUrl}/Expedientes/buscar-simple`, { params });
   }
 
-  /**
-   * Crea un nuevo expediente
-   */
   create(data: CreateExpedienteDTO): Observable<Expediente> {
     return this.http.post<Expediente>(`${this.apiUrl}/Expedientes`, data);
   }
 
-  /**
-   * Actualiza un expediente existente (Para correcciones)
-   */
-  update(id: number, data: Partial<CreateExpedienteDTO>): Observable<Expediente> {
+  update(id: number, data: UpdateExpedienteDTO): Observable<Expediente> {
     return this.http.put<Expediente>(`${this.apiUrl}/Expedientes/${id}`, data);
   }
-
-  // --- MÉTODOS QR Y BRAZALETE ---
 
   generarQR(expedienteId: number): Observable<any> {
     return this.http.post(`${this.apiUrl}/QR/${expedienteId}/generar`, {});
@@ -154,6 +175,7 @@ export class ExpedienteService {
       { responseType: 'blob' }
     );
   }
+
   validarDocumentacion(expedienteId: number): Observable<Expediente> {
     return this.http.post<Expediente>(
       `${this.apiUrl}/Expedientes/${expedienteId}/validar-documentacion`,
@@ -161,27 +183,18 @@ export class ExpedienteService {
     );
   }
 
-  /**
-   * Obtiene expedientes pendientes de validación por Admisión.
-   * Estado: EnBandeja y DocumentacionCompleta = false
-   */
   getPendientesValidacionAdmision(): Observable<Expediente[]> {
-    return this.http.get<any[]>(
+    return this.http.get<Expediente[]>(
       `${this.apiUrl}/Expedientes/pendientes-validacion-admision`
-    ).pipe(
-      map(expedientes => expedientes.map(exp => ({
-        ...exp,
-        // Mapear campos del backend con nombres diferentes
-        medicoCertificaCMP: exp.medicoCMP || exp.medicoCertificaCMP,
-        medicoCertificaRNE: exp.medicoRNE || exp.medicoCertificaRNE
-      } as Expediente)))
     );
   }
-  /**
- * Establece el tipo de salida preliminar antes de crear el Acta de Retiro.
- * Define qué documentos son requeridos: Familiar (3 docs) o AutoridadLegal (1 doc).
- * Bloqueado si ya existe el Acta de Retiro.
- */
+
+  getPendientesRecojo(): Observable<Expediente[]> {
+    return this.http.get<Expediente[]>(
+      `${this.apiUrl}/Expedientes/pendientes-recojo`
+    );
+  }
+
   establecerTipoSalidaPreliminar(
     expedienteId: number,
     tipoSalida: 'Familiar' | 'AutoridadLegal'
@@ -192,6 +205,7 @@ export class ExpedienteService {
       { headers: { 'Content-Type': 'application/json' } }
     );
   }
+
   limpiarTipoSalidaPreliminar(expedienteId: number): Observable<Expediente> {
     return this.http.patch<Expediente>(
       `${this.apiUrl}/Expedientes/${expedienteId}/tipo-salida-preliminar`,

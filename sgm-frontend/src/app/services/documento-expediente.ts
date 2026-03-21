@@ -304,7 +304,7 @@ export class DocumentoExpedienteService {
       case EstadoDocumentoExpediente.Verificado:
         return 'check-circle';
       case EstadoDocumentoExpediente.Rechazado:
-        return 'x-circle';
+        return 'circle-x';
       case EstadoDocumentoExpediente.PendienteVerificacion:
       default:
         return 'clock';

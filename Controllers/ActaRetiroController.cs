@@ -6,7 +6,7 @@ using SisMortuorio.Business.Services;
 namespace SisMortuorio.Controllers;
 
 /// <summary>
-/// Controlador para gestión de Actas de Retiro (casos internos)
+/// Controlador para gestión de Actas de Retiro
 /// </summary>
 [Authorize]
 [ApiController]
@@ -19,11 +19,6 @@ public class ActaRetiroController(
     // CONSULTAS
     // ===================================================================
 
-    /// <summary>
-    /// Obtiene un acta de retiro por su ID
-    /// </summary>
-    /// <param name="id">ID del acta de retiro</param>
-    /// <returns>Acta de retiro encontrada</returns>
     [HttpGet("{id:int}")]
     [ProducesResponseType(typeof(ActaRetiroDTO), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -48,11 +43,6 @@ public class ActaRetiroController(
         }
     }
 
-    /// <summary>
-    /// Obtiene un acta de retiro por ID de expediente
-    /// </summary>
-    /// <param name="expedienteId">ID del expediente</param>
-    /// <returns>Acta de retiro del expediente</returns>
     [HttpGet("expediente/{expedienteId:int}")]
     [ProducesResponseType(typeof(ActaRetiroDTO), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -77,10 +67,6 @@ public class ActaRetiroController(
         }
     }
 
-    /// <summary>
-    /// Obtiene actas pendientes de firma (sin PDF firmado)
-    /// </summary>
-    /// <returns>Lista de actas pendientes</returns>
     [HttpGet("pendientes-firma")]
     [ProducesResponseType(typeof(List<ActaRetiroDTO>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<ActaRetiroDTO>>> ObtenerPendientesFirma()
@@ -97,12 +83,6 @@ public class ActaRetiroController(
         }
     }
 
-    /// <summary>
-    /// Obtiene actas por rango de fechas
-    /// </summary>
-    /// <param name="fechaInicio">Fecha de inicio (formato ISO)</param>
-    /// <param name="fechaFin">Fecha de fin (formato ISO)</param>
-    /// <returns>Lista de actas en el rango de fechas</returns>
     [HttpGet("por-fecha")]
     [ProducesResponseType(typeof(List<ActaRetiroDTO>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -113,9 +93,7 @@ public class ActaRetiroController(
         try
         {
             if (fechaInicio > fechaFin)
-            {
                 return BadRequest(new { mensaje = "La fecha de inicio no puede ser mayor a la fecha de fin" });
-            }
 
             var actas = await actaRetiroService.GetByFechaRangoAsync(fechaInicio, fechaFin);
             return Ok(actas);
@@ -127,11 +105,6 @@ public class ActaRetiroController(
         }
     }
 
-    /// <summary>
-    /// Verifica si existe un acta para un expediente
-    /// </summary>
-    /// <param name="expedienteId">ID del expediente</param>
-    /// <returns>True si existe, false si no</returns>
     [HttpGet("existe/{expedienteId:int}")]
     [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
     public async Task<ActionResult<bool>> ExisteActaParaExpediente(int expedienteId)
@@ -147,9 +120,7 @@ public class ActaRetiroController(
             return StatusCode(500, new { mensaje = "Error interno del servidor" });
         }
     }
-    /// <summary>
-    /// Verifica si existe un acta con el certificado SINADEF especificado
-    /// </summary>
+
     [HttpGet("existe-certificado/{numeroCertificado}")]
     [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
     public async Task<ActionResult<bool>> ExisteCertificadoSINADEF(string numeroCertificado)
@@ -166,9 +137,6 @@ public class ActaRetiroController(
         }
     }
 
-    /// <summary>
-    /// Verifica si existe un acta con el número de oficio legal especificado
-    /// </summary>
     [HttpGet("existe-oficio/{numeroOficio}")]
     [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
     public async Task<ActionResult<bool>> ExisteOficioLegal(string numeroOficio)
@@ -184,16 +152,13 @@ public class ActaRetiroController(
             return StatusCode(500, new { mensaje = "Error interno del servidor" });
         }
     }
+
     // ===================================================================
     // CREAR ACTA DE RETIRO
     // ===================================================================
 
-    /// <summary>
-    /// Crea una nueva acta de retiro
-    /// </summary>
-    /// <param name="dto">Datos del acta de retiro</param>
-    /// <returns>Acta de retiro creada</returns>
     [HttpPost]
+    [Authorize(Roles = "Admision,Administrador")]
     [ProducesResponseType(typeof(ActaRetiroDTO), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -202,22 +167,18 @@ public class ActaRetiroController(
         try
         {
             if (!ModelState.IsValid)
-            {
                 return BadRequest(ModelState);
-            }
 
             var actaCreada = await actaRetiroService.CreateAsync(dto);
 
             logger.LogInformation(
                 "Acta de retiro {ActaRetiroID} creada para expediente {ExpedienteID} por usuario {UsuarioID}",
-                actaCreada.ActaRetiroID, dto.ExpedienteID, dto.UsuarioAdmisionID
-            );
+                actaCreada.ActaRetiroID, dto.ExpedienteID, dto.UsuarioAdmisionID);
 
             return CreatedAtAction(
                 nameof(ObtenerPorId),
                 new { id = actaCreada.ActaRetiroID },
-                actaCreada
-            );
+                actaCreada);
         }
         catch (InvalidOperationException ex)
         {
@@ -237,14 +198,73 @@ public class ActaRetiroController(
     }
 
     // ===================================================================
-    // GENERAR PDF SIN FIRMAR
+    // BYPASS DE DEUDA
+    // Solo JefeGuardia y Administrador pueden autorizar.
+    // El UsuarioAutorizaID se extrae del JWT — nunca viene del body.
     // ===================================================================
 
     /// <summary>
-    /// Genera el PDF sin firmar del acta de retiro
+    /// Autoriza excepcionalmente el retiro con deudas pendientes (económica y/o sangre).
+    /// Solo aplica para expedientes con TipoSalidaPreliminar = AutoridadLegal.
+    /// Cubre AMBAS deudas — el hospital no puede recuperarlas sin familiar presente.
     /// </summary>
-    /// <param name="id">ID del acta de retiro</param>
-    /// <returns>Archivo PDF para descargar</returns>
+    [HttpPost("autorizar-bypass-deuda")]
+    [Authorize(Roles = "JefeGuardia,Administrador")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> AutorizarBypassDeuda([FromBody] AutorizarBypassDeudaDTO dto)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            // Extraer ID y rol del JWT — nunca del body
+            var usuarioIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var rolClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+
+            if (string.IsNullOrEmpty(usuarioIdClaim) || !int.TryParse(usuarioIdClaim, out int usuarioAutorizaID))
+                return Unauthorized(new { mensaje = "Token inválido o usuario no identificado" });
+
+            if (string.IsNullOrEmpty(rolClaim))
+                return Forbid();
+
+            await actaRetiroService.AutorizarBypassDeudaAsync(dto, usuarioAutorizaID, rolClaim);
+
+            logger.LogWarning(
+                "Bypass de deuda autorizado para expediente {ExpedienteID} por usuario {UsuarioID} rol {Rol}. Justificación: {Justificacion}",
+                dto.ExpedienteID, usuarioAutorizaID, rolClaim, dto.Justificacion);
+
+            return Ok(new
+            {
+                mensaje = "Bypass de deuda autorizado correctamente. El admisionista puede proceder a crear el acta.",
+                expedienteID = dto.ExpedienteID,
+                autorizadoPor = User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value,
+                fecha = DateTime.Now
+            });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            logger.LogWarning(ex, "Intento de bypass no autorizado para expediente {ExpedienteID}", dto.ExpedienteID);
+            return Forbid();
+        }
+        catch (InvalidOperationException ex)
+        {
+            logger.LogWarning(ex, "Error de validación en bypass para expediente {ExpedienteID}", dto.ExpedienteID);
+            return BadRequest(new { mensaje = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error al autorizar bypass para expediente {ExpedienteID}", dto.ExpedienteID);
+            return StatusCode(500, new { mensaje = "Error interno del servidor" });
+        }
+    }
+
+    // ===================================================================
+    // GENERAR PDF SIN FIRMAR
+    // ===================================================================
+
     [HttpPost("{id:int}/generar-pdf")]
     [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -275,14 +295,11 @@ public class ActaRetiroController(
             return StatusCode(500, new { mensaje = "Error interno del servidor" });
         }
     }
+
     // ===================================================================
     // REIMPRIMIR PDF SIN FIRMAR
     // ===================================================================
 
-    /// <summary>
-    /// Reimprime el PDF sin firmar del acta usando el ExpedienteID
-    /// Busca el acta asociada al expediente y genera el PDF
-    /// </summary>
     [HttpGet("expediente/{expedienteId:int}/reimprimir-pdf")]
     [Authorize(Roles = "Admision,Administrador")]
     [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
@@ -296,38 +313,23 @@ public class ActaRetiroController(
 
             logger.LogInformation(
                 "Usuario {UsuarioNombre} (ID: {UsuarioId}) solicita REIMPRIMIR PDF para expediente {ExpedienteID}",
-                usuarioNombre,
-                usuarioId,
-                expedienteId
-            );
+                usuarioNombre, usuarioId, expedienteId);
 
-            // BUSCAR ACTA POR EXPEDIENTE
             var acta = await actaRetiroService.GetByExpedienteIdAsync(expedienteId);
 
-            if (acta == null)
+            if (acta is null)
             {
                 logger.LogWarning("No se encontró acta para expediente {ExpedienteID}", expedienteId);
                 return NotFound(new { mensaje = $"No existe acta de retiro para el expediente {expedienteId}" });
             }
 
-            logger.LogInformation(
-                "Acta encontrada: ActaRetiroID={ActaRetiroID} para ExpedienteID={ExpedienteID}",
-                acta.ActaRetiroID,
-                expedienteId
-            );
-
-            // GENERAR PDF
             var resultado = await actaRetiroService.GenerarPDFSinFirmarAsync(acta.ActaRetiroID);
 
             logger.LogInformation(
-                "PDF REIMPRESO para expediente {ExpedienteID}, acta {ActaRetiroID} por usuario {UsuarioNombre}",
-                expedienteId,
-                acta.ActaRetiroID,
-                usuarioNombre
-            );
+                "PDF REIMPRESO para expediente {ExpedienteID}, acta {ActaRetiroID} por {UsuarioNombre}",
+                expedienteId, acta.ActaRetiroID, usuarioNombre);
 
             var fileNameReimpresion = resultado.FileName.Replace(".pdf", "_reimpresion.pdf");
-
             return File(resultado.PdfBytes, "application/pdf", fileNameReimpresion);
         }
         catch (KeyNotFoundException ex)
@@ -337,7 +339,7 @@ public class ActaRetiroController(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Error de validación al reimprimir PDF para expediente {ExpedienteID}", expedienteId);
+            logger.LogWarning(ex, "Error al reimprimir PDF para expediente {ExpedienteID}", expedienteId);
             return BadRequest(new { mensaje = ex.Message });
         }
         catch (Exception ex)
@@ -351,11 +353,6 @@ public class ActaRetiroController(
     // SUBIR PDF FIRMADO
     // ===================================================================
 
-    /// <summary>
-    /// Sube el PDF firmado escaneado del acta de retiro
-    /// </summary>
-    /// <param name="dto">Datos del PDF firmado</param>
-    /// <returns>Acta de retiro actualizada</returns>
     [HttpPost("subir-pdf-firmado")]
     [ProducesResponseType(typeof(ActaRetiroDTO), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -365,16 +362,13 @@ public class ActaRetiroController(
         try
         {
             if (!ModelState.IsValid)
-            {
                 return BadRequest(ModelState);
-            }
 
             var actaActualizada = await actaRetiroService.SubirPDFFirmadoAsync(dto);
 
             logger.LogInformation(
                 "PDF firmado subido para acta de retiro {ActaRetiroID} por usuario {UsuarioID}",
-                dto.ActaRetiroID, dto.UsuarioSubidaPDFID
-            );
+                dto.ActaRetiroID, dto.UsuarioSubidaPDFID);
 
             return Ok(actaActualizada);
         }

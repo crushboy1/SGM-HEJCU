@@ -13,6 +13,7 @@ public class ActaRetiroRepository(ApplicationDbContext context) : IActaRetiroRep
             .Include(a => a.UsuarioAdmision)
             .Include(a => a.UsuarioSubidaPDF)
             .Include(a => a.SalidaMortuorio)
+            .Include(a => a.BypassDeudaUsuario)
             .FirstOrDefaultAsync(a => a.ActaRetiroID == actaRetiroId);
     }
 
@@ -23,6 +24,7 @@ public class ActaRetiroRepository(ApplicationDbContext context) : IActaRetiroRep
             .Include(a => a.UsuarioAdmision)
             .Include(a => a.UsuarioSubidaPDF)
             .Include(a => a.SalidaMortuorio)
+            .Include(a => a.BypassDeudaUsuario)
             .FirstOrDefaultAsync(a => a.ExpedienteID == expedienteId);
     }
 
@@ -72,6 +74,7 @@ public class ActaRetiroRepository(ApplicationDbContext context) : IActaRetiroRep
             .OrderByDescending(a => a.FechaRegistro)
             .ToListAsync();
     }
+
     public async Task<bool> ExisteByCertificadoSINADEFAsync(string numeroCertificado)
     {
         return await context.ActasRetiro
@@ -81,19 +84,47 @@ public class ActaRetiroRepository(ApplicationDbContext context) : IActaRetiroRep
     public async Task<bool> ExistsByOficioLegalAsync(string numeroOficio)
     {
         return await context.ActasRetiro
-            .AnyAsync(a => a.NumeroOficioLegal == numeroOficio);
+            .AnyAsync(a => a.NumeroOficioPolicial == numeroOficio);
     }
+
     /// <summary>
-    /// Obtiene actas por número de documento del familiar
-    /// DEPRECADO: Redirige a GetByResponsableDocumentoAsync()
-    /// Mantenido por compatibilidad con código existente
+    /// Obtiene actas AutoridadLegal que tienen deuda pendiente (económica o sangre)
+    /// y no tienen bypass autorizado aún.
+    /// Usado para mostrar el botón "Autorizar Excepción" a JG/Admin en tabla general.
+    /// La deuda se evalúa navegando DeudaEconomica y DeudaSangre — no hay flags en Expediente.
+    /// </summary>
+    public async Task<List<ActaRetiro>> GetPendientesConDeudaBypassAsync()
+    {
+        return await context.ActasRetiro
+            .Include(a => a.Expediente)
+                .ThenInclude(e => e.DeudaEconomica)
+            .Include(a => a.Expediente)
+                .ThenInclude(e => e.DeudaSangre)
+            .Include(a => a.UsuarioAdmision)
+            .Where(a =>
+                a.TipoSalida == TipoSalida.AutoridadLegal &&
+                !a.BypassDeudaAutorizado &&
+                (a.Expediente.EstadoActual == EstadoExpediente.EnBandeja ||
+                 a.Expediente.EstadoActual == EstadoExpediente.PendienteRetiro) &&
+                (a.Expediente.DeudaEconomica != null &&
+                 a.Expediente.DeudaEconomica.Estado == EstadoDeudaEconomica.Pendiente ||
+                 a.Expediente.DeudaSangre != null &&
+                 a.Expediente.DeudaSangre.Estado == EstadoDeudaSangre.Pendiente))
+            .OrderBy(a => a.FechaRegistro)
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Obtiene actas por número de documento del familiar.
+    /// DEPRECADO: Redirige a GetByResponsableDocumentoAsync().
+    /// Mantenido por compatibilidad con código existente.
     /// </summary>
     [Obsolete("Usar GetByResponsableDocumentoAsync() en su lugar")]
     public async Task<List<ActaRetiro>> GetByFamiliarDocumentoAsync(string numeroDocumento)
     {
-        // Wrapper para compatibilidad
         return await GetByResponsableDocumentoAsync(numeroDocumento);
     }
+
     public async Task<ActaRetiro> CreateAsync(ActaRetiro actaRetiro)
     {
         context.ActasRetiro.Add(actaRetiro);

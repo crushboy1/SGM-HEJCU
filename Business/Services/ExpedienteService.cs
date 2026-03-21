@@ -65,16 +65,26 @@ namespace SisMortuorio.Business.Services
             if (await _expedienteRepository.ExistsHCAsync(dto.HC))
                 throw new InvalidOperationException($"Ya existe un expediente con la HC {dto.HC}");
 
-            if (!string.IsNullOrEmpty(dto.NumeroCertificadoSINADEF) &&
-                await _expedienteRepository.ExistsCertificadoSINADEFAsync(dto.NumeroCertificadoSINADEF))
-                throw new InvalidOperationException($"El certificado SINADEF {dto.NumeroCertificadoSINADEF} ya está registrado");
-
             if (dto.FechaHoraFallecimiento > DateTime.Now)
                 throw new InvalidOperationException("La fecha de fallecimiento no puede ser futura");
 
             if (dto.FechaHoraFallecimiento < dto.FechaNacimiento)
                 throw new InvalidOperationException("La fecha de fallecimiento debe ser posterior a la fecha de nacimiento");
 
+            // Validación condicional: NumeroDocumento solo requerido si no es NN
+            if (!dto.EsNN && string.IsNullOrWhiteSpace(dto.NumeroDocumento))
+                throw new InvalidOperationException("El número de documento es obligatorio para pacientes identificados.");
+
+            // NN: normalizar campos a valores sentinel (defensa en profundidad)
+            if (dto.EsNN)
+            {
+                dto.NumeroDocumento = string.Empty;
+                dto.ApellidoPaterno = "NN";
+                dto.ApellidoMaterno = "NN";
+                dto.Nombres = "No Identificado";
+                dto.FechaNacimiento = new DateTime(1900, 1, 1);
+                dto.FuenteFinanciamiento = FuenteFinanciamiento.PendientePago;
+            }
             // Generar código
             var año = DateTime.Now.Year;
             var codigoExpediente = await GenerarCodigoUnicoAsync(año);
@@ -92,14 +102,18 @@ namespace SisMortuorio.Business.Services
                 NombreCompleto = $"{dto.ApellidoPaterno} {dto.ApellidoMaterno}, {dto.Nombres}",
                 FechaNacimiento = dto.FechaNacimiento,
                 Sexo = dto.Sexo,
-                TipoSeguro = dto.TipoSeguro,
+                FuenteFinanciamiento = dto.FuenteFinanciamiento,
                 ServicioFallecimiento = dto.ServicioFallecimiento,
                 NumeroCama = dto.NumeroCama,
                 FechaHoraFallecimiento = dto.FechaHoraFallecimiento,
                 MedicoCertificaNombre = dto.MedicoCertificaNombre,
                 MedicoCMP = dto.MedicoCMP,
                 MedicoRNE = dto.MedicoRNE,
-                NumeroCertificadoSINADEF = string.IsNullOrEmpty(dto.NumeroCertificadoSINADEF) ? null : dto.NumeroCertificadoSINADEF,
+                EsNN = dto.EsNN,
+                CausaViolentaODudosa = dto.CausaViolentaODudosa,
+                MedicoExternoNombre = dto.MedicoExternoNombre,
+                MedicoExternoCMP = dto.MedicoExternoCMP,
+                Observaciones = dto.Observaciones,
                 DiagnosticoFinal = dto.DiagnosticoFinal,
                 EstadoActual = EstadoExpediente.EnPiso,
                 UsuarioCreadorID = usuarioCreadorId,
@@ -159,37 +173,34 @@ namespace SisMortuorio.Business.Services
 
             if (!string.IsNullOrEmpty(dto.NumeroCama))
                 expediente.NumeroCama = dto.NumeroCama;
-
             if (!string.IsNullOrEmpty(dto.DiagnosticoFinal))
                 expediente.DiagnosticoFinal = dto.DiagnosticoFinal;
-
+            if (!string.IsNullOrEmpty(dto.MedicoCertificaNombre))
+                expediente.MedicoCertificaNombre = dto.MedicoCertificaNombre;
+            if (!string.IsNullOrEmpty(dto.MedicoCMP))
+                expediente.MedicoCMP = dto.MedicoCMP;
             if (!string.IsNullOrEmpty(dto.MedicoRNE))
                 expediente.MedicoRNE = dto.MedicoRNE;
+            if (!string.IsNullOrEmpty(dto.MedicoExternoNombre))
+                expediente.MedicoExternoNombre = dto.MedicoExternoNombre;
+            if (!string.IsNullOrEmpty(dto.MedicoExternoCMP))
+                expediente.MedicoExternoCMP = dto.MedicoExternoCMP;
+            if (dto.CausaViolentaODudosa.HasValue)
+                expediente.CausaViolentaODudosa = dto.CausaViolentaODudosa.Value;
+            if (dto.FuenteFinanciamiento.HasValue)
+                expediente.FuenteFinanciamiento = dto.FuenteFinanciamiento.Value;
+            if (!string.IsNullOrEmpty(dto.Observaciones))
+                expediente.Observaciones = dto.Observaciones;
 
-            if (!string.IsNullOrEmpty(dto.NumeroCertificadoSINADEF))
-            {
-                if (expediente.NumeroCertificadoSINADEF != dto.NumeroCertificadoSINADEF &&
-                    await _expedienteRepository.ExistsCertificadoSINADEFAsync(dto.NumeroCertificadoSINADEF))
-                {
-                    throw new InvalidOperationException($"El certificado SINADEF {dto.NumeroCertificadoSINADEF} ya está registrado");
-                }
-                expediente.NumeroCertificadoSINADEF = dto.NumeroCertificadoSINADEF;
-            }
-
+            expediente.FechaModificacion = DateTime.Now;
             await _expedienteRepository.UpdateAsync(expediente);
-
             return _mapper.MapToExpedienteDTO(expediente);
         }
+
 
         public async Task<bool> ValidarHCUnicoAsync(string hc)
         {
             return !await _expedienteRepository.ExistsHCAsync(hc);
-        }
-
-        public async Task<bool> ValidarCertificadoSINADEFUnicoAsync(string certificado)
-        {
-            if (string.IsNullOrEmpty(certificado)) return true;
-            return !await _expedienteRepository.ExistsCertificadoSINADEFAsync(certificado);
         }
 
         private async Task<string> GenerarCodigoUnicoAsync(int año)
@@ -366,11 +377,18 @@ namespace SisMortuorio.Business.Services
             var expediente = await _expedienteRepository.GetByIdAsync(expedienteId);
             if (expediente == null)
                 throw new KeyNotFoundException($"Expediente {expedienteId} no encontrado");
-            // Bloquear cambio si ya existe acta (protección integridad)
+
+            // Bloquear cambio si ya existe acta
             if (expediente.ActaRetiro != null)
                 throw new InvalidOperationException(
                     "No se puede cambiar el tipo de salida una vez creada el Acta de Retiro. " +
                     "Contacte con Soporte.");
+
+            // CausaViolentaODudosa fuerza AutoridadLegal.
+            if (expediente.CausaViolentaODudosa && tipoSalida == TipoSalida.Familiar)
+                throw new InvalidOperationException(
+                    "El expediente tiene causa violenta o dudosa. " +
+                    "El tipo de salida debe ser AutoridadLegal sin excepción.");
 
             expediente.TipoSalidaPreliminar = tipoSalida;
             expediente.FechaModificacion = DateTime.Now;

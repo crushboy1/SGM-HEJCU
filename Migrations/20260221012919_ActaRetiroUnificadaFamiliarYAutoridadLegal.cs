@@ -169,7 +169,7 @@ namespace SisMortuorio.Migrations
                 nullable: true);
 
             migrationBuilder.AddColumn<string>(
-                name: "NumeroOficioLegal",
+                name: "NumeroOficioPolicial",
                 table: "ActasRetiro",
                 type: "nvarchar(150)",
                 maxLength: 150,
@@ -187,9 +187,9 @@ namespace SisMortuorio.Migrations
                 column: "AutoridadNumeroDocumento");
 
             migrationBuilder.CreateIndex(
-                name: "IX_ActasRetiro_NumeroOficioLegal",
+                name: "IX_ActasRetiro_NumeroOficioPolicial",
                 table: "ActasRetiro",
-                column: "NumeroOficioLegal");
+                column: "NumeroOficioPolicial");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ActasRetiro_TipoAutoridad",
@@ -210,7 +210,7 @@ namespace SisMortuorio.Migrations
                 table: "ActasRetiro");
 
             migrationBuilder.DropIndex(
-                name: "IX_ActasRetiro_NumeroOficioLegal",
+                name: "IX_ActasRetiro_NumeroOficioPolicial",
                 table: "ActasRetiro");
 
             migrationBuilder.DropIndex(
@@ -274,7 +274,7 @@ namespace SisMortuorio.Migrations
                 table: "ActasRetiro");
 
             migrationBuilder.DropColumn(
-                name: "NumeroOficioLegal",
+                name: "NumeroOficioPolicial",
                 table: "ActasRetiro");
 
             migrationBuilder.DropColumn(

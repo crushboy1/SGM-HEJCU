@@ -6,8 +6,8 @@ using SisMortuorio.Data.Repositories;
 namespace SisMortuorio.Business.Services
 {
     /// <summary>
-    /// Servicio de integración con sistemas externos
-    /// Combina datos de Galenhos y SIGEM para crear expedientes
+    /// Integración con Galenhos y SIGEM.
+    /// Combina datos demográficos y médicos para pre-llenar expedientes.
     /// </summary>
     public class IntegracionService : IIntegracionService
     {
@@ -29,11 +29,12 @@ namespace SisMortuorio.Business.Services
         }
 
         /// <summary>
-        /// Consulta datos combinados de Galenhos y SIGEM por HC
+        /// Consulta datos combinados de Galenhos y SIGEM por HC.
+        /// Usado para pre-llenar el formulario de creación de expediente.
         /// </summary>
         public async Task<ConsultarPacienteDTO?> ConsultarPacienteByHCAsync(string hc)
         {
-            _logger.LogInformation("Iniciando consulta integrada para HC: {HC}", hc);
+            _logger.LogInformation("Consulta integrada iniciada. HC: {HC}", hc);
 
             var dto = new ConsultarPacienteDTO
             {
@@ -41,130 +42,136 @@ namespace SisMortuorio.Business.Services
                 Advertencias = new List<string>()
             };
 
-            // ═══════════════════════════════════════════════════════════
-            // PASO 1: Consultar datos demográficos en Galenhos
-            // ═══════════════════════════════════════════════════════════
-            var pacienteGalenhos = await _galenhosService.GetPacienteByHCAsync(hc);
+            // PASO 1: Galenhos — datos demográficos
+            var paciente = await _galenhosService.GetPacienteByHCAsync(hc);
 
-            if (pacienteGalenhos == null)
+            if (paciente == null)
             {
                 _logger.LogWarning("Paciente no encontrado en Galenhos. HC: {HC}", hc);
                 dto.ExisteEnGalenhos = false;
-                dto.Advertencias.Add("⚠️ Paciente no encontrado en Galenhos (HIS). Verifique el número de HC.");
+                dto.Advertencias.Add("⚠️ Paciente no encontrado en Galenhos. Verifique el número de HC.");
                 return dto;
             }
 
-            // Mapear datos de Galenhos
             dto.ExisteEnGalenhos = true;
-            dto.TipoDocumentoID = pacienteGalenhos.TipoDocumentoID; 
-            dto.NumeroDocumento = pacienteGalenhos.NumeroDocumento;
-            dto.ApellidoPaterno = pacienteGalenhos.ApellidoPaterno;
-            dto.ApellidoMaterno = pacienteGalenhos.ApellidoMaterno;
-            dto.Nombres = pacienteGalenhos.Nombres;
-            dto.FechaNacimiento = pacienteGalenhos.FechaNacimiento;
-            dto.Edad = CalcularEdad(pacienteGalenhos.FechaNacimiento);
-            dto.Sexo = pacienteGalenhos.Sexo;
-            dto.FuenteFinanciamiento = pacienteGalenhos.FuenteFinanciamiento;
+            dto.TipoDocumentoID = paciente.TipoDocumentoID;
+            dto.NumeroDocumento = paciente.NumeroDocumento;
+            dto.ApellidoPaterno = paciente.ApellidoPaterno;
+            dto.ApellidoMaterno = paciente.ApellidoMaterno;
+            dto.Nombres = paciente.Nombres;
+            dto.FechaNacimiento = paciente.FechaNacimiento;
+            dto.Sexo = paciente.Sexo;
+            dto.FuenteFinanciamiento = paciente.FuenteFinanciamiento;
 
-            _logger.LogInformation(
-                "Datos demográficos obtenidos de Galenhos. Paciente: {Nombres} {ApellidoPaterno}",
-                dto.Nombres, dto.ApellidoPaterno);
+            _logger.LogInformation("Datos Galenhos obtenidos. Paciente: {Nombre}",
+                $"{paciente.ApellidoPaterno} {paciente.Nombres}");
 
-            // ═══════════════════════════════════════════════════════════
-            // PASO 2: Consultar último episodio médico en SIGEM
-            // ═══════════════════════════════════════════════════════════
-            var episodioSigem = await _sigemService.GetUltimoEpisodioByHCAsync(hc);
+            // PASO 2: SIGEM — episodio médico
+            var episodio = await _sigemService.GetUltimoEpisodioByHCAsync(hc);
 
-            if (episodioSigem == null)
+            if (episodio == null)
             {
-                _logger.LogWarning("No se encontró episodio médico en SIGEM. HC: {HC}", hc);
+                _logger.LogWarning("Episodio no encontrado en SIGEM. HC: {HC}", hc);
                 dto.ExisteEnSigem = false;
-                dto.Advertencias.Add("⚠️ No se encontró registro de fallecimiento en SIGEM. Deberá ingresarse manualmente.");
+                dto.Edad = CalcularEdad(paciente.FechaNacimiento, DateTime.Now);
+                dto.Advertencias.Add("⚠️ No se encontró registro en SIGEM. Datos médicos deben ingresarse manualmente.");
                 return dto;
             }
 
-            // Mapear datos de SIGEM
             dto.ExisteEnSigem = true;
-            dto.ServicioFallecimiento = episodioSigem.ServicioFallecimiento;
-            dto.NumeroCama = episodioSigem.NumeroCama;
-            dto.FechaHoraFallecimiento = episodioSigem.FechaHoraFallecimiento;
-            dto.DiagnosticoFinal = episodioSigem.DiagnosticoFinal;
-            dto.CodigoCIE10 = episodioSigem.CodigoCIE10;
-            dto.MedicoCertificaNombre = episodioSigem.MedicoCertificaNombre;
-            dto.MedicoCMP = episodioSigem.MedicoCMP;
-            dto.MedicoRNE = episodioSigem.MedicoRNE;
+            dto.Edad = CalcularEdad(paciente.FechaNacimiento, episodio.FechaHoraFallecimiento);
+            dto.ServicioFallecimiento = episodio.ServicioFallecimiento;
+            dto.NumeroCama = episodio.NumeroCama;
+            dto.FechaHoraFallecimiento = episodio.FechaHoraFallecimiento;
+            dto.DiagnosticoFinal = episodio.DiagnosticoFinal;
+            dto.CodigoCIE10 = episodio.CodigoCIE10;
+            dto.MedicoCertificaNombre = episodio.MedicoCertificaNombre;
+            dto.MedicoCMP = episodio.MedicoCMP;
+            dto.MedicoRNE = episodio.MedicoRNE;
 
-            _logger.LogInformation(
-                "Datos médicos obtenidos de SIGEM. Diagnóstico: {Diagnostico}, Servicio: {Servicio}",
-                dto.DiagnosticoFinal, dto.ServicioFallecimiento);
+            // PASO 3: Advertencias adicionales
+            var horas = (DateTime.Now - episodio.FechaHoraFallecimiento).TotalHours;
+            if (horas > 48)
+                dto.Advertencias.Add($"⚠️ El fallecimiento ocurrió hace {(int)horas} horas. Verificar si ya fue procesado.");
 
-            // ═══════════════════════════════════════════════════════════
-            // PASO 3: Validaciones y advertencias adicionales
-            // ═══════════════════════════════════════════════════════════
+            if (string.IsNullOrEmpty(episodio.MedicoCMP) && string.IsNullOrEmpty(episodio.MedicoRNE))
+                dto.Advertencias.Add("⚠️ No se encontró CMP ni RNE del médico certificante.");
 
-            // Validar fecha de fallecimiento reciente (últimas 48 horas)
-            var horasDesdefallecimiento = (DateTime.Now - episodioSigem.FechaHoraFallecimiento).TotalHours;
-            if (horasDesdefallecimiento > 48)
-            {
-                dto.Advertencias.Add($"⚠️ El fallecimiento ocurrió hace {(int)horasDesdefallecimiento} horas. Verificar si ya fue procesado.");
-            }
-
-            // Validar que tenga médico certificante
-            if (string.IsNullOrEmpty(dto.MedicoCMP) && string.IsNullOrEmpty(dto.MedicoRNE))
-            {
-                dto.Advertencias.Add("⚠️ No se encontró CMP o RNE del médico certificante.");
-            }
-
-            // Validar diagnóstico
-            if (string.IsNullOrEmpty(dto.CodigoCIE10))
-            {
+            if (string.IsNullOrEmpty(episodio.CodigoCIE10))
                 dto.Advertencias.Add("⚠️ Falta código CIE-10 del diagnóstico.");
-            }
 
-            _logger.LogInformation(
-                "Consulta integrada completada. HC: {HC}, Advertencias: {NumAdvertencias}",
+            _logger.LogInformation("Consulta integrada completada. HC: {HC}, Advertencias: {N}",
                 hc, dto.Advertencias.Count);
 
             return dto;
         }
-        public async Task<List<PacienteGalenhos>> GetPacientesPendientesAsync()
+
+        /// <summary>
+        /// Bandeja de entrada de Enfermería.
+        /// Devuelve pacientes en Galenhos que aún no tienen expediente SGM.
+        /// Enriquecido con datos de SIGEM cuando están disponibles.
+        /// </summary>
+        public async Task<List<BandejaEntradaDTO>> GetPacientesPendientesAsync()
         {
-            _logger.LogInformation("Consultando pacientes pendientes (Bandeja de Entrada)");
+            _logger.LogInformation("Consultando bandeja de entrada");
 
-            // 1. Obtener TODOS los pacientes del mock
-            // (En la vida real, Galenhos tendría un filtro, pero para la demo esto es perfecto)
-            var todosLosPacientesMock = await _galenhosService.GetPacientesByFiltroSimulado(); // Usaremos un método que simula traer una lista
-
-            // 2. Obtener TODOS los expedientes ya creados en SGM
+            var todosMock = await _galenhosService.GetPacientesByFiltroSimulado();
             var expedientesCreados = await _expedienteRepo.GetAllAsync();
             var hcsProcesadas = expedientesCreados.Select(e => e.HC).ToHashSet();
-            var pacientesPendientes = todosLosPacientesMock
-                .Where(mock => !hcsProcesadas.Contains(mock.HC))
+
+            var pendientes = todosMock
+                .Where(p => !hcsProcesadas.Contains(p.HC))
                 .ToList();
-            // 3. ENRIQUECER CON DATOS DE SIGEM
-            foreach (var paciente in pacientesPendientes)
+
+            var resultado = new List<BandejaEntradaDTO>();
+
+            foreach (var paciente in pendientes)
             {
+                var item = new BandejaEntradaDTO
+                {
+                    HC = paciente.HC,
+                    TipoDocumentoID = paciente.TipoDocumentoID,
+                    NumeroDocumento = paciente.NumeroDocumento,
+                    NombreCompleto = $"{paciente.ApellidoPaterno} {paciente.ApellidoMaterno}, {paciente.Nombres}",
+                    Sexo = paciente.Sexo,
+                    FuenteFinanciamiento = paciente.FuenteFinanciamiento,
+                    EsNN = paciente.TipoDocumentoID == 5
+                };
+
                 var episodio = await _sigemService.GetUltimoEpisodioByHCAsync(paciente.HC);
+
                 if (episodio != null)
                 {
-                    paciente.ServicioFallecimiento = episodio.ServicioFallecimiento;
-                    paciente.FechaHoraFallecimiento = episodio.FechaHoraFallecimiento;
+                    item.TieneDatosSigem = true;
+                    item.ServicioFallecimiento = episodio.ServicioFallecimiento;
+                    item.NumeroCama = episodio.NumeroCama;
+                    item.FechaHoraFallecimiento = episodio.FechaHoraFallecimiento;
+                    item.DiagnosticoFinal = episodio.DiagnosticoFinal;
+                    item.MedicoCertificaNombre = episodio.MedicoCertificaNombre;
+                    item.Edad = CalcularEdad(paciente.FechaNacimiento, episodio.FechaHoraFallecimiento);
                 }
+                else
+                {
+                    item.TieneDatosSigem = false;
+                    item.Edad = CalcularEdad(paciente.FechaNacimiento, DateTime.Now);
+                    item.Advertencias.Add("⚠️ Sin datos en SIGEM — requiere ingreso manual.");
+                }
+
+                resultado.Add(item);
             }
 
-            _logger.LogInformation("Se encontraron {Count} pacientes pendientes.", pacientesPendientes.Count);
-            return pacientesPendientes;
+            _logger.LogInformation("Bandeja de entrada: {Count} pacientes pendientes.", resultado.Count);
+            return resultado;
         }
 
         /// <summary>
-        /// Calcula la edad en años a partir de la fecha de nacimiento
+        /// Calcula edad en años usando una fecha de referencia.
+        /// Usa FechaHoraFallecimiento cuando está disponible.
         /// </summary>
-        private int CalcularEdad(DateTime fechaNacimiento)
+        private static int CalcularEdad(DateTime fechaNacimiento, DateTime fechaReferencia)
         {
-            var hoy = DateTime.Today;
-            var edad = hoy.Year - fechaNacimiento.Year;
-            if (fechaNacimiento.Date > hoy.AddYears(-edad))
-                edad--;
+            var edad = fechaReferencia.Year - fechaNacimiento.Year;
+            if (fechaReferencia < fechaNacimiento.AddYears(edad)) edad--;
             return edad;
         }
     }
