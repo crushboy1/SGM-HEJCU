@@ -323,6 +323,28 @@ module.exports = {
         '.action-card-cyan': { '@apply border-cyan-500 hover:border-cyan-600': {} },
         '.action-card-green': { '@apply border-green-500 hover:border-green-600': {} },
         '.action-card-blue': { '@apply border-blue-500 hover:border-blue-600': {} },
+
+        // ===================================================================
+        // FORMULARIOS (Abstracciones para SGM)
+        // ===================================================================
+        '.form-label': {
+          '@apply block text-sm font-semibold text-gray-700 mb-2 tracking-wide': {},
+        },
+        '.form-input': {
+          '@apply w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm bg-white transition-all duration-200 focus:ring-2 focus:ring-hospital-cyan focus:border-hospital-cyan focus:outline-none': {},
+        },
+        '.form-input-error': {
+          '@apply border-red-500 bg-red-50 focus:ring-red-400 focus:border-red-400': {},
+        },
+        '.form-readonly': {
+          '@apply w-full px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-100 text-gray-700 text-sm cursor-not-allowed select-none': {},
+        },
+        '.form-hint': {
+          '@apply mt-1.5 text-xs text-gray-400': {},
+        },
+        '.form-error-msg': {
+          '@apply mt-1.5 text-sm text-red-600 flex items-center gap-1 font-medium animate-fade-in': {},
+        },
       });
     },
   ],

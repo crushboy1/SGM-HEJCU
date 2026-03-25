@@ -1,0 +1,562 @@
+<div class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4
+            animate-fade-in"
+     (click)="onCancelar()">
+
+  <div class="bg-white w-full max-w-4xl h-[90vh] rounded-2xl shadow-2xl overflow-hidden
+              flex flex-col animate-fade-in-up"
+       (click)="$event.stopPropagation()">
+
+    <!-- HEADER -->
+    <div class="bg-gradient-to-r from-hospital-cyan to-cyan-600 p-5 text-white
+                flex-shrink-0">
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="p-2.5 bg-white/20 rounded-xl">
+            <app-icon name="file-plus" [size]="26"></app-icon>
+          </div>
+          <div>
+            <h2 class="text-xl font-bold">
+              {{ modoManual ? 'Registro Manual de Fallecido' : 'Generar Expediente Mortuorio' }}
+            </h2>
+            <p class="text-xs text-cyan-100 mt-0.5">
+              {{
+ modoManual
+                 ? 'Complete todos los campos manualmente'
+                 : 'Datos pre-llenados desde SIGEM / Galenhos'
+              }}
+            </p>
+          </div>
+        </div>
+        <button type="button" (click)="onCancelar()"
+                class="p-2 hover:bg-white/20 rounded-lg transition-colors flex-shrink-0">
+          <app-icon name="x" [size]="22"></app-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- LOADING -->
+    <div *ngIf="cargandoDatos"
+         class="flex-1 flex flex-col items-center justify-center gap-4 animate-fade-in">
+      <app-icon name="loader" [size]="40" class="animate-spin text-hospital-cyan"></app-icon>
+      <div class="text-center">
+        <p class="font-semibold text-gray-700">Consultando SIGEM / Galenhos</p>
+        <p class="text-sm text-gray-500 mt-1">Obteniendo datos del paciente...</p>
+      </div>
+    </div>
+
+    <!-- FORM — footer dentro para ngSubmit -->
+    <form *ngIf="!cargandoDatos"
+          [formGroup]="form"
+          (ngSubmit)="onSubmit()"
+          class="flex-1 flex flex-col overflow-hidden">
+
+      <!-- BODY scrollable -->
+      <div class="flex-1 overflow-y-auto p-5 md:p-6 scrollbar-custom">
+        <div class="space-y-5">
+
+          <!-- Banner modo manual -->
+          <div *ngIf="modoManual && !hc"
+               class="flex items-start gap-3 p-3 bg-yellow-50 border border-yellow-300
+                      rounded-xl">
+            <app-icon name="alert-triangle" [size]="16"
+                      class="text-yellow-600 flex-shrink-0 mt-0.5"></app-icon>
+            <div>
+              <p class="text-sm font-semibold text-yellow-800">Modo registro manual</p>
+              <p class="text-xs text-yellow-700 mt-0.5">
+                No se pudo conectar con SIGEM/Galenhos.
+                Complete todos los campos manualmente.
+              </p>
+            </div>
+          </div>
+
+          <!-- ============================================================
+               SECCIÓN 1: DATOS DEL PACIENTE
+               ============================================================ -->
+          <div class="bg-gray-50 rounded-xl border border-gray-200 p-5">
+            <div class="flex items-center gap-2 mb-4 pb-3 border-b border-gray-200">
+              <app-icon name="user" [size]="20" class="text-hospital-cyan"></app-icon>
+              <h3 class="font-bold text-gray-800">Datos del Paciente</h3>
+              <span *ngIf="!modoManual"
+                    class="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5
+                           bg-hospital-cyan text-white rounded-lg text-xs font-semibold">
+                <app-icon name="circle-check" [size]="13"></app-icon>
+                Desde SIGEM / Galenhos
+              </span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-x-5 gap-y-4">
+
+              <!-- NN toggle -->
+              <div class="md:col-span-3">
+                <label class="flex items-center gap-2 cursor-pointer w-fit"
+                       [class.opacity-50]="!modoManual"
+                       [class.cursor-not-allowed]="!modoManual">
+                  <input type="checkbox" formControlName="esNN"
+                         [attr.disabled]="!modoManual ? true : null"
+                         class="w-4 h-4 rounded text-hospital-cyan
+                                focus:ring-hospital-cyan">
+                  <span class="text-sm font-semibold text-gray-700">
+                    Paciente NN (No Identificado)
+                  </span>
+                </label>
+              </div>
+
+              <!-- HC -->
+              <div>
+                <label class="form-label">
+                  Historia Clínica <span class="text-red-500">*</span>
+                </label>
+                <input *ngIf="!modoManual" type="text"
+                       [value]="rv.hc" readonly tabindex="-1"
+                       class="form-readonly">
+                <input *ngIf="modoManual" type="text"
+                       formControlName="hc"
+                       appSoloNumeros inputmode="numeric" maxlength="6"
+                       placeholder="Ej: 123456"
+                       class="form-input"
+                       [class.form-input-error]="isInvalidField('hc')">
+                <p *ngIf="isInvalidField('hc')" class="form-error-msg">
+                  <app-icon name="circle-x" [size]="14"></app-icon>
+                  {{ getMensajeError('hc') }}
+                </p>
+              </div>
+
+              <!-- Tipo Documento -->
+              <div>
+                <label class="form-label">
+                  Tipo Documento <span class="text-red-500">*</span>
+                </label>
+                <input *ngIf="!modoManual" type="text"
+                       [value]="getTipoDocumentoLabel(rv.tipoDocumento)"
+                       readonly tabindex="-1"
+                       class="form-readonly">
+                <select *ngIf="modoManual" formControlName="tipoDocumento"
+                        class="form-input bg-white">
+                  <option *ngFor="let t of tiposDocumento; trackBy: trackByValue"
+                          [value]="t.id">
+                    {{ t.label }}
+                  </option>
+                </select>
+              </div>
+
+              <!-- N° Documento -->
+              <div>
+                <label class="form-label">
+                  N° Documento <span class="text-red-500">*</span>
+                </label>
+                <input *ngIf="!modoManual" type="text"
+                       [value]="rv.numeroDocumento" readonly tabindex="-1"
+                       class="form-readonly">
+                <input *ngIf="modoManual" type="text"
+                       formControlName="numeroDocumento"
+                       appSoloNumeros inputmode="numeric" maxlength="12"
+                       placeholder="Ej: 12345678"
+                       class="form-input"
+                       [class.form-input-error]="isInvalidField('numeroDocumento')">
+                <p *ngIf="isInvalidField('numeroDocumento')" class="form-error-msg">
+                  <app-icon name="circle-x" [size]="14"></app-icon>
+                  {{ getMensajeError('numeroDocumento') }}
+                </p>
+              </div>
+
+              <!-- Apellido Paterno -->
+              <div>
+                <label class="form-label">
+                  Apellido Paterno <span class="text-red-500">*</span>
+                </label>
+                <input *ngIf="!modoManual" type="text"
+                       [value]="rv.apellidoPaterno" readonly tabindex="-1"
+                       class="form-readonly">
+                <input *ngIf="modoManual" type="text"
+                       formControlName="apellidoPaterno"
+                       class="form-input"
+                       [class.form-input-error]="isInvalidField('apellidoPaterno')">
+                <p *ngIf="isInvalidField('apellidoPaterno')" class="form-error-msg">
+                  <app-icon name="circle-x" [size]="14"></app-icon>
+                  {{ getMensajeError('apellidoPaterno') }}
+                </p>
+              </div>
+
+              <!-- Apellido Materno -->
+              <div>
+                <label class="form-label">
+                  Apellido Materno <span class="text-red-500">*</span>
+                </label>
+                <input *ngIf="!modoManual" type="text"
+                       [value]="rv.apellidoMaterno" readonly tabindex="-1"
+                       class="form-readonly">
+                <input *ngIf="modoManual" type="text"
+                       formControlName="apellidoMaterno"
+                       class="form-input"
+                       [class.form-input-error]="isInvalidField('apellidoMaterno')">
+                <p *ngIf="isInvalidField('apellidoMaterno')" class="form-error-msg">
+                  <app-icon name="circle-x" [size]="14"></app-icon>
+                  {{ getMensajeError('apellidoMaterno') }}
+                </p>
+              </div>
+
+              <!-- Nombres -->
+              <div>
+                <label class="form-label">
+                  Nombres <span class="text-red-500">*</span>
+                </label>
+                <input *ngIf="!modoManual" type="text"
+                       [value]="rv.nombres" readonly tabindex="-1"
+                       class="form-readonly">
+                <input *ngIf="modoManual" type="text"
+                       formControlName="nombres"
+                       class="form-input"
+                       [class.form-input-error]="isInvalidField('nombres')">
+                <p *ngIf="isInvalidField('nombres')" class="form-error-msg">
+                  <app-icon name="circle-x" [size]="14"></app-icon>
+                  {{ getMensajeError('nombres') }}
+                </p>
+              </div>
+
+              <!-- Fecha Nacimiento -->
+              <div>
+                <label class="form-label">
+                  Fecha Nacimiento <span class="text-red-500">*</span>
+                </label>
+                <!-- type=text en readonly: date input no soporta readonly bien -->
+                <input *ngIf="!modoManual" type="text"
+                       [value]="rv.fechaNacimiento | date:'dd/MM/yyyy'"
+                       readonly tabindex="-1"
+                       class="form-readonly">
+                <input *ngIf="modoManual" type="date"
+                       formControlName="fechaNacimiento"
+                       [max]="maxFechaHoy"
+                       class="form-input"
+                       [class.form-input-error]="isInvalidField('fechaNacimiento')">
+                <p *ngIf="isInvalidField('fechaNacimiento')" class="form-error-msg">
+                  <app-icon name="circle-x" [size]="14"></app-icon>
+                  {{ getMensajeError('fechaNacimiento') }}
+                </p>
+              </div>
+
+              <!-- Sexo -->
+              <div>
+                <label class="form-label">
+                  Sexo <span class="text-red-500">*</span>
+                </label>
+                <!-- Readonly: label legible en lugar de "M"/"F" -->
+                <input *ngIf="!modoManual" type="text"
+                       [value]="getSexoLabel(rv.sexo)"
+                       readonly tabindex="-1"
+                       class="form-readonly">
+                <select *ngIf="modoManual" formControlName="sexo"
+                        class="form-input bg-white"
+                        [class.form-input-error]="isInvalidField('sexo')">
+                  <option value="">Seleccione...</option>
+                  <option value="M">Masculino</option>
+                  <option value="F">Femenino</option>
+                </select>
+                <p *ngIf="isInvalidField('sexo')" class="form-error-msg">
+                  <app-icon name="circle-x" [size]="14"></app-icon>
+                  {{ getMensajeError('sexo') }}
+                </p>
+              </div>
+
+              <!-- Fuente Financiamiento -->
+              <div>
+                <label class="form-label">
+                  Seguro / Financiamiento <span class="text-red-500">*</span>
+                </label>
+                <input *ngIf="datosGalenhosDisponibles" type="text"
+                       [value]="fuenteLabel" readonly tabindex="-1"
+                       class="form-readonly">
+                <select *ngIf="!datosGalenhosDisponibles"
+                        formControlName="fuenteFinanciamiento"
+                        class="form-input bg-white">
+                  <option *ngFor="let f of fuentesFinanciamiento; trackBy: trackByValue"
+                          [value]="f.id">
+                    {{ f.label }}
+                  </option>
+                </select>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- ============================================================
+               SECCIÓN 2: DATOS DEL FALLECIMIENTO
+               ============================================================ -->
+          <div class="bg-gray-50 rounded-xl border border-gray-200 p-5">
+            <div class="flex items-center gap-2 mb-4 pb-3 border-b border-gray-200">
+              <app-icon name="alert-triangle" [size]="20" class="text-red-500"></app-icon>
+              <h3 class="font-bold text-gray-800">Datos del Fallecimiento</h3>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4">
+
+              <!-- Tipo Expediente -->
+              <div class="md:col-span-2">
+                <label class="form-label">
+                  Tipo de Expediente <span class="text-red-500">*</span>
+                </label>
+                <div class="flex gap-6">
+                  <label class="flex items-center cursor-pointer group">
+                    <input type="radio" formControlName="tipoExpediente" [value]="1"
+                           class="mr-2 w-4 h-4 text-hospital-cyan
+                                  focus:ring-hospital-cyan">
+                    <span class="text-gray-700 font-medium
+                                 group-hover:text-hospital-cyan transition-colors">
+                      Interno (Hospitalizado)
+                    </span>
+                  </label>
+                  <label class="flex items-center cursor-pointer group">
+                    <input type="radio" formControlName="tipoExpediente" [value]="2"
+                           class="mr-2 w-4 h-4 text-hospital-cyan
+                                  focus:ring-hospital-cyan">
+                    <span class="text-gray-700 font-medium
+                                 group-hover:text-hospital-cyan transition-colors">
+                      Externo (Emergencia / Vía pública)
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Causa violenta -->
+              <div class="md:col-span-2">
+                <label class="flex items-center gap-2 cursor-pointer w-fit">
+                  <input type="checkbox" formControlName="causaViolentaODudosa"
+                         class="w-4 h-4 rounded text-red-500 focus:ring-red-400">
+                  <span class="text-sm font-semibold text-gray-700">
+                    Causa violenta o dudosa
+                    <span class="text-xs font-normal text-gray-500 ml-1">
+                      (requiere intervención de Autoridad Legal)
+                    </span>
+                  </span>
+                </label>
+              </div>
+
+              <!-- Servicio -->
+              <div>
+                <label class="form-label">
+                  Servicio donde Falleció <span class="text-red-500">*</span>
+                </label>
+                <select formControlName="servicioFallecimiento"
+                        class="form-input bg-white"
+                        [class.form-input-error]="isInvalidField('servicioFallecimiento')">
+                  <option value="">Seleccione...</option>
+                  <option *ngFor="let srv of servicios" [value]="srv">{{ srv }}</option>
+                </select>
+                <p *ngIf="isInvalidField('servicioFallecimiento')" class="form-error-msg">
+                  <app-icon name="circle-x" [size]="14"></app-icon>
+                  {{ getMensajeError('servicioFallecimiento') }}
+                </p>
+              </div>
+
+              <!-- N° Cama -->
+              <div>
+                <label class="form-label">Número de Cama</label>
+                <input type="text" formControlName="numeroCama"
+                       appSoloNumeros inputmode="numeric" maxlength="4"
+                       placeholder="Ej: 201"
+                       class="form-input">
+              </div>
+
+              <!-- Fecha Fallecimiento -->
+              <div>
+                <label class="form-label">
+                  Fecha y Hora de Fallecimiento <span class="text-red-500">*</span>
+                </label>
+                <input type="datetime-local" formControlName="fechaHoraFallecimiento"
+                       [max]="maxFechaHoraActual"
+                       (change)="f['fechaHoraFallecimiento'].markAsTouched()"
+                       (blur)="f['fechaHoraFallecimiento'].markAsTouched()"
+                       class="form-input"
+                       [class.form-input-error]="isInvalidField('fechaHoraFallecimiento')">
+                <p *ngIf="isInvalidField('fechaHoraFallecimiento')" class="form-error-msg">
+                  <app-icon name="circle-x" [size]="14"></app-icon>
+                  {{ getMensajeError('fechaHoraFallecimiento') }}
+                </p>
+              </div>
+
+              <!-- Diagnóstico Final -->
+              <div>
+                <label class="form-label">Diagnóstico Final (CIE-10)</label>
+                <input type="text" formControlName="diagnosticoFinal"
+                       placeholder="Ej: I50.0 - Insuficiencia cardíaca congestiva"
+                       class="form-input">
+              </div>
+
+              <!-- Médico Certificante -->
+              <div>
+                <label class="form-label">
+                  Médico que Certifica <span class="text-red-500">*</span>
+                </label>
+                <input type="text" formControlName="medicoCertificaNombre"
+                       placeholder="Nombre completo"
+                       class="form-input"
+                       [class.form-input-error]="isInvalidField('medicoCertificaNombre')">
+                <p *ngIf="isInvalidField('medicoCertificaNombre')" class="form-error-msg">
+                  <app-icon name="circle-x" [size]="14"></app-icon>
+                  {{ getMensajeError('medicoCertificaNombre') }}
+                </p>
+              </div>
+
+              <!-- CMP -->
+              <div>
+                <label class="form-label">CMP <span class="text-red-500">*</span></label>
+                <input type="text" formControlName="medicoCMP"
+                       appSoloNumeros inputmode="numeric" maxlength="6"
+                       placeholder="Ej: 78901"
+                       class="form-input font-mono"
+                       [class.form-input-error]="isInvalidField('medicoCMP')">
+                <p *ngIf="isInvalidField('medicoCMP')" class="form-error-msg">
+                  <app-icon name="circle-x" [size]="14"></app-icon>
+                  {{ getMensajeError('medicoCMP') }}
+                </p>
+              </div>
+
+              <!-- RNE -->
+              <div>
+                <label class="form-label">
+                  RNE
+                  <span class="text-xs font-normal text-gray-500">
+                    (Especialidad — 5 dígitos)
+                  </span>
+                </label>
+                <input type="text" formControlName="medicoRNE"
+                       appSoloNumeros inputmode="numeric" maxlength="5"
+                       placeholder="Ej: 12345"
+                       class="form-input font-mono"
+                       [class.form-input-error]="isInvalidField('medicoRNE')">
+                <p *ngIf="isInvalidField('medicoRNE')" class="form-error-msg">
+                  <app-icon name="circle-x" [size]="14"></app-icon>
+                  {{ getMensajeError('medicoRNE') }}
+                </p>
+              </div>
+
+              <!-- Médico Externo -->
+              <div *ngIf="medicoExternoHabilitado" class="md:col-span-2">
+                <div class="p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                  <p class="text-sm font-semibold text-blue-800 mb-3
+                            flex items-center gap-2">
+                    <app-icon name="user" [size]="16"></app-icon>
+                    Médico Externo (certifica defunción y genera SINADEF)
+                  </p>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label class="form-label">Nombre</label>
+                      <input type="text" formControlName="medicoExternoNombre"
+                             placeholder="Nombre completo"
+                             class="form-input">
+                    </div>
+                    <div>
+                      <label class="form-label">CMP</label>
+                      <input type="text" formControlName="medicoExternoCMP"
+                             appSoloNumeros inputmode="numeric" maxlength="6"
+                             placeholder="Ej: 12345"
+                             class="form-input font-mono"
+                             [class.form-input-error]="isInvalidField('medicoExternoCMP')">
+                      <p *ngIf="isInvalidField('medicoExternoCMP')" class="form-error-msg">
+                        <app-icon name="circle-x" [size]="14"></app-icon>
+                        {{ getMensajeError('medicoExternoCMP') }}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Observaciones -->
+              <div class="md:col-span-2">
+                <label class="form-label">Observaciones</label>
+                <textarea formControlName="observaciones"
+                          rows="3" maxlength="1000"
+                          placeholder="Información adicional (máx. 1000 caracteres)"
+                          class="form-input resize-none"></textarea>
+                <p class="form-hint text-right">
+                  {{ f['observaciones'].value?.length || 0 }}/1000
+                </p>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- ============================================================
+               SECCIÓN 3: PERTENENCIAS
+               ============================================================ -->
+          <div class="bg-gray-50 rounded-xl border border-gray-200 p-5">
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
+              <div class="flex items-center gap-2">
+                <app-icon name="archive" [size]="20" class="text-purple-600"></app-icon>
+                <h3 class="font-bold text-gray-800">Pertenencias</h3>
+              </div>
+              <button type="button" (click)="agregarPertenencia()"
+                      class="flex items-center gap-1.5 bg-hospital-cyan text-white
+                             text-xs font-semibold px-3 py-1.5 rounded-lg
+                             hover:bg-cyan-700 transition-colors">
+                <app-icon name="plus" [size]="14"></app-icon>
+                Agregar
+              </button>
+            </div>
+
+            <div formArrayName="pertenencias" class="space-y-3">
+              <div *ngFor="let p of pertenencias.controls; let i = index;
+                           trackBy: trackByIndex"
+                   [formGroupName]="i"
+                   class="grid grid-cols-1 md:grid-cols-12 gap-3 items-center
+                          bg-white p-3 rounded-lg border border-gray-200">
+
+                <div class="md:col-span-5">
+                  <label class="block text-xs font-semibold text-gray-600 mb-1">
+                    Descripción <span class="text-red-500">*</span>
+                  </label>
+                  <input type="text" formControlName="descripcion" maxlength="500"
+                         placeholder="Ej: Reloj Casio"
+                         class="form-input text-sm">
+                </div>
+
+                <div class="md:col-span-6">
+                  <label class="block text-xs font-semibold text-gray-600 mb-1">
+                    Observaciones
+                  </label>
+                  <input type="text" formControlName="observaciones" maxlength="500"
+                         placeholder="Detalles adicionales"
+                         class="form-input text-sm">
+                </div>
+
+                <div class="md:col-span-1 flex justify-end pt-4">
+                  <button type="button" (click)="eliminarPertenencia(i)"
+                          class="text-red-500 hover:text-red-700 p-1.5 rounded-lg
+                                 hover:bg-red-100 transition-colors">
+                    <app-icon name="trash" [size]="18"></app-icon>
+                  </button>
+                </div>
+              </div>
+
+              <div *ngIf="pertenencias.length === 0"
+                   class="text-center py-8 bg-white rounded-lg border border-dashed
+                          border-gray-300">
+                <app-icon name="inbox" [size]="36"
+                          class="text-gray-400 mx-auto mb-2"></app-icon>
+                <p class="text-sm text-gray-500">Sin pertenencias registradas</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <!-- /BODY scrollable -->
+      <!-- FOOTER dentro del form — type=submit dispara ngSubmit -->
+      <div class="flex-shrink-0 flex gap-3 px-5 py-4 bg-gray-50 border-t border-gray-200">
+        <button type="button" (click)="onCancelar()"
+                class="btn-secondary flex-1 flex items-center justify-center gap-2">
+          <app-icon name="x" [size]="18"></app-icon>
+          Cancelar
+        </button>
+        <button type="submit"
+                [disabled]="isLoading"
+                class="btn-primary flex-1 flex items-center justify-center gap-2
+                       disabled:opacity-50 disabled:cursor-not-allowed">
+          <app-icon [name]="isLoading ? 'loader' : 'circle-check'" [size]="18"
+                    [class.animate-spin]="isLoading"></app-icon>
+          {{ isLoading ? 'Generando...' : 'Generar Expediente' }}
+        </button>
+      </div>
+
+    </form>
+  </div>
+</div>
