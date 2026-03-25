@@ -40,6 +40,8 @@
 
         public bool ExisteEnGalenhos { get; set; }
         public bool ExisteEnSigem { get; set; }
+        public bool EsNN { get; set; }
+        public bool CausaViolentaODudosa { get; set; }
         public List<string> Advertencias { get; set; } = new();
     }
 }

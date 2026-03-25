@@ -27,6 +27,7 @@
         // ── Estado de integración ────────────────────────────────────
         /// <summary>Si false → Enfermería debe completar datos manualmente.</summary>
         public bool TieneDatosSigem { get; set; }
+        public bool CausaViolentaODudosa { get; set; }
         public List<string> Advertencias { get; set; } = new();
     }
 }

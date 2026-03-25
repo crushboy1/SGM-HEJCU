@@ -17,7 +17,7 @@ export interface BandejaItem {
   hc?: string;
   codigoExpediente?: string;
   numeroDocumento?: string;
-  tipoDocumento?: string;           // "DNI", "CE", "Pasaporte", "NN"
+  tipoDocumento?: string;
 
   // ── Datos del paciente ───────────────────────────────────────────
   nombreCompleto: string;
@@ -56,7 +56,7 @@ export interface BandejaItem {
   estadoTexto: string;
   tipoItem: BandejaItemTipo;
   accionPrincipal: string;
-  tiempoTranscurrido?: number;      // horas
+  tiempoTranscurrido?: number;
   esUrgente?: boolean;
 }
 
@@ -80,6 +80,10 @@ export class BandejaUniversalService {
   private integracionService = inject(IntegracionService);
 
   private readonly apiUrl = 'https://localhost:7153/api';
+  /**
+   * Umbral en horas para marcar un registro como urgente.
+   */
+  private readonly UMBRAL_URGENTE_HORAS = 4;
 
   // ── Método principal ─────────────────────────────────────────────
 
@@ -87,17 +91,17 @@ export class BandejaUniversalService {
     const rol = this.authService.getUserRole();
 
     const mappers: Record<string, () => Observable<BandejaItem[]>> = {
+      // Roles con bandeja real
       'EnfermeriaTecnica': () => this.getParaEnfermeria(),
       'EnfermeriaLicenciada': () => this.getParaEnfermeria(),
       'SupervisoraEnfermeria': () => this.getParaEnfermeria(),
       'Ambulancia': () => this.getParaAmbulancia(),
-      'BancoSangre': () => this.getParaBancoSangre(),
-      'CuentasPacientes': () => this.getParaCuentas(),
-      'ServicioSocial': () => this.getParaCuentas(),
-      'Admision': () => this.getParaAdmision(),
-      'VigilanteSupervisor': () => this.getParaVigilancia(),
-      'JefeGuardia': () => this.getParaJefeGuardia(),
-      'Administrador': () => this.getParaEnfermeria()
+      'Administrador': () => this.getParaEnfermeria(),
+
+      // TODO: VigilanteSupervisor y JefeGuardia tendrán módulos propios.
+      // De momento retornan lista vacía para no mostrar datos mock.
+      'VigilanteSupervisor': () => of([]),
+      'JefeGuardia': () => of([]),
     };
 
     const mapper = mappers[rol];
@@ -117,8 +121,10 @@ export class BandejaUniversalService {
   // ── Mappers por rol ──────────────────────────────────────────────
 
   /**
-   * ENFERMERÍA: Pacientes fallecidos pendientes de generar expediente.
-   * Usa nombreCompleto y esNN directamente desde BandejaEntradaDTO.
+   * ENFERMERÍA / ADMINISTRADOR
+   * Pacientes fallecidos pendientes de generar expediente mortuorio.
+   * Fuente: IntegracionService.getPendientes() → SIGEM/Galenhos mock.
+   * Urgente: más de 4 horas sin expediente generado.
    */
   private getParaEnfermeria(): Observable<BandejaItem[]> {
     return this.integracionService.getPendientes().pipe(
@@ -150,20 +156,22 @@ export class BandejaUniversalService {
             tipoItem: 'generacion_expediente' as const,
             accionPrincipal: 'Generar Expediente',
             tiempoTranscurrido: horasTranscurridas,
-            esUrgente: horasTranscurridas > 4
+            esUrgente: horasTranscurridas > this.UMBRAL_URGENTE_HORAS
           } as BandejaItem;
         })
       ),
       catchError(err => {
-        console.error('Error al obtener pendientes de enfermería:', err);
+        console.error('[BandejaUniversal] Error enfermería:', err);
         return of([]);
       })
     );
   }
 
   /**
-   * AMBULANCIA: Expedientes pendientes de recojo.
-   * tipoItem 'aceptar_custodia' para distinguir de generacion_expediente.
+   * AMBULANCIA
+   * Expedientes pendientes de recojo (EnPiso / PendienteDeRecojo).
+   * TODO: cuando se defina el flujo sin hardware móvil, revisar si
+   * la aceptación de custodia se confirma desde PC mortuorio al llegar.
    */
   private getParaAmbulancia(): Observable<BandejaItem[]> {
     return this.http.get<any[]>(`${this.apiUrl}/Expedientes/pendientes-recojo`).pipe(
@@ -191,124 +199,24 @@ export class BandejaUniversalService {
             tipoItem: 'aceptar_custodia' as const,
             accionPrincipal: 'Aceptar Custodia',
             tiempoTranscurrido: horasTranscurridas,
-            esUrgente: horasTranscurridas > 4
+            esUrgente: horasTranscurridas > this.UMBRAL_URGENTE_HORAS
           } as BandejaItem;
         })
       ),
       catchError(err => {
-        console.error('Error al obtener pendientes de ambulancia:', err);
+        console.error('[BandejaUniversal] Error ambulancia:', err);
         return of([]);
       })
     );
   }
 
-  /** BANCO DE SANGRE: Deudas de sangre pendientes */
-  private getParaBancoSangre(): Observable<BandejaItem[]> {
-    // TODO: reemplazar con endpoint real
-    return of([
-      {
-        id: 'SGM-2025-00015', tipoId: 'codigo_sgm' as const,
-        codigoExpediente: 'SGM-2025-00015', hc: '654321',
-        numeroDocumento: '47812345', tipoDocumento: 'DNI',
-        nombreCompleto: 'Vargas León, María Estefany',
-        unidadesSangre: 2, tipoSangre: 'O+', servicio: 'UCI',
-        estado: 'DeudaPendiente', estadoTexto: 'Compromiso Pendiente',
-        tipoItem: 'deuda_sangre' as const, accionPrincipal: 'Regularizar Deuda',
-        tiempoTranscurrido: 12, esUrgente: false
-      },
-      {
-        id: 'SGM-2025-00018', tipoId: 'codigo_sgm' as const,
-        codigoExpediente: 'SGM-2025-00018', hc: '789456',
-        numeroDocumento: '41236547', tipoDocumento: 'DNI',
-        nombreCompleto: 'Castillo Ruiz, Jorge Antonio',
-        unidadesSangre: 4, tipoSangre: 'AB-', servicio: 'Cirugía',
-        estado: 'DeudaPendiente', estadoTexto: 'Compromiso Pendiente',
-        tipoItem: 'deuda_sangre' as const, accionPrincipal: 'Regularizar Deuda',
-        tiempoTranscurrido: 36, esUrgente: true
-      }
-    ] as BandejaItem[]);
-  }
-
-  /** CUENTAS PACIENTES / SERVICIO SOCIAL: Deudas económicas */
-  private getParaCuentas(): Observable<BandejaItem[]> {
-    // TODO: reemplazar con endpoint real
-    return of([
-      {
-        id: 'SGM-2025-00012', tipoId: 'codigo_sgm' as const,
-        codigoExpediente: 'SGM-2025-00012', hc: '123456',
-        numeroDocumento: '71234567', tipoDocumento: 'DNI',
-        nombreCompleto: 'Ramos Galindo, Erick Jesús',
-        monto: 1500.00, moneda: 'PEN', servicio: 'Emergencia',
-        estado: 'DeudaPendiente', estadoTexto: 'Pago Pendiente',
-        tipoItem: 'deuda_economica' as const, accionPrincipal: 'Gestionar Pago',
-        tiempoTranscurrido: 24, esUrgente: true
-      }
-    ] as BandejaItem[]);
-  }
-
-  /** ADMISIÓN: Expedientes listos para autorizar retiro */
-  private getParaAdmision(): Observable<BandejaItem[]> {
-    // TODO: reemplazar con endpoint real
-    return of([
-      {
-        id: 'SGM-2025-00010', tipoId: 'codigo_sgm' as const,
-        codigoExpediente: 'SGM-2025-00010', hc: '789012',
-        numeroDocumento: '43219876', tipoDocumento: 'DNI',
-        nombreCompleto: 'Chuquipiondo Ikari, Diego Armando',
-        bandeja: 'B-01', fechaIngreso: new Date('2025-11-14T10:00:00'),
-        estado: 'EnBandeja', estadoTexto: 'En Mortuorio',
-        tipoItem: 'autorizacion_retiro' as const, accionPrincipal: 'Autorizar Retiro',
-        tiempoTranscurrido: 48, esUrgente: true
-      },
-      {
-        id: 'SGM-2025-00011', tipoId: 'codigo_sgm' as const,
-        codigoExpediente: 'SGM-2025-00011', hc: '456789',
-        numeroDocumento: '40987654', tipoDocumento: 'DNI',
-        nombreCompleto: 'García Mendoza, Ana Patricia',
-        bandeja: 'B-03', fechaIngreso: new Date('2025-11-15T08:30:00'),
-        estado: 'EnBandeja', estadoTexto: 'En Mortuorio',
-        tipoItem: 'autorizacion_retiro' as const, accionPrincipal: 'Autorizar Retiro',
-        tiempoTranscurrido: 18, esUrgente: false
-      }
-    ] as BandejaItem[]);
-  }
-
-  /** VIGILANTE SUPERVISOR: Documentos legales por validar */
-  private getParaVigilancia(): Observable<BandejaItem[]> {
-    // TODO: reemplazar con endpoint real
-    return of([
-      {
-        id: 'SGM-2025-00020', tipoId: 'codigo_sgm' as const,
-        codigoExpediente: 'SGM-2025-00020',
-        nombreCompleto: 'Paciente NN', tipoDocumento: 'NN', esNN: true,
-        numeroOficio: '2025-0345-DIVPOL', tipoDocumentoLegal: 'Oficio Policial',
-        fechaSolicitud: new Date('2025-11-16T00:00:00'),
-        estado: 'PendienteValidacion', estadoTexto: 'Requiere Validación',
-        tipoItem: 'validacion_legal' as const, accionPrincipal: 'Validar Documentos',
-        tiempoTranscurrido: 6, esUrgente: false
-      }
-    ] as BandejaItem[]);
-  }
-
-  /** JEFE DE GUARDIA: Solicitudes de excepción */
-  private getParaJefeGuardia(): Observable<BandejaItem[]> {
-    // TODO: reemplazar con endpoint real
-    return of([
-      {
-        id: 'SGM-2025-00022', tipoId: 'codigo_sgm' as const,
-        codigoExpediente: 'SGM-2025-00022',
-        nombreCompleto: 'Paciente NN — Retiro por Primo', tipoDocumento: 'NN', esNN: true,
-        fechaSolicitud: new Date('2025-11-16T14:30:00'),
-        estado: 'PendienteAutorizacion', estadoTexto: 'Requiere Aprobación',
-        tipoItem: 'solicitud_excepcion' as const, accionPrincipal: 'Revisar Solicitud',
-        tiempoTranscurrido: 3, esUrgente: false
-      }
-    ] as BandejaItem[]);
-  }
+  // ── Helper ───────────────────────────────────────────────────────
 
   /** Convierte TipoDocumentoIdentidad (int) a etiqueta legible */
   private resolverTipoDocumento(id?: number): string | undefined {
-    const map: Record<number, string> = { 1: 'DNI', 2: 'CE', 3: 'Pasaporte', 4: 'RUC' };
-    return id != null ? (map[id] ?? 'Doc') : undefined;
+    const mapa: Record<number, string> = {
+      1: 'DNI', 2: 'CE', 3: 'Pasaporte', 4: 'RUC'
+    };
+    return id != null ? (mapa[id] ?? 'Doc') : undefined;
   }
 }

@@ -1,12 +1,17 @@
-import { Component, EventEmitter, Input, Output, OnInit, inject } from '@angular/core';
+import {
+  Component, EventEmitter, Input, Output,
+  OnInit, OnDestroy, inject
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Subject } from 'rxjs';
 import { forkJoin, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, takeUntil } from 'rxjs/operators';
 import Swal from 'sweetalert2';
 
 import { IconComponent } from '../icon/icon.component';
 import { SemaforoDeudas } from '../semaforo-deudas/semaforo-deudas';
+import { SoloNumerosDirective } from '../../shared/directives/solo-numeros';
 import { SalidaService, RegistrarSalidaRequest } from '../../services/salida';
 import { ActaRetiroService, ActaRetiroDTO } from '../../services/acta-retiro';
 import { DeudaEconomica } from '../../services/deuda-economica';
@@ -29,60 +34,58 @@ import { getBadgeClasses, getEstadoIcon, getEstadoLabel } from '../../utils/badg
  * - CASO Familiar: datos familiar readonly + funeraria/placa/observaciones editables
  * - Bypass de deuda autorizado por JG/Admin permite continuar sin bloqueo de semáforo
  *
- * @version 3.1.0
+ * @version 3.2.0
  * @changelog
- * - v3.1.0: actaRetiroID agregado al form (campo requerido en backend).
- *           catchError en forkJoin para expedientes sin acta.
+ * - v3.2.0: destroy$ + OnDestroy + takeUntil — fix memory leak en forkJoin y subscribe.
+ *           isLoading guard en confirmarSalida() — evita doble submit.
+ *           SoloNumerosDirective agregado a imports[].
+ * - v3.1.0: actaRetiroID agregado al form. catchError en forkJoin.
  *           hayDeudasBloqueantes considera bypassDeudaAutorizado.
- *           Placa vehículo editable para ambos tipos de salida.
- *           Badges autorización dinámicos según actaRetiro.
  * - v3.0.0: Formulario inteligente por tipo de salida.
  */
 @Component({
   selector: 'app-formulario-salida',
   standalone: true,
-  imports: [CommonModule, FormsModule, IconComponent, SemaforoDeudas],
+  imports: [CommonModule, FormsModule, IconComponent, SemaforoDeudas, SoloNumerosDirective],
   templateUrl: './formulario-salida.html',
   styleUrl: './formulario-salida.css'
 })
-export class FormularioSalida implements OnInit {
+export class FormularioSalida implements OnInit, OnDestroy {
+
+  // ── Inyección ────────────────────────────────────────────────────
   private salidaService = inject(SalidaService);
   private deudaEconomicaService = inject(DeudaEconomica);
   private deudaSangreService = inject(DeudaSangre);
   private actaRetiroService = inject(ActaRetiroService);
 
+  private destroy$ = new Subject<void>();
+
+  // ── Inputs / Outputs ─────────────────────────────────────────────
   @Input() expediente: any = null;
   @Output() onSalidaRegistrada = new EventEmitter<any>();
   @Output() onCerrar = new EventEmitter<void>();
 
+  // ── Estado ───────────────────────────────────────────────────────
   isLoading = false;
   cargandoSemaforos = false;
   cargandoActa = false;
 
-  // ===================================================================
-  // SEMÁFOROS DE DEUDAS
-  // ===================================================================
+  // ── Semáforos de deudas ──────────────────────────────────────────
   semaforoEconomica?: DeudaEconomicaSemaforoDTO;
   semaforoSangre?: string;
 
-  // ===================================================================
-  // ACTA DE RETIRO (fuente de verdad — readonly post-firma)
-  // ===================================================================
+  // ── Acta de Retiro (fuente de verdad — readonly post-firma) ──────
   actaRetiro?: ActaRetiroDTO | null;
 
-  // ===================================================================
-  // HELPERS VISUALES
-  // ===================================================================
+  // ── Helpers visuales ─────────────────────────────────────────────
   getBadgeClasses = getBadgeClasses;
   getEstadoIcon = getEstadoIcon;
   getEstadoLabel = getEstadoLabel;
 
-  // ===================================================================
-  // MODELO DEL FORMULARIO
+  // ── Modelo del formulario ─────────────────────────────────────────
   // Campos capturados físicamente por el Vigilante Mortuorio.
-  // - Familiar:        funeraria + placa + observaciones
-  // - AutoridadLegal:  placa patrullero + observaciones
-  // ===================================================================
+  // - Familiar:       funeraria + placa + observaciones
+  // - AutoridadLegal: placa patrullero + observaciones
   form: RegistrarSalidaRequest = {
     expedienteID: 0,
     actaRetiroID: 0,
@@ -102,6 +105,7 @@ export class FormularioSalida implements OnInit {
   // ===================================================================
   // LIFECYCLE
   // ===================================================================
+
   ngOnInit(): void {
     if (!this.expediente) {
       console.error('[FormularioSalida] Modal abierto sin expediente');
@@ -116,6 +120,11 @@ export class FormularioSalida implements OnInit {
 
     this.form.expedienteID = this.expediente.expedienteID;
     this.cargarDatosIniciales();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   // ===================================================================
@@ -137,28 +146,29 @@ export class FormularioSalida implements OnInit {
       acta: this.actaRetiroService
         .obtenerPorExpediente(this.expediente.expedienteID)
         .pipe(catchError(() => of(null)))
-    }).subscribe({
-      next: ({ economica, sangre, acta }) => {
-        this.semaforoEconomica = economica;
-        this.semaforoSangre = sangre;
-        this.actaRetiro = acta;
-        this.cargandoSemaforos = false;
-        this.cargandoActa = false;
-
-        this.prellenarDesdeActa();
-      },
-      error: (err) => {
-        console.error('[FormularioSalida] Error al cargar datos iniciales:', err);
-        this.cargandoSemaforos = false;
-        this.cargandoActa = false;
-        Swal.fire({
-          icon: 'warning',
-          title: 'Advertencia',
-          text: 'No se pudieron cargar los datos del acta o deudas. Contacte al administrador.',
-          confirmButtonColor: '#F59E0B'
-        });
-      }
-    });
+    })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: ({ economica, sangre, acta }) => {
+          this.semaforoEconomica = economica;
+          this.semaforoSangre = sangre;
+          this.actaRetiro = acta;
+          this.cargandoSemaforos = false;
+          this.cargandoActa = false;
+          this.prellenarDesdeActa();
+        },
+        error: err => {
+          console.error('[FormularioSalida] Error al cargar datos iniciales:', err);
+          this.cargandoSemaforos = false;
+          this.cargandoActa = false;
+          Swal.fire({
+            icon: 'warning',
+            title: 'Advertencia',
+            text: 'No se pudieron cargar los datos del acta o deudas. Contacte al administrador.',
+            confirmButtonColor: '#F59E0B'
+          });
+        }
+      });
   }
 
   // ===================================================================
@@ -167,11 +177,7 @@ export class FormularioSalida implements OnInit {
 
   private prellenarDesdeActa(): void {
     if (!this.actaRetiro) return;
-
-    // actaRetiroID — campo requerido por el backend
     this.form.actaRetiroID = this.actaRetiro.actaRetiroID;
-
-    // Destino — viene del acta como referencia, el vigilante puede ajustarlo
     this.form.destino = this.actaRetiro.destino ?? '';
   }
 
@@ -182,15 +188,12 @@ export class FormularioSalida implements OnInit {
   get tipoSalidaActa(): string {
     return this.actaRetiro?.tipoSalida ?? 'Familiar';
   }
-
   get esFamiliar(): boolean {
     return this.tipoSalidaActa === 'Familiar';
   }
-
   get esAutoridadLegal(): boolean {
     return this.tipoSalidaActa === 'AutoridadLegal';
   }
-
   get tipoSalidaLabel(): string {
     const etiquetas: Record<string, string> = {
       'Familiar': 'Entrega a Familiar',
@@ -240,27 +243,24 @@ export class FormularioSalida implements OnInit {
   // ===================================================================
 
   get hayDeudasBloqueantes(): boolean {
-    // Bypass autorizado por JG/Admin — no bloquear
     if (this.actaRetiro?.bypassDeudaAutorizado) return false;
-
     return (this.semaforoEconomica?.tieneDeuda ?? false) ||
       (this.semaforoSangre?.includes('PENDIENTE') ?? false);
   }
 
   // ===================================================================
-  // GETTER — AUTORIZACIÓN COMPLETA
+  // GETTERS — AUTORIZACIÓN
   // ===================================================================
 
   get actaEstaCompleta(): boolean {
     return this.actaRetiro?.estaCompleta ?? false;
   }
-
   get actaTienePDFFirmado(): boolean {
     return this.actaRetiro?.tienePDFFirmado ?? false;
   }
 
   // ===================================================================
-  // GETTER — FORMULARIO TIENE DATOS EDITABLES
+  // HELPER — FORMULARIO TIENE DATOS EDITABLES
   // ===================================================================
 
   private formularioTieneDatos(): boolean {
@@ -272,7 +272,6 @@ export class FormularioSalida implements OnInit {
         this.form.observaciones?.trim()
       );
     }
-    // AutoridadLegal — placa patrullero + observaciones
     return !!(
       this.form.placaVehiculo?.trim() ||
       this.form.observaciones?.trim()
@@ -284,6 +283,8 @@ export class FormularioSalida implements OnInit {
   // ===================================================================
 
   confirmarSalida(): void {
+    // Guard: evita doble submit mientras procesa
+    if (this.isLoading) return;
     if (!this.verificarSemaforos()) return;
     if (!this.validarFormulario()) return;
     this.mostrarConfirmacion();
@@ -367,12 +368,15 @@ export class FormularioSalida implements OnInit {
     };
 
     if (!this.actaRetiro)
-      return error('El acta de retiro no está disponible. Espere o recargue.');
+      return error(
+        'El acta de retiro no está disponible. Espere o recargue.'
+      );
 
     if (!this.form.actaRetiroID || this.form.actaRetiroID === 0)
-      return error('No se pudo obtener el ID del acta. Cierre y vuelva a abrir el formulario.');
+      return error(
+        'No se pudo obtener el ID del acta. Cierre y vuelva a abrir el formulario.'
+      );
 
-    // Familiar con funeraria: conductor y placa obligatorios
     if (this.esFamiliar && this.form.nombreFuneraria?.trim()) {
       if (!this.form.conductorFuneraria?.trim())
         return error('Si registra funeraria, ingrese el nombre del conductor.');
@@ -391,7 +395,9 @@ export class FormularioSalida implements OnInit {
       html: `
         <div class="text-left space-y-3 text-sm">
           <div class="bg-blue-50 border border-blue-200 p-3 rounded-lg space-y-1">
-            <p class="font-bold text-gray-800">${this.expediente.nombreCompleto}</p>
+            <p class="font-bold text-gray-800">
+              ${this.expediente.nombreCompleto}
+            </p>
             <p class="text-gray-500 text-xs">
               ${this.expediente.codigoExpediente}
               · Bandeja: ${this.expediente.codigoBandeja ?? 'N/A'}
@@ -439,7 +445,7 @@ export class FormularioSalida implements OnInit {
       confirmButtonText: 'Sí, Confirmar Entrega',
       cancelButtonText: 'Cancelar',
       reverseButtons: true
-    }).then((result) => {
+    }).then(result => {
       if (result.isConfirmed) this.procesarSalida();
     });
   }
@@ -451,54 +457,57 @@ export class FormularioSalida implements OnInit {
   private procesarSalida(): void {
     this.isLoading = true;
 
-    this.salidaService.registrarSalida(this.form).subscribe({
-      next: (response) => {
-        this.isLoading = false;
-
-        Swal.fire({
-          icon: 'success',
-          title: 'Entrega Confirmada',
-          html: `
-            <div class="text-left space-y-2 text-sm">
-              <p class="text-green-600 font-semibold">
-                El cuerpo ha sido retirado del mortuorio correctamente.
-              </p>
-              <div class="bg-green-50 border border-green-200 p-3 rounded-lg mt-2 space-y-1">
-                <p>Expediente cerrado:
-                  <strong>${this.expediente.codigoExpediente}</strong>
+    this.salidaService.registrarSalida(this.form)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: response => {
+          this.isLoading = false;
+          Swal.fire({
+            icon: 'success',
+            title: 'Entrega Confirmada',
+            html: `
+              <div class="text-left space-y-2 text-sm">
+                <p class="text-green-600 font-semibold">
+                  El cuerpo ha sido retirado del mortuorio correctamente.
                 </p>
-                <p>Bandeja liberada:
-                  <strong>${this.expediente.codigoBandeja ?? 'N/A'}</strong>
-                </p>
-                <p>Responsable:
-                  <strong>${this.datosResponsableReadonly?.nombre ?? '—'}</strong>
-                  ${this.esFamiliar && this.datosResponsableReadonly?.parentesco
-              ? `· <span class="text-gray-500">${this.datosResponsableReadonly.parentesco}</span>`
-              : this.esAutoridadLegal && this.datosResponsableReadonly?.cargo
-                ? `· <span class="text-gray-500">${this.datosResponsableReadonly.cargo}</span>`
-                : ''}
-                </p>
-              </div>
-            </div>`,
-          confirmButtonColor: '#16A34A',
-          confirmButtonText: 'Aceptar'
-        }).then(() => {
-          this.onSalidaRegistrada.emit(response);
-        });
-      },
-      error: (err: any) => {
-        this.isLoading = false;
-        console.error('[FormularioSalida] Error al procesar:', err);
-
-        Swal.fire({
-          icon: 'error',
-          title: 'Error al Confirmar Entrega',
-          text: err.error?.mensaje ?? err.error?.message ?? err.message
-            ?? 'No se pudo procesar. Intente nuevamente.',
-          confirmButtonColor: '#EF4444'
-        });
-      }
-    });
+                <div class="bg-green-50 border border-green-200 p-3 rounded-lg
+                            mt-2 space-y-1">
+                  <p>Expediente cerrado:
+                    <strong>${this.expediente.codigoExpediente}</strong>
+                  </p>
+                  <p>Bandeja liberada:
+                    <strong>${this.expediente.codigoBandeja ?? 'N/A'}</strong>
+                  </p>
+                  <p>Responsable:
+                    <strong>${this.datosResponsableReadonly?.nombre ?? '—'}</strong>
+                    ${this.esFamiliar && this.datosResponsableReadonly?.parentesco
+                ? `· <span class="text-gray-500">
+                           ${this.datosResponsableReadonly.parentesco}
+                         </span>`
+                : this.esAutoridadLegal && this.datosResponsableReadonly?.cargo
+                  ? `· <span class="text-gray-500">
+                             ${this.datosResponsableReadonly.cargo}
+                           </span>`
+                  : ''}
+                  </p>
+                </div>
+              </div>`,
+            confirmButtonColor: '#16A34A',
+            confirmButtonText: 'Aceptar'
+          }).then(() => this.onSalidaRegistrada.emit(response));
+        },
+        error: (err: any) => {
+          this.isLoading = false;
+          console.error('[FormularioSalida] Error al procesar:', err);
+          Swal.fire({
+            icon: 'error',
+            title: 'Error al Confirmar Entrega',
+            text: err.error?.mensaje ?? err.error?.message
+              ?? err.message ?? 'No se pudo procesar. Intente nuevamente.',
+            confirmButtonColor: '#EF4444'
+          });
+        }
+      });
   }
 
   // ===================================================================
@@ -517,7 +526,7 @@ export class FormularioSalida implements OnInit {
         confirmButtonText: 'Sí, Cerrar',
         cancelButtonText: 'Continuar',
         reverseButtons: true
-      }).then((result) => {
+      }).then(result => {
         if (result.isConfirmed) this.onCerrar.emit();
       });
     } else {

@@ -7,11 +7,14 @@
     <div class="max-w-7xl mx-auto flex items-center justify-between gap-3">
 
       <div class="flex items-center gap-3 min-w-0">
-        <div class="h-10 w-10 flex-shrink-0 bg-hospital-cyan rounded-lg flex items-center justify-center shadow-md text-white">
+        <div class="h-10 w-10 flex-shrink-0 bg-hospital-cyan rounded-lg flex items-center
+                    justify-center shadow-md text-white">
           <app-icon [name]="iconoBandeja" [size]="24"></app-icon>
         </div>
         <div class="min-w-0">
-          <h1 class="text-lg md:text-xl font-bold text-gray-800 truncate">{{ tituloBandeja }}</h1>
+          <h1 class="text-lg md:text-xl font-bold text-gray-800 truncate">
+            {{ tituloBandeja }}
+          </h1>
           <p class="text-xs text-gray-500 hidden sm:block">{{ descripcionBandeja }}</p>
         </div>
       </div>
@@ -19,55 +22,59 @@
       <!-- KPIs + SignalR — desktop -->
       <div class="hidden md:flex items-center gap-3 flex-shrink-0">
 
-        <!-- Indicador SignalR -->
-        <div class="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-full border border-gray-200 shadow-sm"
-             [title]="conexionSignalREstablecida ? 'Conexión en tiempo real activa' : 'Conectando...'">
+        <div class="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-full border
+                    border-gray-200 shadow-sm"
+             [title]="conexionSignalREstablecida
+               ? 'Conexión en tiempo real activa' : 'Conectando...'">
           <span class="relative flex h-2.5 w-2.5">
             <span *ngIf="conexionSignalREstablecida"
-                  class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  class="animate-ping absolute inline-flex h-full w-full rounded-full
+                         bg-green-400 opacity-75"></span>
             <span class="relative inline-flex rounded-full h-2.5 w-2.5"
-                  [ngClass]="conexionSignalREstablecida ? 'bg-green-500' : 'bg-yellow-500'"></span>
+                  [ngClass]="conexionSignalREstablecida
+                    ? 'bg-green-500' : 'bg-yellow-500'"></span>
           </span>
           <span class="text-[11px] font-mono text-gray-600 font-medium">
-            {{ ultimaActualizacionSignalR ? (ultimaActualizacionSignalR | date:'HH:mm:ss') : '--:--:--' }}
+            {{
+ ultimaActualizacionSignalR
+               ? (ultimaActualizacionSignalR | date:'HH:mm:ss') : '--:--:--'
+            }}
           </span>
         </div>
 
-        <!-- Total items -->
-        <div class="flex items-center gap-2 bg-blue-50 px-3 py-2 rounded-lg border border-blue-200">
-          <div class="text-blue-500">
-            <app-icon name="inbox" [size]="18"></app-icon>
-          </div>
+        <div class="flex items-center gap-2 bg-blue-50 px-3 py-2 rounded-lg border
+                    border-blue-200">
+          <app-icon name="inbox" [size]="18" class="text-blue-500"></app-icon>
           <span class="text-sm font-bold text-blue-700">{{ totalItemsSinFiltro }}</span>
         </div>
 
-        <!-- Urgentes -->
         <div *ngIf="itemsUrgentes > 0"
-             class="flex items-center gap-2 bg-red-50 px-3 py-2 rounded-lg border border-red-200 animate-pulse">
-          <div class="text-red-500">
-            <app-icon name="alert-triangle" [size]="18"></app-icon>
-          </div>
+             class="flex items-center gap-2 bg-red-50 px-3 py-2 rounded-lg border
+                    border-red-200 animate-pulse">
+          <app-icon name="alert-triangle" [size]="18" class="text-red-500"></app-icon>
           <span class="text-sm font-bold text-red-700">{{ itemsUrgentes }}</span>
         </div>
+
       </div>
 
       <!-- KPIs compactos — mobile -->
       <div class="flex md:hidden items-center gap-2 flex-shrink-0">
-        <!-- Dot SignalR -->
         <span class="relative flex h-2.5 w-2.5"
               [title]="conexionSignalREstablecida ? 'En línea' : 'Conectando'">
           <span *ngIf="conexionSignalREstablecida"
-                class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                class="animate-ping absolute inline-flex h-full w-full rounded-full
+                       bg-green-400 opacity-75"></span>
           <span class="relative inline-flex rounded-full h-2.5 w-2.5"
-                [ngClass]="conexionSignalREstablecida ? 'bg-green-500' : 'bg-yellow-500'"></span>
+                [ngClass]="conexionSignalREstablecida
+                  ? 'bg-green-500' : 'bg-yellow-500'"></span>
         </span>
-        <!-- Badge total -->
-        <span class="px-2 py-1 bg-blue-50 border border-blue-200 rounded-full text-xs font-bold text-blue-700">
+        <span class="px-2 py-1 bg-blue-50 border border-blue-200 rounded-full text-xs
+                     font-bold text-blue-700">
           {{ totalItemsSinFiltro }}
         </span>
-        <!-- Badge urgentes -->
         <span *ngIf="itemsUrgentes > 0"
-              class="px-2 py-1 bg-red-50 border border-red-200 rounded-full text-xs font-bold text-red-700 animate-pulse">
+              class="px-2 py-1 bg-red-50 border border-red-200 rounded-full text-xs
+                     font-bold text-red-700 animate-pulse">
           {{ itemsUrgentes }}
         </span>
       </div>
@@ -76,30 +83,36 @@
   </div>
 
   <!-- ============================================================
+       OVERLAY: Consultando SIGEM/Galenhos
+       ============================================================ -->
+  <!-- ============================================================
        CONTENIDO PRINCIPAL
        ============================================================ -->
   <div class="max-w-7xl mx-auto p-4 md:p-6 space-y-4 md:space-y-6">
 
     <!-- ============================================================
-         FILTROS
+         CARD PRINCIPAL: Filtros + Tabla + Consejo
          ============================================================ -->
-    <div class="card animate-fade-in">
-      <div class="p-4 md:p-5">
+    <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden
+                animate-fade-in">
+
+      <!-- ── Filtros ─────────────────────────────────────────────── -->
+      <div class="p-4 md:p-5 border-b border-gray-100">
 
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-sm font-semibold text-gray-700 flex items-center gap-2">
-            <span class="text-hospital-cyan flex items-center">
-              <app-icon name="search" [size]="18"></app-icon>
-            </span>
+            <app-icon name="search" [size]="18" class="text-hospital-cyan"></app-icon>
             <span>Filtros de Búsqueda</span>
             <span *ngIf="filtrosActivos > 0"
-                  class="ml-1 px-2 py-0.5 bg-hospital-cyan text-white text-xs font-bold rounded-full">
+                  class="ml-1 px-2 py-0.5 bg-hospital-cyan text-white text-xs
+                         font-bold rounded-full">
               {{ filtrosActivos }}
             </span>
           </h3>
           <button *ngIf="filtrosActivos > 0"
                   (click)="limpiarFiltros()"
-                  class="text-sm text-hospital-cyan hover:text-cyan-700 font-medium flex items-center gap-1 transition-colors">
+                  class="text-sm text-hospital-cyan hover:text-cyan-700 font-medium
+                         flex items-center gap-1 transition-colors">
             <app-icon name="x" [size]="16"></app-icon>
             <span class="hidden sm:inline">Limpiar filtros</span>
           </button>
@@ -108,105 +121,119 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3 mb-4">
 
           <div *ngIf="configuracionFiltros.permiteFiltroExpediente">
-            <label class="block text-xs font-semibold text-gray-600 mb-1.5">N° Expediente</label>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5">
+              N° Expediente
+            </label>
             <input type="text"
                    [(ngModel)]="filtroExpediente"
                    (ngModelChange)="aplicarFiltros()"
                    placeholder="SGM-2025-00001"
                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg
-                     focus:outline-none focus:ring-2 focus:ring-hospital-cyan focus:border-transparent
-                     transition-all placeholder:text-gray-400">
+                          focus:outline-none focus:ring-2 focus:ring-hospital-cyan
+                          focus:border-transparent transition-all placeholder:text-gray-400">
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-gray-600 mb-1.5 flex items-center gap-1">
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5
+                          flex items-center gap-1">
               <app-icon name="file-text" [size]="12"></app-icon>
-              <span>Historia Clínica</span>
+              Historia Clínica
             </label>
             <input type="text"
                    [(ngModel)]="filtroHC"
                    (ngModelChange)="aplicarFiltros()"
                    placeholder="123456"
                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg
-                     focus:outline-none focus:ring-2 focus:ring-hospital-cyan focus:border-transparent
-                     transition-all placeholder:text-gray-400">
+                          focus:outline-none focus:ring-2 focus:ring-hospital-cyan
+                          focus:border-transparent transition-all placeholder:text-gray-400">
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-gray-600 mb-1.5 flex items-center gap-1">
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5
+                          flex items-center gap-1">
               <app-icon name="user" [size]="12"></app-icon>
-              <span>Nombre del Paciente</span>
+              Nombre del Paciente
             </label>
             <input type="text"
                    [(ngModel)]="filtroNombre"
                    (ngModelChange)="aplicarFiltros()"
                    placeholder="Buscar por nombre"
                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg
-                     focus:outline-none focus:ring-2 focus:ring-hospital-cyan focus:border-transparent
-                     transition-all placeholder:text-gray-400">
+                          focus:outline-none focus:ring-2 focus:ring-hospital-cyan
+                          focus:border-transparent transition-all placeholder:text-gray-400">
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-gray-600 mb-1.5 flex items-center gap-1">
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5
+                          flex items-center gap-1">
               <app-icon name="credit-card" [size]="12"></app-icon>
-              <span>N° Documento</span>
+              N° Documento
             </label>
             <input type="text"
                    [(ngModel)]="filtroDocumento"
                    (ngModelChange)="aplicarFiltros()"
                    placeholder="DNI, CE, Pasaporte"
                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg
-                     focus:outline-none focus:ring-2 focus:ring-hospital-cyan focus:border-transparent
-                     transition-all placeholder:text-gray-400">
+                          focus:outline-none focus:ring-2 focus:ring-hospital-cyan
+                          focus:border-transparent transition-all placeholder:text-gray-400">
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-gray-600 mb-1.5 flex items-center gap-1">
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5
+                          flex items-center gap-1">
               <app-icon name="info" [size]="12"></app-icon>
-              <span>Estado</span>
+              Estado
             </label>
             <select [(ngModel)]="filtroEstado"
                     (ngModelChange)="aplicarFiltros()"
                     class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg
-                      focus:outline-none focus:ring-2 focus:ring-hospital-cyan focus:border-transparent
-                      transition-all bg-white cursor-pointer">
+                           focus:outline-none focus:ring-2 focus:ring-hospital-cyan
+                           focus:border-transparent transition-all bg-white cursor-pointer">
               <option value="">Todos los estados</option>
-              <option *ngFor="let estado of estadosDisponibles" [value]="estado">{{ estado }}</option>
+              <option *ngFor="let estado of estadosDisponibles" [value]="estado">
+                {{ estado }}
+              </option>
             </select>
           </div>
 
         </div>
 
         <!-- Búsqueda global -->
-        <div class="pt-4 border-t border-gray-200">
-          <label class="block text-xs font-semibold text-gray-600 mb-1.5 flex items-center gap-1">
+        <div class="pt-3 border-t border-gray-100">
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5
+                        flex items-center gap-1">
             <app-icon name="search" [size]="12"></app-icon>
-            <span>Búsqueda Rápida Global</span>
-            <span class="text-gray-400 font-normal hidden sm:inline">(busca en todos los campos)</span>
+            Búsqueda Rápida Global
+            <span class="text-gray-400 font-normal hidden sm:inline">
+              (busca en todos los campos)
+            </span>
           </label>
           <div class="flex gap-2 md:gap-3">
             <div class="flex-1 relative">
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center
+                          pointer-events-none text-gray-400">
                 <app-icon name="search" [size]="18"></app-icon>
               </div>
               <input type="text"
                      [(ngModel)]="searchTerm"
                      (ngModelChange)="aplicarFiltros()"
                      placeholder="Buscar en todos los campos..."
-                     class="w-full pl-10 pr-10 py-2.5 text-sm border border-gray-300 rounded-lg
-                       focus:outline-none focus:ring-2 focus:ring-hospital-cyan focus:border-transparent
-                       transition-all placeholder:text-gray-400">
+                     class="w-full pl-10 pr-10 py-2.5 text-sm border border-gray-300
+                            rounded-lg focus:outline-none focus:ring-2
+                            focus:ring-hospital-cyan focus:border-transparent
+                            transition-all placeholder:text-gray-400">
               <button *ngIf="searchTerm"
                       (click)="searchTerm = ''; aplicarFiltros()"
-                      class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
-                      title="Limpiar búsqueda">
+                      class="absolute inset-y-0 right-0 pr-3 flex items-center
+                             text-gray-400 hover:text-gray-600 transition-colors">
                 <app-icon name="x" [size]="18"></app-icon>
               </button>
             </div>
             <button (click)="recargar()"
-                    class="px-4 md:px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg
-                           transition-all flex items-center gap-2 hover:scale-105 active:scale-95 flex-shrink-0"
-                    title="Recargar datos">
+                    class="px-4 md:px-6 py-2.5 bg-gray-100 hover:bg-gray-200
+                           text-gray-700 font-medium rounded-lg transition-all
+                           flex items-center gap-2 hover:scale-105 active:scale-95
+                           flex-shrink-0">
               <app-icon name="refresh-cw" [size]="18"></app-icon>
               <span class="hidden sm:inline">Recargar</span>
             </button>
@@ -214,167 +241,129 @@
         </div>
 
       </div>
-    </div>
 
-    <!-- ============================================================
-         TABLA (desktop/tablet) + CARDS (mobile)
-         ============================================================ -->
-    <div class="card overflow-hidden animate-fade-in-up animate-delay-100">
-
-      <!-- Header tabla -->
-      <div class="px-4 md:px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200
-                  flex justify-between items-center">
+      <!-- ── Header tabla ─────────────────────────────────────────── -->
+      <div class="px-4 md:px-6 py-3 bg-gradient-to-r from-gray-50 to-gray-100
+                  border-b border-gray-200 flex justify-between items-center">
         <h3 class="font-bold text-gray-700 flex items-center gap-2">
-          <span class="text-hospital-cyan flex items-center">
-            <app-icon name="clipboard-list" [size]="20"></app-icon>
-          </span>
+          <app-icon name="clipboard-list" [size]="20" class="text-hospital-cyan"></app-icon>
           <span class="truncate">{{ tituloBandeja }}</span>
         </h3>
       </div>
 
-      <!-- ======================================================
-           VISTA TABLA — md y superior
-           ====================================================== -->
+      <!-- ── Vista tabla — md y superior ─────────────────────────── -->
       <div class="hidden md:block overflow-x-auto">
         <table class="w-full text-sm table-fixed">
 
-          <thead class="bg-gray-50 text-xs uppercase font-bold text-gray-600 border-b-2 border-gray-200">
+          <thead class="bg-gray-50 text-xs uppercase font-bold text-gray-600
+                        border-b-2 border-gray-200">
             <tr>
-
-              <!-- Columna 1: código/expediente -->
-              <th class="px-4 py-3 text-center cursor-pointer hover:bg-gray-100 transition-colors w-[160px]"
-                  (click)="ordenarPor('codigo')">
+              <!-- HC siempre visible para enfermería — es el identificador principal -->
+              <th class="px-4 py-3 text-center cursor-pointer hover:bg-gray-100
+                         transition-colors w-[120px]" (click)="ordenarPor('codigo')">
                 <div class="flex items-center justify-center gap-1.5">
-                  <span>{{ labelColumna1 }}</span>
+                  <span>Historia Clínica</span>
                   <app-icon name="chevron-up" [size]="14"
-                            *ngIf="ordenColumna === 'codigo' && ordenDireccion === 'asc'"
+                            *ngIf="ordenColumna==='codigo' && ordenDireccion==='asc'"
                             class="text-hospital-cyan"></app-icon>
                   <app-icon name="chevron-down" [size]="14"
-                            *ngIf="ordenColumna === 'codigo' && ordenDireccion === 'desc'"
+                            *ngIf="ordenColumna==='codigo' && ordenDireccion==='desc'"
                             class="text-hospital-cyan"></app-icon>
                   <app-icon name="chevron-down" [size]="12"
-                            *ngIf="ordenColumna !== 'codigo'"
+                            *ngIf="ordenColumna!=='codigo'"
                             class="text-gray-300"></app-icon>
                 </div>
               </th>
 
-              <!-- HC (condicional) -->
-              <th *ngIf="mostrarColumnaHC"
-                  class="px-4 py-3 text-center cursor-pointer hover:bg-gray-100 transition-colors w-[80px]"
-                  (click)="ordenarPor('hc')">
-                <div class="flex items-center justify-center gap-1.5">
-                  <app-icon name="file-text" [size]="14"></app-icon>
-                  <span>HC</span>
-                  <app-icon name="chevron-up" [size]="14"
-                            *ngIf="ordenColumna === 'hc' && ordenDireccion === 'asc'"
-                            class="text-hospital-cyan"></app-icon>
-                  <app-icon name="chevron-down" [size]="14"
-                            *ngIf="ordenColumna === 'hc' && ordenDireccion === 'desc'"
-                            class="text-hospital-cyan"></app-icon>
-                  <app-icon name="chevron-down" [size]="12"
-                            *ngIf="ordenColumna !== 'hc'"
-                            class="text-gray-300"></app-icon>
-                </div>
-              </th>
-
-              <!-- Paciente -->
-              <th class="px-4 py-3 text-center cursor-pointer hover:bg-gray-100 transition-colors"
-                  (click)="ordenarPor('paciente')">
+              <th class="px-4 py-3 text-center cursor-pointer hover:bg-gray-100
+                         transition-colors" (click)="ordenarPor('paciente')">
                 <div class="flex items-center justify-center gap-1.5">
                   <app-icon name="user" [size]="14"></app-icon>
                   <span>Paciente</span>
                   <app-icon name="chevron-up" [size]="14"
-                            *ngIf="ordenColumna === 'paciente' && ordenDireccion === 'asc'"
+                            *ngIf="ordenColumna==='paciente' && ordenDireccion==='asc'"
                             class="text-hospital-cyan"></app-icon>
                   <app-icon name="chevron-down" [size]="14"
-                            *ngIf="ordenColumna === 'paciente' && ordenDireccion === 'desc'"
+                            *ngIf="ordenColumna==='paciente' && ordenDireccion==='desc'"
                             class="text-hospital-cyan"></app-icon>
                   <app-icon name="chevron-down" [size]="12"
-                            *ngIf="ordenColumna !== 'paciente'"
+                            *ngIf="ordenColumna!=='paciente'"
                             class="text-gray-300"></app-icon>
                 </div>
               </th>
 
-              <!-- Documento -->
-              <th class="px-4 py-3 text-center cursor-pointer hover:bg-gray-100 transition-colors w-[110px]"
-                  (click)="ordenarPor('documento')">
+              <th class="px-4 py-3 text-center cursor-pointer hover:bg-gray-100
+                         transition-colors w-[110px]" (click)="ordenarPor('documento')">
                 <div class="flex items-center justify-center gap-1.5">
                   <app-icon name="credit-card" [size]="14"></app-icon>
                   <span>Doc.</span>
                   <app-icon name="chevron-up" [size]="14"
-                            *ngIf="ordenColumna === 'documento' && ordenDireccion === 'asc'"
+                            *ngIf="ordenColumna==='documento' && ordenDireccion==='asc'"
                             class="text-hospital-cyan"></app-icon>
                   <app-icon name="chevron-down" [size]="14"
-                            *ngIf="ordenColumna === 'documento' && ordenDireccion === 'desc'"
+                            *ngIf="ordenColumna==='documento' && ordenDireccion==='desc'"
                             class="text-hospital-cyan"></app-icon>
                   <app-icon name="chevron-down" [size]="12"
-                            *ngIf="ordenColumna !== 'documento'"
+                            *ngIf="ordenColumna!=='documento'"
                             class="text-gray-300"></app-icon>
                 </div>
               </th>
 
-              <!-- Servicio -->
-              <th class="px-4 py-3 text-center cursor-pointer hover:bg-gray-100 transition-colors w-[150px]"
-                  (click)="ordenarPor('servicio')">
+              <th class="px-4 py-3 text-center cursor-pointer hover:bg-gray-100
+                         transition-colors w-[150px]" (click)="ordenarPor('servicio')">
                 <div class="flex items-center justify-center gap-1.5">
                   <app-icon name="building-2" [size]="14"></app-icon>
                   <span>Servicio</span>
                   <app-icon name="chevron-up" [size]="14"
-                            *ngIf="ordenColumna === 'servicio' && ordenDireccion === 'asc'"
+                            *ngIf="ordenColumna==='servicio' && ordenDireccion==='asc'"
                             class="text-hospital-cyan"></app-icon>
                   <app-icon name="chevron-down" [size]="14"
-                            *ngIf="ordenColumna === 'servicio' && ordenDireccion === 'desc'"
+                            *ngIf="ordenColumna==='servicio' && ordenDireccion==='desc'"
                             class="text-hospital-cyan"></app-icon>
                   <app-icon name="chevron-down" [size]="12"
-                            *ngIf="ordenColumna !== 'servicio'"
+                            *ngIf="ordenColumna!=='servicio'"
                             class="text-gray-300"></app-icon>
                 </div>
               </th>
 
-              <!-- Fecha -->
-              <th class="px-4 py-3 text-center cursor-pointer hover:bg-gray-100 transition-colors w-[110px]"
-                  (click)="ordenarPor('fecha')">
+              <th class="px-4 py-3 text-center cursor-pointer hover:bg-gray-100
+                         transition-colors w-[110px]" (click)="ordenarPor('fecha')">
                 <div class="flex items-center justify-center gap-1.5">
                   <app-icon name="calendar" [size]="14"></app-icon>
                   <span>Fecha</span>
                   <app-icon name="chevron-up" [size]="14"
-                            *ngIf="ordenColumna === 'fecha' && ordenDireccion === 'asc'"
+                            *ngIf="ordenColumna==='fecha' && ordenDireccion==='asc'"
                             class="text-hospital-cyan"></app-icon>
                   <app-icon name="chevron-down" [size]="14"
-                            *ngIf="ordenColumna === 'fecha' && ordenDireccion === 'desc'"
+                            *ngIf="ordenColumna==='fecha' && ordenDireccion==='desc'"
                             class="text-hospital-cyan"></app-icon>
                   <app-icon name="chevron-down" [size]="12"
-                            *ngIf="ordenColumna !== 'fecha'"
+                            *ngIf="ordenColumna!=='fecha'"
                             class="text-gray-300"></app-icon>
                 </div>
               </th>
 
-              <!-- Estado -->
-              <th class="px-4 py-3 text-center cursor-pointer hover:bg-gray-100 transition-colors w-[160px]"
-                  (click)="ordenarPor('estado')">
+              <!-- Estado: ancho generoso para textos largos -->
+              <th class="px-4 py-3 text-center cursor-pointer hover:bg-gray-100
+                         transition-colors w-[180px]" (click)="ordenarPor('estado')">
                 <div class="flex items-center justify-center gap-1.5">
                   <app-icon name="info" [size]="14"></app-icon>
                   <span>Estado</span>
                   <app-icon name="chevron-up" [size]="14"
-                            *ngIf="ordenColumna === 'estado' && ordenDireccion === 'asc'"
+                            *ngIf="ordenColumna==='estado' && ordenDireccion==='asc'"
                             class="text-hospital-cyan"></app-icon>
                   <app-icon name="chevron-down" [size]="14"
-                            *ngIf="ordenColumna === 'estado' && ordenDireccion === 'desc'"
+                            *ngIf="ordenColumna==='estado' && ordenDireccion==='desc'"
                             class="text-hospital-cyan"></app-icon>
                   <app-icon name="chevron-down" [size]="12"
-                            *ngIf="ordenColumna !== 'estado'"
+                            *ngIf="ordenColumna!=='estado'"
                             class="text-gray-300"></app-icon>
                 </div>
               </th>
 
-              <!-- Acción -->
-              <th class="px-4 py-3 text-center w-[180px]">
-                <div class="flex items-center justify-center gap-1.5">
-                  <app-icon name="zap" [size]="14"></app-icon>
-                  <span>Acción</span>
-                </div>
+              <th class="px-4 py-3 text-center w-[160px]">
+                <span>Acción</span>
               </th>
-
             </tr>
           </thead>
 
@@ -382,11 +371,10 @@
 
             <!-- Loading -->
             <tr *ngIf="isLoading">
-              <td [attr.colspan]="colspanTotal" class="px-6 py-12 text-center">
+              <td colspan="7" class="px-6 py-12 text-center">
                 <div class="flex flex-col items-center gap-3">
-                  <div class="animate-spin text-hospital-cyan">
-                    <app-icon name="refresh-cw" [size]="32"></app-icon>
-                  </div>
+                  <app-icon name="refresh-cw" [size]="32"
+                            class="animate-spin text-hospital-cyan"></app-icon>
                   <span class="text-gray-600 font-medium">Cargando información...</span>
                 </div>
               </td>
@@ -394,17 +382,16 @@
 
             <!-- Error -->
             <tr *ngIf="errorMessage && !isLoading">
-              <td [attr.colspan]="colspanTotal" class="px-6 py-8 text-center">
+              <td colspan="7" class="px-6 py-8 text-center">
                 <div class="flex flex-col items-center gap-3">
-                  <div class="text-red-500">
-                    <app-icon name="alert-circle" [size]="32"></app-icon>
-                  </div>
+                  <app-icon name="alert-circle" [size]="32" class="text-red-500"></app-icon>
                   <p class="text-red-600 font-medium">{{ errorMessage }}</p>
                   <button (click)="recargar()"
-                          class="mt-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100
-                                 transition-colors font-medium flex items-center gap-2 active:scale-95">
+                          class="mt-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg
+                                 hover:bg-red-100 transition-colors font-medium
+                                 flex items-center gap-2 active:scale-95">
                     <app-icon name="refresh-cw" [size]="16"></app-icon>
-                    <span>Reintentar</span>
+                    Reintentar
                   </button>
                 </div>
               </td>
@@ -412,111 +399,101 @@
 
             <!-- Empty -->
             <tr *ngIf="!isLoading && !errorMessage && filteredItems.length === 0">
-              <td [attr.colspan]="colspanTotal" class="px-6 py-12 text-center">
+              <td colspan="7" class="px-6 py-12 text-center">
                 <div class="flex flex-col items-center gap-3">
-                  <div class="text-gray-400">
-                    <app-icon name="inbox" [size]="48"></app-icon>
-                  </div>
+                  <app-icon name="inbox" [size]="48" class="text-gray-400"></app-icon>
                   <p class="text-gray-600 font-medium text-lg">No hay items pendientes</p>
                   <p class="text-sm text-gray-400">
-                    {{ filtrosActivos > 0 ? 'Intenta ajustar los filtros de búsqueda' : 'Todo está al día' }}
+                    {{
+ filtrosActivos > 0
+                       ? 'Intenta ajustar los filtros' : 'Todo está al día'
+                    }}
                   </p>
                   <button *ngIf="filtrosActivos > 0"
                           (click)="limpiarFiltros()"
-                          class="mt-2 px-4 py-2 bg-hospital-cyan text-white rounded-lg hover:bg-cyan-700
-                                 transition-colors font-medium flex items-center gap-2 active:scale-95">
+                          class="mt-2 px-4 py-2 bg-hospital-cyan text-white rounded-lg
+                                 hover:bg-cyan-700 transition-colors font-medium
+                                 flex items-center gap-2 active:scale-95">
                     <app-icon name="x" [size]="16"></app-icon>
-                    <span>Limpiar filtros</span>
+                    Limpiar filtros
                   </button>
                 </div>
               </td>
             </tr>
 
             <!-- Filas de datos -->
-            <tr *ngFor="let item of paginatedItems"
+            <tr *ngFor="let item of paginatedItems; trackBy: trackByItemId"
                 class="hover:bg-blue-50 transition-all group cursor-pointer"
                 [class.bg-red-50]="item.esUrgente"
                 [class.border-l-4]="item.esUrgente"
                 [class.border-red-500]="item.esUrgente">
 
-              <!-- ID/Código -->
-              <td class="px-4 py-3 text-center overflow-hidden">
-                <div class="font-mono text-sm font-bold text-hospital-cyan truncate">
-                  {{ item.id }}
+              <!-- HC -->
+              <td class="px-4 py-3 text-center">
+                <div class="font-mono text-sm font-bold text-hospital-cyan">
+                  {{ item.hc || item.id }}
                 </div>
                 <div *ngIf="item.esUrgente"
-                     class="text-xs text-red-600 font-bold mt-1 flex items-center justify-center gap-1">
+                     class="text-xs text-red-600 font-bold mt-1 flex items-center
+                            justify-center gap-1">
                   <app-icon name="alert-triangle" [size]="12"></app-icon>
-                  <span>URGENTE</span>
+                  URGENTE
                 </div>
-              </td>
-
-              <!-- HC -->
-              <td *ngIf="mostrarColumnaHC" class="px-4 py-3 text-center overflow-hidden">
-                <div class="font-mono text-sm text-gray-700 truncate">{{ item.hc || '-' }}</div>
               </td>
 
               <!-- Paciente -->
               <td class="px-4 py-3 text-center overflow-hidden">
-                <div class="font-semibold text-gray-800 truncate" [title]="item.nombreCompleto">
+                <div class="font-semibold text-gray-800 truncate"
+                     [title]="item.nombreCompleto">
                   {{ item.nombreCompleto }}
                 </div>
               </td>
 
               <!-- Documento -->
               <td class="px-4 py-3 text-center overflow-hidden">
-                <div class="text-xs text-gray-500 truncate">{{ item.tipoDocumento || 'Doc' }}</div>
+                <div class="text-xs text-gray-500">{{ item.tipoDocumento || 'Doc' }}</div>
                 <div class="font-mono text-sm text-gray-700 font-medium truncate">
                   {{ item.numeroDocumento || '-' }}
                 </div>
               </td>
 
-              <!-- Info contextual (servicio / bandeja / monto / sangre) -->
+              <!-- Servicio -->
               <td class="px-4 py-3 text-center overflow-hidden">
-                <div *ngIf="item.servicio"
-                     class="flex items-center justify-center gap-1 text-sm text-gray-700">
-                  <app-icon name="building-2" [size]="14" class="text-gray-400 flex-shrink-0"></app-icon>
-                  <span class="truncate">{{ item.servicio }}</span>
+                <div class="flex items-center justify-center gap-1 text-sm text-gray-700">
+                  <app-icon name="building-2" [size]="14"
+                            class="text-gray-400 flex-shrink-0"></app-icon>
+                  <span class="truncate">{{ item.servicio || '-' }}</span>
                 </div>
-                <div *ngIf="item.bandeja"
-                     class="flex items-center justify-center gap-1 text-sm text-gray-700">
-                  <app-icon name="archive" [size]="14" class="text-gray-400 flex-shrink-0"></app-icon>
-                  <span class="truncate">{{ item.bandeja }}</span>
-                </div>
-                <div *ngIf="item.monto"
-                     class="flex items-center justify-center gap-1 text-sm text-gray-700">
-                  <app-icon name="credit-card" [size]="14" class="text-gray-400 flex-shrink-0"></app-icon>
-                  <span class="font-semibold truncate">{{ item.monto | currency:'S/ ' }}</span>
-                </div>
-                <div *ngIf="item.unidadesSangre"
-                     class="flex items-center justify-center gap-1 text-sm text-gray-700">
-                  <app-icon name="droplet" [size]="14" class="text-red-400 flex-shrink-0"></app-icon>
-                  <span class="truncate">{{ item.unidadesSangre }} uds ({{ item.tipoSangre }})</span>
-                </div>
-                <span *ngIf="!item.servicio && !item.bandeja && !item.monto && !item.unidadesSangre"
-                      class="text-gray-400 text-sm">-</span>
               </td>
 
               <!-- Fecha -->
               <td class="px-4 py-3 text-center">
                 <div class="text-sm text-gray-700 font-medium">
-                  {{ (item.fechaFallecimiento || item.fechaIngreso || item.fechaSolicitud) | date:'dd/MM/yy' }}
+                  {{
+ (item.fechaFallecimiento || item.fechaIngreso || item.fechaSolicitud)
+                     | date:'dd/MM/yy'
+                  }}
                 </div>
                 <div class="text-xs text-gray-500 mt-0.5">
-                  {{ (item.fechaFallecimiento || item.fechaIngreso || item.fechaSolicitud) | date:'HH:mm' }}
+                  {{
+ (item.fechaFallecimiento || item.fechaIngreso || item.fechaSolicitud)
+                     | date:'HH:mm'
+                  }}
                 </div>
                 <div *ngIf="item.tiempoTranscurrido"
-                     class="text-xs text-gray-400 mt-1 flex items-center justify-center gap-1">
+                     class="text-xs text-gray-400 mt-1 flex items-center
+                            justify-center gap-1">
                   <app-icon name="clock" [size]="12"></app-icon>
-                  <span>{{ formatearTiempo(item.tiempoTranscurrido) }}</span>
+                  {{ formatearTiempo(item.tiempoTranscurrido) }}
                 </div>
               </td>
 
-              <!-- Estado (badge limpio) -->
-              <td class="px-4 py-3 text-center overflow-hidden">
+              <!-- Estado — padding generoso para textos largos -->
+              <td class="px-4 py-3 text-center">
                 <span [ngClass]="getBadgeClasses(item.estadoTexto)"
-                      [title]="item.estadoTexto"
-                      class="max-w-[150px] truncate">
+                      class="inline-flex items-center px-3 py-1.5 text-xs font-semibold
+                             rounded-full whitespace-nowrap max-w-[170px]"
+                      [title]="item.estadoTexto">
                   {{ item.estadoTexto }}
                 </span>
               </td>
@@ -524,104 +501,96 @@
               <!-- Acción -->
               <td class="px-4 py-3 text-center">
                 <button (click)="ejecutarAccion(item); $event.stopPropagation()"
-                        class="btn-primary text-xs px-4 py-2 flex items-center gap-2 mx-auto
-                               group-hover:scale-105 transition-transform shadow-sm hover:shadow-md active:scale-95">
-                  <app-icon name="zap" [size]="16"></app-icon>
-                  <span>{{ item.accionPrincipal }}</span>
+                        class="px-4 py-2 bg-hospital-cyan text-white text-xs font-semibold
+                               rounded-lg hover:bg-cyan-700 transition-all shadow-sm
+                               hover:shadow-md active:scale-95 mx-auto
+                               group-hover:scale-105">
+                  {{ item.accionPrincipal }}
                 </button>
               </td>
 
             </tr>
-
           </tbody>
         </table>
       </div>
 
-      <!-- ======================================================
-           VISTA CARDS — menor a md
-           ====================================================== -->
+      <!-- ── Vista cards — mobile ──────────────────────────────────── -->
       <div class="block md:hidden">
 
-        <!-- Loading mobile -->
         <div *ngIf="isLoading" class="py-12 text-center">
           <div class="flex flex-col items-center gap-3">
-            <div class="animate-spin text-hospital-cyan">
-              <app-icon name="refresh-cw" [size]="32"></app-icon>
-            </div>
+            <app-icon name="refresh-cw" [size]="32"
+                      class="animate-spin text-hospital-cyan"></app-icon>
             <span class="text-gray-600 font-medium">Cargando información...</span>
           </div>
         </div>
 
-        <!-- Error mobile -->
         <div *ngIf="errorMessage && !isLoading" class="py-8 px-4 text-center">
           <div class="flex flex-col items-center gap-3">
-            <div class="text-red-500">
-              <app-icon name="alert-circle" [size]="32"></app-icon>
-            </div>
+            <app-icon name="alert-circle" [size]="32" class="text-red-500"></app-icon>
             <p class="text-red-600 font-medium">{{ errorMessage }}</p>
             <button (click)="recargar()"
                     class="px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100
-                           transition-colors font-medium flex items-center gap-2 active:scale-95">
+                           transition-colors font-medium flex items-center gap-2
+                           active:scale-95">
               <app-icon name="refresh-cw" [size]="16"></app-icon>
-              <span>Reintentar</span>
+              Reintentar
             </button>
           </div>
         </div>
 
-        <!-- Empty mobile -->
         <div *ngIf="!isLoading && !errorMessage && filteredItems.length === 0"
              class="py-12 px-4 text-center">
           <div class="flex flex-col items-center gap-3">
-            <div class="text-gray-400">
-              <app-icon name="inbox" [size]="48"></app-icon>
-            </div>
+            <app-icon name="inbox" [size]="48" class="text-gray-400"></app-icon>
             <p class="text-gray-600 font-medium text-lg">No hay items pendientes</p>
             <p class="text-sm text-gray-400">
               {{ filtrosActivos > 0 ? 'Intenta ajustar los filtros' : 'Todo está al día' }}
             </p>
             <button *ngIf="filtrosActivos > 0"
                     (click)="limpiarFiltros()"
-                    class="px-4 py-2 bg-hospital-cyan text-white rounded-lg hover:bg-cyan-700
-                           transition-colors font-medium flex items-center gap-2 active:scale-95">
+                    class="px-4 py-2 bg-hospital-cyan text-white rounded-lg
+                           hover:bg-cyan-700 transition-colors font-medium
+                           flex items-center gap-2 active:scale-95">
               <app-icon name="x" [size]="16"></app-icon>
-              <span>Limpiar filtros</span>
+              Limpiar filtros
             </button>
           </div>
         </div>
 
-        <!-- Cards -->
         <div class="divide-y divide-gray-100">
-          <div *ngFor="let item of paginatedItems"
+          <div *ngFor="let item of paginatedItems; trackBy: trackByItemId"
                class="p-4 transition-all"
                [class.bg-red-50]="item.esUrgente"
                [class.border-l-4]="item.esUrgente"
                [class.border-red-500]="item.esUrgente">
 
-            <!-- Fila superior: ID + estado + urgente -->
             <div class="flex items-start justify-between gap-2 mb-2">
               <div class="flex items-center gap-2 min-w-0">
-                <span class="font-mono text-sm font-bold text-hospital-cyan truncate">{{ item.id }}</span>
+                <span class="font-mono text-sm font-bold text-hospital-cyan truncate">
+                  {{ item.hc || item.id }}
+                </span>
                 <span *ngIf="item.esUrgente"
-                      class="flex items-center gap-1 text-xs text-red-600 font-bold flex-shrink-0">
+                      class="flex items-center gap-1 text-xs text-red-600 font-bold
+                             flex-shrink-0">
                   <app-icon name="alert-triangle" [size]="12"></app-icon>
                   URGENTE
                 </span>
               </div>
-              <span [ngClass]="getBadgeClasses(item.estadoTexto)" class="flex-shrink-0 truncate max-w-[140px]">
+              <span [ngClass]="getBadgeClasses(item.estadoTexto)"
+                    class="flex-shrink-0 text-xs font-semibold px-2.5 py-1.5
+                           rounded-full whitespace-nowrap">
                 {{ item.estadoTexto }}
               </span>
             </div>
 
-            <!-- Nombre -->
-            <div class="font-semibold text-gray-800 text-sm mb-1 truncate">{{ item.nombreCompleto }}</div>
+            <div class="font-semibold text-gray-800 text-sm mb-1 truncate">
+              {{ item.nombreCompleto }}
+            </div>
 
-            <!-- Fila de metadatos -->
             <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 mb-3">
-              <span *ngIf="mostrarColumnaHC && item.hc" class="flex items-center gap-1">
-                <app-icon name="file-text" [size]="12"></app-icon>
-                HC: {{ item.hc }}
-              </span>
-              <span *ngIf="item.tipoDocumento || item.numeroDocumento" class="flex items-center gap-1">
+              <span *ngIf="item.tipoDocumento || item.numeroDocumento"
+                    class="flex items-center gap-1">
                 <app-icon name="credit-card" [size]="12"></app-icon>
                 {{ item.tipoDocumento || 'Doc' }}: {{ item.numeroDocumento || '-' }}
               </span>
@@ -629,13 +598,12 @@
                 <app-icon name="building-2" [size]="12"></app-icon>
                 {{ item.servicio }}
               </span>
-              <span *ngIf="item.bandeja" class="flex items-center gap-1">
-                <app-icon name="archive" [size]="12"></app-icon>
-                {{ item.bandeja }}
-              </span>
               <span class="flex items-center gap-1">
                 <app-icon name="calendar" [size]="12"></app-icon>
-                {{ (item.fechaFallecimiento || item.fechaIngreso || item.fechaSolicitud) | date:'dd/MM/yy HH:mm' }}
+                {{
+ (item.fechaFallecimiento || item.fechaIngreso || item.fechaSolicitud)
+                   | date:'dd/MM/yy HH:mm'
+                }}
               </span>
               <span *ngIf="item.tiempoTranscurrido" class="flex items-center gap-1">
                 <app-icon name="clock" [size]="12"></app-icon>
@@ -643,24 +611,20 @@
               </span>
             </div>
 
-            <!-- Botón acción -->
             <button (click)="ejecutarAccion(item)"
-                    class="btn-primary text-xs px-4 py-2 flex items-center gap-2 w-full justify-center active:scale-95">
-              <app-icon name="zap" [size]="16"></app-icon>
-              <span>{{ item.accionPrincipal }}</span>
+                    class="w-full py-2.5 bg-hospital-cyan text-white text-xs font-semibold
+                           rounded-lg hover:bg-cyan-700 transition-all active:scale-95
+                           flex items-center justify-center gap-2">
+              {{ item.accionPrincipal }}
             </button>
 
           </div>
         </div>
-
       </div>
 
-      <!-- ======================================================
-           PAGINACIÓN
-           ====================================================== -->
+      <!-- ── Paginación ─────────────────────────────────────────── -->
       <div *ngIf="!isLoading && filteredItems.length > 0"
            class="px-4 py-3 bg-gray-50 border-t border-gray-200">
-
         <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
 
           <div class="text-sm text-gray-600 text-center sm:text-left">
@@ -675,17 +639,20 @@
             <button (click)="paginaAnterior()"
                     [disabled]="paginaActual === 1"
                     class="p-2 border border-gray-300 rounded-lg hover:bg-gray-100
-                           disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95">
+                           disabled:opacity-40 disabled:cursor-not-allowed
+                           transition-all active:scale-95">
               <app-icon name="chevron-left" [size]="18"></app-icon>
             </button>
-            <span class="px-3 py-2 text-sm font-medium text-gray-700 min-w-[110px] text-center">
+            <span class="px-3 py-2 text-sm font-medium text-gray-700 min-w-[110px]
+                         text-center">
               Pág. <strong class="text-hospital-cyan">{{ paginaActual }}</strong>
               / <strong class="text-hospital-cyan">{{ totalPaginas }}</strong>
             </span>
             <button (click)="paginaSiguiente()"
                     [disabled]="paginaActual === totalPaginas"
                     class="p-2 border border-gray-300 rounded-lg hover:bg-gray-100
-                           disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95">
+                           disabled:opacity-40 disabled:cursor-not-allowed
+                           transition-all active:scale-95">
               <app-icon name="chevron-right" [size]="18"></app-icon>
             </button>
           </div>
@@ -693,70 +660,68 @@
           <div class="flex items-center gap-3 text-xs text-gray-500">
             <div class="flex items-center gap-1">
               <app-icon name="clock" [size]="14"></app-icon>
-              <span>{{ fechaActual | date:'HH:mm' }}</span>
+              {{ fechaActual | date:'HH:mm' }}
             </div>
             <div *ngIf="itemsUrgentes > 0"
                  class="flex items-center gap-1 text-red-600 font-bold animate-pulse">
               <app-icon name="alert-triangle" [size]="14"></app-icon>
-              <span>{{ itemsUrgentes }} urgentes</span>
+              {{ itemsUrgentes }} urgentes
             </div>
           </div>
 
         </div>
       </div>
 
-    </div>
-
-    <!-- ============================================================
-         CARD CONSEJO (colapsable en mobile)
-         ============================================================ -->
-    <div *ngIf="!isLoading && filteredItems.length > 0"
-         class="card bg-blue-50 border-blue-200 animate-fade-in-up animate-delay-200">
-      <div class="p-4 flex items-start gap-3">
-        <div class="text-hospital-cyan flex-shrink-0 mt-0.5">
-          <app-icon name="info" [size]="20"></app-icon>
-        </div>
-        <div class="text-sm min-w-0">
-          <p class="font-semibold text-blue-800 mb-1 flex items-center gap-2">
-            <app-icon name="zap" [size]="14"></app-icon>
-            <span>Consejo</span>
-          </p>
-          <p class="text-blue-700" [ngSwitch]="rolUsuario">
+      <!-- ── Consejo — dentro del card principal ───────────────── -->
+      <div *ngIf="!isLoading && filteredItems.length > 0"
+           class="px-4 md:px-6 py-4 border-t border-gray-100 bg-blue-50">
+        <div class="flex items-start gap-3">
+          <app-icon name="info" [size]="18"
+                    class="text-hospital-cyan flex-shrink-0 mt-0.5"></app-icon>
+          <p class="text-sm text-blue-700" [ngSwitch]="rolUsuario">
             <span *ngSwitchCase="'EnfermeriaTecnica'">
-              Haz clic en "Generar Expediente" para crear el registro mortuorio. El sistema pre-llenará los datos desde SIGEM/Galenhos.
+              Haz clic en "Generar Expediente" para crear el registro mortuorio.
+              El sistema pre-llenará los datos desde SIGEM/Galenhos automáticamente.
             </span>
             <span *ngSwitchCase="'EnfermeriaLicenciada'">
-              Haz clic en "Generar Expediente" para crear el registro mortuorio. El sistema pre-llenará los datos desde SIGEM/Galenhos.
+              Haz clic en "Generar Expediente" para crear el registro mortuorio.
+              El sistema pre-llenará los datos desde SIGEM/Galenhos automáticamente.
             </span>
             <span *ngSwitchCase="'SupervisoraEnfermeria'">
-              Supervisa que todos los expedientes generados cumplan con los estándares del hospital.
+              Supervisa que todos los expedientes generados cumplan con los estándares
+              del hospital. Los registros marcados como urgentes llevan más de 4 horas
+              sin expediente.
             </span>
-            <span *ngSwitchCase="'BancoSangre'">
-              Regulariza las deudas marcando el compromiso como firmado, reposición realizada o anulación médica.
-            </span>
-            <span *ngSwitchCase="'Admision'">
-              Verifica que todos los documentos estén en orden antes de autorizar el retiro del cuerpo.
-            </span>
-            <span *ngSwitchCase="'CuentasPacientes'">
-              Gestiona los pagos pendientes o coordina con Servicio Social para exoneraciones.
-            </span>
-            <span *ngSwitchCase="'ServicioSocial'">
-              Evalúa las solicitudes de apoyo social y gestiona las exoneraciones necesarias.
+            <span *ngSwitchCase="'Ambulancia'">
+              Confirma la aceptación de custodia para iniciar el traslado al mortuorio.
             </span>
             <span *ngSwitchCase="'VigilanteSupervisor'">
-              Verifica la documentación legal y el DNI de los familiares antes de permitir el ingreso.
+              Consulta el semáforo de deudas del fallecido antes de atender al familiar.
+              Verde significa que puede proceder al retiro.
             </span>
             <span *ngSwitchCase="'JefeGuardia'">
-              Autoriza casos excepcionales de ingreso o salida fuera de horario.
+              Autoriza casos excepcionales. Los bypass de deuda pendientes requieren
+              tu revisión y aprobación desde el módulo Validar Admisión.
             </span>
             <span *ngSwitchDefault>
-              Selecciona un item para procesarlo según el flujo de tu área. Usa los filtros para encontrar casos específicos.
+              Selecciona un registro para procesarlo según el flujo de tu área.
             </span>
           </p>
         </div>
       </div>
+
     </div>
+    <!-- /card principal -->
 
   </div>
-
 </div>
+
+<!-- ============================================================
+     MODAL: FORMULARIO GENERAR EXPEDIENTE
+     El componente maneja su propio overlay (mismo patrón que formulario-salida).
+     ============================================================ -->
+<app-formulario-generar-expediente *ngIf="mostrarModalExpediente"
+                                   [hc]="hcSeleccionado"
+                                   (expedienteCreado)="onExpedienteCreado($event)"
+                                   (cancelar)="cerrarModalExpediente()">
+</app-formulario-generar-expediente>
