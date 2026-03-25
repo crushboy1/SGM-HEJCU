@@ -3,9 +3,25 @@
 namespace SisMortuorio.Data.ExternalSystems
 {
     /// <summary>
-    /// Servicio simulado para integración con SIGEM 
-    /// (Sistema de Gestión de Emergencias y Medicina)
-    /// En producción, esto se conectaría a la API/BD real de SIGEM
+    /// Simula consultas a SIGEM (Sistema de Gestión de Emergencias y Medicina).
+    /// TODO producción: reemplazar con consultas reales a BD SIGEM.
+    ///
+    /// Reglas de los datos mock:
+    /// - NumeroCama: solo dígitos, max 4 chars (Ej: "201", "308", "412")
+    /// - MedicoCMP:  4–6 dígitos numéricos
+    /// - MedicoRNE:  exactamente 5 dígitos numéricos (o null)
+    ///
+    /// Casos de prueba cubiertos:
+    /// HC 123456  → Interno, adulto mayor, SIS, insuficiencia cardíaca
+    /// HC 234567  → Interno, mujer, EsSalud, sepsis
+    /// HC 345678  → UCI urgente (8h), paro cardiorrespiratorio
+    /// HC 456789  → Reciente (2h), no urgente, neumonía
+    /// HC 567890  → SOAT urgente (6h), TCE severo
+    /// HC 600001  → NN, sin episodio (prueba modo manual)
+    /// HC 700002  → CausaViolenta = true, SOAT, traumatismo múltiple
+    /// HC 800003  → Sin episodio SIGEM (prueba advertencia manual)
+    /// HC 111222  → Sin CMP (prueba advertencia)
+    /// HC 222333  → Con RNE, IRC terminal
     /// </summary>
     public class SigemService : ISigemService
     {
@@ -16,156 +32,136 @@ namespace SisMortuorio.Data.ExternalSystems
             _logger = logger;
         }
 
-        /// <summary>
-        /// Consulta datos del último episodio médico de un paciente por HC
-        /// Incluye: diagnóstico final, médico certificante, fecha/hora fallecimiento
-        /// En producción: SELECT * FROM Episodios WHERE HC = @hc ORDER BY Fecha DESC
-        /// </summary>
         public async Task<EpisodioSigem?> GetUltimoEpisodioByHCAsync(string hc)
         {
             _logger.LogInformation("Consultando último episodio en SIGEM. HC: {HC}", hc);
 
-            // Simulación de delay de red
-            await Task.Delay(600);
+            await Task.Delay(100);
 
-            // Base de datos simulada
-            var episodiosSimulados = GetEpisodiosSimulados();
-
-            var episodio = episodiosSimulados.FirstOrDefault(e => e.HC == hc);
+            var episodio = GetEpisodiosSimulados()
+                .FirstOrDefault(e => e.HC == hc);
 
             if (episodio == null)
             {
-                _logger.LogWarning("No se encontró episodio médico en SIGEM. HC: {HC}", hc);
-                return null;
+                _logger.LogWarning("No se encontró episodio en SIGEM. HC: {HC}", hc);
             }
-
-            _logger.LogInformation(
-                "Episodio encontrado en SIGEM. HC: {HC}, Diagnóstico: {Diagnostico}, Fecha: {Fecha}",
-                hc, episodio.DiagnosticoFinal, episodio.FechaHoraFallecimiento);
+            else
+            {
+                _logger.LogInformation(
+                    "Episodio encontrado. HC: {HC}, Diagnóstico: {Dx}, Fecha: {Fecha}",
+                    hc,
+                    episodio.DiagnosticoFinal,
+                    episodio.FechaHoraFallecimiento
+                );
+            }
 
             return episodio;
         }
-
-        /// <summary>
-        /// Base de datos simulada de episodios médicos
-        /// En producción: esto vendría de la BD real de SIGEM
-        /// Incluye diagnósticos CIE-10 reales
-        /// </summary>
+        //Remplazar GetEpisodiosSimulados() por las consultas reales a la BD
         private List<EpisodioSigem> GetEpisodiosSimulados()
         {
+            // Fecha base fija — evita inconsistencias
+            var ahora = new DateTime(2026, 3, 22, 10, 0, 0);
+
             return new List<EpisodioSigem>
             {
-                // ═══════════════════════════════════════════════════════════
-                // PACIENTE 1: HC 123456 - Insuficiencia cardíaca
-                // ═══════════════════════════════════════════════════════════
                 new EpisodioSigem
                 {
                     HC = "123456",
                     ServicioFallecimiento = "Medicina Interna",
-                    NumeroCama = "M-201",
-                    FechaHoraFallecimiento = DateTime.Now.AddDays(-2).AddHours(-5),
-                    DiagnosticoFinal = "Insuficiencia cardíaca congestiva",
+                    NumeroCama = "201",
+                    FechaHoraFallecimiento = ahora.AddDays(-2).AddHours(-5),
+                    DiagnosticoFinal = "I50.0 - Insuficiencia cardíaca congestiva",
                     CodigoCIE10 = "I50.0",
                     MedicoCertificaNombre = "Dr. Roberto Sánchez Vargas",
                     MedicoCMP = "45678",
                     MedicoRNE = null
                 },
-
-                // ═══════════════════════════════════════════════════════════
-                // PACIENTE 2: HC 12345679 - Sepsis
-                // ═══════════════════════════════════════════════════════════
                 new EpisodioSigem
                 {
-                    HC = "12345679",
+                    HC = "234567",
                     ServicioFallecimiento = "Cirugía General",
-                    NumeroCama = "C-305",
-                    FechaHoraFallecimiento = DateTime.Now.AddDays(-1).AddHours(-12),
-                    DiagnosticoFinal = "Sepsis no especificada",
+                    NumeroCama = "305",
+                    FechaHoraFallecimiento = ahora.AddDays(-1).AddHours(-12),
+                    DiagnosticoFinal = "A41.9 - Sepsis no especificada",
                     CodigoCIE10 = "A41.9",
                     MedicoCertificaNombre = "Dra. Patricia Mendoza López",
                     MedicoCMP = "56789",
                     MedicoRNE = null
                 },
-
-                // ═══════════════════════════════════════════════════════════
-                // PACIENTE 3: HC 789456 - Paro cardiorrespiratorio
-                // ═══════════════════════════════════════════════════════════
                 new EpisodioSigem
                 {
-                    HC = "789456",
-                    ServicioFallecimiento = "UCI - Unidad de Cuidados Intensivos",
-                    NumeroCama = "UCI-08",
-                    FechaHoraFallecimiento = DateTime.Now.AddHours(-8),
-                    DiagnosticoFinal = "Paro cardiorrespiratorio",
+                    HC = "345678",
+                    ServicioFallecimiento = "UCI",
+                    NumeroCama = "408",
+                    FechaHoraFallecimiento = ahora.AddHours(-8),
+                    DiagnosticoFinal = "I46.9 - Paro cardiorrespiratorio",
                     CodigoCIE10 = "I46.9",
                     MedicoCertificaNombre = "Dr. Carlos Fernández Ruiz",
                     MedicoCMP = "34567",
                     MedicoRNE = null
                 },
-
-                // ═══════════════════════════════════════════════════════════
-                // PACIENTE 4: HC 456789 - Neumonía
-                // ═══════════════════════════════════════════════════════════
                 new EpisodioSigem
                 {
                     HC = "456789",
                     ServicioFallecimiento = "Medicina Interna",
-                    NumeroCama = "M-105",
-                    FechaHoraFallecimiento = DateTime.Now.AddDays(-3).AddHours(-2),
-                    DiagnosticoFinal = "Neumonía bacteriana no especificada",
+                    NumeroCama = "105",
+                    FechaHoraFallecimiento = ahora.AddHours(-2),
+                    DiagnosticoFinal = "J15.9 - Neumonía bacteriana no especificada",
                     CodigoCIE10 = "J15.9",
                     MedicoCertificaNombre = "Dr. Luis Torres Mendoza",
                     MedicoCMP = "67890",
                     MedicoRNE = null
                 },
-
-                // ═══════════════════════════════════════════════════════════
-                // PACIENTE 5: HC 654321 - Traumatismo craneoencefálico
-                // ═══════════════════════════════════════════════════════════
                 new EpisodioSigem
                 {
-                    HC = "654321",
+                    HC = "567890",
                     ServicioFallecimiento = "Emergencia",
-                    NumeroCama = "E-12",
-                    FechaHoraFallecimiento = DateTime.Now.AddHours(-3),
-                    DiagnosticoFinal = "Traumatismo craneoencefálico severo",
+                    NumeroCama = "512",
+                    FechaHoraFallecimiento = ahora.AddHours(-6),
+                    DiagnosticoFinal = "S06.9 - Traumatismo craneoencefálico severo",
                     CodigoCIE10 = "S06.9",
                     MedicoCertificaNombre = "Dra. Ana Ramírez Castro",
                     MedicoCMP = "78901",
                     MedicoRNE = null
                 },
-
-                // ═══════════════════════════════════════════════════════════
-                // PACIENTE 6: HC 111222 - Cáncer de pulmón
-                // ═══════════════════════════════════════════════════════════
                 new EpisodioSigem
                 {
-                    HC = "111222",
-                    ServicioFallecimiento = "Cirugía General",
-                    NumeroCama = "CT-204",
-                    FechaHoraFallecimiento = DateTime.Now.AddDays(-1).AddHours(-6),
-                    DiagnosticoFinal = "Tumor maligno de los bronquios y del pulmón",
-                    CodigoCIE10 = "C34.9",
+                    HC = "700002",
+                    ServicioFallecimiento = "Trauma Shock",
+                    NumeroCama = "102",
+                    FechaHoraFallecimiento = ahora.AddHours(-5),
+                    DiagnosticoFinal = "T07 - Traumatismos múltiples no especificados",
+                    CodigoCIE10 = "T07",
                     MedicoCertificaNombre = "Dr. Miguel Ángel Soto Pérez",
                     MedicoCMP = "89012",
                     MedicoRNE = null
                 },
-
-                // ═══════════════════════════════════════════════════════════
-                // PACIENTE 7: HC 333444 - Insuficiencia renal (Médico extranjero)
-                // ═══════════════════════════════════════════════════════════
                 new EpisodioSigem
                 {
-                    HC = "333444",
-                    ServicioFallecimiento = "UCI - Unidad de Cuidados Intensivos",
-                    NumeroCama = "UCI-03",
-                    FechaHoraFallecimiento = DateTime.Now.AddHours(-15),
-                    DiagnosticoFinal = "Insuficiencia renal crónica terminal",
+                    HC = "111222",
+                    ServicioFallecimiento = "Cirugía General",
+                    NumeroCama = "204",
+                    FechaHoraFallecimiento = ahora.AddDays(-1).AddHours(-6),
+                    DiagnosticoFinal = "C34.9 - Tumor maligno de bronquios y pulmón",
+                    CodigoCIE10 = "C34.9",
+                    MedicoCertificaNombre = "Dr. Jorge Vásquez Huamán",
+                    MedicoCMP = null,
+                    MedicoRNE = null
+                },
+                new EpisodioSigem
+                {
+                    HC = "222333",
+                    ServicioFallecimiento = "UCI",
+                    NumeroCama = "403",
+                    FechaHoraFallecimiento = ahora.AddHours(-15),
+                    DiagnosticoFinal = "N18.0 - Insuficiencia renal crónica terminal",
                     CodigoCIE10 = "N18.0",
-                    MedicoCertificaNombre = "Dr. José Miguel González",
+                    MedicoCertificaNombre = "Dr. José Miguel González Ríos",
                     MedicoCMP = null,
                     MedicoRNE = "12345"
                 }
+                // HC 600001 y 800003 → sin episodio
             };
         }
     }
