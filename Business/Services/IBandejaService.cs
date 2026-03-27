@@ -1,63 +1,50 @@
 ﻿using SisMortuorio.Business.DTOs.Bandeja;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace SisMortuorio.Business.Services
 {
     /// <summary>
     /// Servicio de negocio para gestionar la infraestructura de Bandejas del mortuorio.
-    /// Maneja el estado, asignación, liberación y consulta del mapa visual.
+    /// CAMBIOS v2: IniciarMantenimientoAsync acepta IniciarMantenimientoDTO completo.
     /// </summary>
     public interface IBandejaService
     {
-        /// <summary>
-        /// Obtiene la lista completa de bandejas con su estado actual de ocupación.
-        /// (Usado para el mapa visual del mortuorio).
-        /// </summary>
+        /// <summary>Obtiene todas las bandejas con su estado actual (mapa visual).</summary>
         Task<List<BandejaDTO>> GetOcupacionDashboardAsync();
 
-        /// <summary>
-        /// Obtiene una bandeja específica por su ID.
-        /// (Necesario para la pantalla de asignación).
-        /// </summary>
+        /// <summary>Obtiene una bandeja por ID.</summary>
         Task<BandejaDTO?> GetByIdAsync(int id);
 
-        /// <summary>
-        /// Obtiene una lista simplificada de bandejas disponibles.
-        /// (Usado para el dropdown de asignación).
-        /// </summary>
+        /// <summary>Obtiene bandejas disponibles (dropdown de asignación).</summary>
         Task<List<BandejaDisponibleDTO>> GetDisponiblesAsync();
 
         /// <summary>
         /// Asigna un expediente a una bandeja disponible.
-        /// Transición: PendienteAsignacionBandeja -> EnBandeja
+        /// Transición: PendienteAsignacionBandeja → EnBandeja.
         /// </summary>
         Task<BandejaDTO> AsignarBandejaAsync(AsignarBandejaDTO dto, int usuarioAsignaId);
 
-        /// <summary>
-        /// Libera una bandeja que estaba ocupada por un expediente.
-        /// (Llamado por ISalidaMortuorioService).
-        /// </summary>
+        /// <summary>Libera una bandeja (llamado por ISalidaMortuorioService).</summary>
         Task LiberarBandejaAsync(int expedienteId, int usuarioLiberaId);
 
-        /// <summary>
-        /// Obtiene las estadísticas de ocupación del mortuorio.
-        /// </summary>
+        /// <summary>Estadísticas de ocupación del mortuorio.</summary>
         Task<EstadisticasBandejaDTO> GetEstadisticasAsync();
 
         /// <summary>
-        /// Pone una bandeja en estado de Mantenimiento.
+        /// Pone una bandeja en Mantenimiento con datos completos.
+        /// CAMBIOS v2: recibe IniciarMantenimientoDTO en lugar de string.
+        /// Roles: Administrador, JefeGuardia, VigilanteSupervisor.
         /// </summary>
-        Task<BandejaDTO> IniciarMantenimientoAsync(int bandejaId, string observaciones, int usuarioId);
+        Task<BandejaDTO> IniciarMantenimientoAsync(
+            int bandejaId,
+            IniciarMantenimientoDTO dto,
+            int usuarioId);
 
-        /// <summary>
-        /// Saca una bandeja de Mantenimiento y la pone Disponible.
-        /// </summary>
+        /// <summary>Finaliza el mantenimiento y pone la bandeja Disponible.</summary>
         Task<BandejaDTO> FinalizarMantenimientoAsync(int bandejaId, int usuarioId);
 
         /// <summary>
-        /// Libera manualmente una bandeja ocupada (emergencia/corrección).
-        /// Solo para roles: Administrador, JefeGuardia, VigilanteSupervisor.
+        /// Libera manualmente una bandeja ocupada (emergencia/corrección admin).
+        /// Roles: Administrador, JefeGuardia, VigilanteSupervisor.
         /// </summary>
         Task<BandejaDTO> LiberarManualmenteAsync(LiberarBandejaManualDTO dto);
     }
