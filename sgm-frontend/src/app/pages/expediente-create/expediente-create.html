@@ -1,11 +1,12 @@
 <div class="min-h-screen bg-hospital-bg">
 
   <!-- HEADER -->
-  <div class="bg-gradient-to-r from-hospital-cyan to-cyan-600 border-b border-cyan-700 px-6 py-4 sticky top-0 z-10 shadow-lg">
+  <div class="bg-gradient-to-r from-hospital-cyan to-cyan-600 border-b border-cyan-700
+              px-6 py-4 sticky top-0 z-10 shadow-lg">
     <div class="flex items-center justify-between max-w-7xl mx-auto">
       <div class="flex items-center gap-3">
         <div class="p-2.5 bg-white/20 backdrop-blur-sm rounded-xl shadow-md">
-          <app-icon name="file-plus" [size]="26" className="text-white"></app-icon>
+          <app-icon name="file-plus" [size]="26"></app-icon>
         </div>
         <div>
           <h1 class="text-xl font-bold text-white">
@@ -14,8 +15,9 @@
           <p class="text-xs text-cyan-100">Sistema de Gestión Mortuoria</p>
         </div>
       </div>
-      <button (click)="cancelar()"
-              class="p-2.5 text-white hover:bg-white/20 rounded-lg transition-colors flex items-center gap-2">
+      <button type="button" (click)="cancelar()"
+              class="p-2.5 text-white hover:bg-white/20 rounded-lg transition-colors
+                     flex items-center gap-2">
         <app-icon name="chevron-left" [size]="20"></app-icon>
         <span class="hidden md:inline text-sm font-medium">Volver</span>
       </button>
@@ -26,7 +28,8 @@
   <div class="p-4 md:p-8 max-w-7xl mx-auto">
 
     <!-- Banner Superior -->
-    <div class="bg-gradient-to-br from-blue-50 to-cyan-50 border border-cyan-200 rounded-xl shadow-md p-6 mb-8 animate-fade-in">
+    <div class="bg-gradient-to-br from-blue-50 to-cyan-50 border border-cyan-200
+                rounded-xl shadow-md p-6 mb-8 animate-fade-in">
       <div class="flex items-start gap-4">
         <div class="p-3 bg-hospital-cyan rounded-xl shadow-sm text-white">
           <app-icon name="clipboard-list" [size]="32"></app-icon>
@@ -52,7 +55,8 @@
       <!-- ================================================================
            SECCIÓN 1: DATOS DEL PACIENTE
            ================================================================ -->
-      <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden animate-fade-in-up">
+      <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden
+                  animate-fade-in-up">
         <div class="p-6">
           <div class="flex items-center gap-3 border-b border-gray-200 pb-4 mb-6">
             <div class="p-2.5 bg-blue-50 rounded-lg text-hospital-cyan">
@@ -61,159 +65,216 @@
             <h3 class="text-xl font-bold text-gray-800">Datos del Paciente</h3>
           </div>
 
-          <!-- Loading -->
-          <div *ngIf="isLoading && !pacienteData && !modoManual" class="text-center py-16">
+          <!-- Loading integración -->
+          <div *ngIf="isLoading && !pacienteData && !modoManual"
+               class="text-center py-16">
             <div class="flex flex-col items-center gap-4">
-              <div class="animate-spin text-hospital-cyan">
-                <app-icon name="refresh-cw" [size]="48"></app-icon>
-              </div>
-              <span class="text-gray-600 font-medium">Cargando datos del paciente desde SIGEM...</span>
+              <app-icon name="loader" [size]="48"
+                        class="animate-spin text-hospital-cyan"></app-icon>
+              <span class="text-gray-600 font-medium">
+                Cargando datos del paciente desde SIGEM...
+              </span>
             </div>
           </div>
 
-          <div *ngIf="!isLoading || modoManual" class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-5">
+          <div *ngIf="!isLoading || modoManual"
+               class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-5">
 
-            <!-- Paciente NN toggle -->
+            <!-- NN toggle -->
             <div class="md:col-span-3">
-              <label class="flex items-center gap-3 cursor-pointer w-fit">
+              <label class="flex items-center gap-3 cursor-pointer w-fit"
+                     [class.opacity-50]="!modoManual"
+                     [class.cursor-not-allowed]="!modoManual">
                 <input type="checkbox" formControlName="esNN"
+                       [attr.disabled]="!modoManual ? true : null"
                        class="w-4 h-4 rounded text-hospital-cyan focus:ring-hospital-cyan">
-                <span class="text-sm font-semibold text-gray-700">Paciente NN (No Identificado)</span>
+                <span class="text-sm font-semibold text-gray-700">
+                  Paciente NN (No Identificado)
+                </span>
               </label>
             </div>
 
             <!-- HC -->
             <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+              <label class="form-label">
                 Historia Clínica <span class="text-red-500">*</span>
               </label>
-              <input type="text"
+              <input *ngIf="!modoManual" type="text"
+                     [value]="rv.hc" readonly tabindex="-1"
+                     class="form-readonly">
+              <input *ngIf="modoManual" type="text"
                      formControlName="hc"
-                     inputmode="numeric"
-                     maxlength="12"
-                     (keydown)="soloNumerosKeydown($event)"
-                     [class]="getInputClasses(modoManual)"
-                     placeholder="Ej: 123456">
-              <p *ngIf="esInvalido('hc')" class="text-xs text-red-500 mt-1">
+                     appSoloNumeros inputmode="numeric" maxlength="12"
+                     placeholder="Ej: 123456"
+                     class="form-input"
+                     [class.form-input-error]="isInvalidField('hc')">
+              <p *ngIf="isInvalidField('hc')" class="form-error-msg">
+                <app-icon name="circle-x" [size]="14"></app-icon>
                 {{ getMensajeError('hc') }}
               </p>
             </div>
 
             <!-- Tipo Documento -->
             <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+              <label class="form-label">
                 Tipo Documento <span class="text-red-500">*</span>
               </label>
               <input *ngIf="!modoManual" type="text"
-                     [value]="getTipoDocumentoNombre(expedienteForm.get('tipoDocumento')?.value)"
-                     readonly [class]="getInputClasses(false)">
+                     [value]="getTipoDocumentoNombre(rv.tipoDocumento)"
+                     readonly tabindex="-1"
+                     class="form-readonly">
               <select *ngIf="modoManual" formControlName="tipoDocumento"
-                      class="w-full p-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-hospital-cyan outline-none">
-                <option *ngFor="let t of tiposDocumento" [value]="t.id">{{ t.label }}</option>
+                      class="form-input bg-white"
+                      [class.form-input-error]="isInvalidField('tipoDocumento')">
+                <option *ngFor="let t of tiposDocumento; trackBy: trackByValue"
+                        [value]="t.id">
+                  {{ t.label }}
+                </option>
               </select>
-              <p *ngIf="esInvalido('tipoDocumento')" class="text-xs text-red-500 mt-1">
+              <p *ngIf="isInvalidField('tipoDocumento')" class="form-error-msg">
+                <app-icon name="circle-x" [size]="14"></app-icon>
                 {{ getMensajeError('tipoDocumento') }}
               </p>
             </div>
 
             <!-- N° Documento -->
             <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+              <label class="form-label">
                 N° Documento <span class="text-red-500">*</span>
               </label>
-              <input type="text"
+              <input *ngIf="!modoManual" type="text"
+                     [value]="rv.numeroDocumento" readonly tabindex="-1"
+                     class="form-readonly">
+              <input *ngIf="modoManual" type="text"
                      formControlName="numeroDocumento"
-                     inputmode="numeric"
+                     [appSoloNumeros]="esDni"
+                     [attr.inputmode]="esDni ? 'numeric' : null"
                      maxlength="12"
-                     (keydown)="soloNumerosKeydown($event)"
-                     [class]="getInputClasses(modoManual)"
-                     placeholder="Ej: 12345678">
-              <p *ngIf="esInvalido('numeroDocumento')" class="text-xs text-red-500 mt-1">
+                     placeholder="Ej: 12345678"
+                     class="form-input"
+                     [class.form-input-error]="isInvalidField('numeroDocumento')">
+              <p *ngIf="isInvalidField('numeroDocumento')" class="form-error-msg">
+                <app-icon name="circle-x" [size]="14"></app-icon>
                 {{ getMensajeError('numeroDocumento') }}
               </p>
             </div>
 
             <!-- Apellido Paterno -->
             <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+              <label class="form-label">
                 Apellido Paterno <span class="text-red-500">*</span>
               </label>
-              <input type="text" formControlName="apellidoPaterno"
-                     [class]="getInputClasses(modoManual)">
-              <p *ngIf="esInvalido('apellidoPaterno')" class="text-xs text-red-500 mt-1">
+              <input *ngIf="!modoManual" type="text"
+                     [value]="rv.apellidoPaterno" readonly tabindex="-1"
+                     class="form-readonly">
+              <input *ngIf="modoManual" type="text"
+                     formControlName="apellidoPaterno"
+                     class="form-input"
+                     [class.form-input-error]="isInvalidField('apellidoPaterno')">
+              <p *ngIf="isInvalidField('apellidoPaterno')" class="form-error-msg">
+                <app-icon name="circle-x" [size]="14"></app-icon>
                 {{ getMensajeError('apellidoPaterno') }}
               </p>
             </div>
 
             <!-- Apellido Materno -->
             <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+              <label class="form-label">
                 Apellido Materno <span class="text-red-500">*</span>
               </label>
-              <input type="text" formControlName="apellidoMaterno"
-                     [class]="getInputClasses(modoManual)">
-              <p *ngIf="esInvalido('apellidoMaterno')" class="text-xs text-red-500 mt-1">
+              <input *ngIf="!modoManual" type="text"
+                     [value]="rv.apellidoMaterno" readonly tabindex="-1"
+                     class="form-readonly">
+              <input *ngIf="modoManual" type="text"
+                     formControlName="apellidoMaterno"
+                     class="form-input"
+                     [class.form-input-error]="isInvalidField('apellidoMaterno')">
+              <p *ngIf="isInvalidField('apellidoMaterno')" class="form-error-msg">
+                <app-icon name="circle-x" [size]="14"></app-icon>
                 {{ getMensajeError('apellidoMaterno') }}
               </p>
             </div>
 
             <!-- Nombres -->
             <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+              <label class="form-label">
                 Nombres <span class="text-red-500">*</span>
               </label>
-              <input type="text" formControlName="nombres"
-                     [class]="getInputClasses(modoManual)">
-              <p *ngIf="esInvalido('nombres')" class="text-xs text-red-500 mt-1">
+              <input *ngIf="!modoManual" type="text"
+                     [value]="rv.nombres" readonly tabindex="-1"
+                     class="form-readonly">
+              <input *ngIf="modoManual" type="text"
+                     formControlName="nombres"
+                     class="form-input"
+                     [class.form-input-error]="isInvalidField('nombres')">
+              <p *ngIf="isInvalidField('nombres')" class="form-error-msg">
+                <app-icon name="circle-x" [size]="14"></app-icon>
                 {{ getMensajeError('nombres') }}
               </p>
             </div>
 
             <!-- Fecha Nacimiento -->
             <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+              <label class="form-label">
                 Fecha Nacimiento <span class="text-red-500">*</span>
               </label>
-              <input type="date"
+              <!-- type=text en readonly: date no soporta bien readonly -->
+              <input *ngIf="!modoManual" type="text"
+                     [value]="rv.fechaNacimiento | date:'dd/MM/yyyy'"
+                     readonly tabindex="-1"
+                     class="form-readonly">
+              <input *ngIf="modoManual" type="date"
                      formControlName="fechaNacimiento"
                      [max]="maxFechaHoy"
-                     [class]="getInputClasses(modoManual)">
-              <p *ngIf="esInvalido('fechaNacimiento')" class="text-xs text-red-500 mt-1">
+                     class="form-input"
+                     [class.form-input-error]="isInvalidField('fechaNacimiento')">
+              <p *ngIf="isInvalidField('fechaNacimiento')" class="form-error-msg">
+                <app-icon name="circle-x" [size]="14"></app-icon>
                 {{ getMensajeError('fechaNacimiento') }}
               </p>
             </div>
 
             <!-- Sexo -->
             <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+              <label class="form-label">
                 Sexo <span class="text-red-500">*</span>
               </label>
-              <input *ngIf="!modoManual" type="text" formControlName="sexo"
-                     readonly [class]="getInputClasses(false)">
+              <!-- Readonly: label legible en lugar de "M"/"F" -->
+              <input *ngIf="!modoManual" type="text"
+                     [value]="getSexoLabel(rv.sexo)"
+                     readonly tabindex="-1"
+                     class="form-readonly">
               <select *ngIf="modoManual" formControlName="sexo"
-                      class="w-full p-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-hospital-cyan outline-none">
+                      class="form-input bg-white"
+                      [class.form-input-error]="isInvalidField('sexo')">
                 <option value="">Seleccione...</option>
                 <option value="M">Masculino</option>
                 <option value="F">Femenino</option>
               </select>
-              <p *ngIf="esInvalido('sexo')" class="text-xs text-red-500 mt-1">
+              <p *ngIf="isInvalidField('sexo')" class="form-error-msg">
+                <app-icon name="circle-x" [size]="14"></app-icon>
                 {{ getMensajeError('sexo') }}
               </p>
             </div>
 
             <!-- Fuente Financiamiento -->
             <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+              <label class="form-label">
                 Seguro / Financiamiento <span class="text-red-500">*</span>
               </label>
               <input *ngIf="datosGalenhosDisponibles" type="text"
-                     [value]="fuenteLabel"
-                     readonly [class]="getInputClasses(false)">
-              <select *ngIf="!datosGalenhosDisponibles" formControlName="fuenteFinanciamiento"
-                      class="w-full p-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-hospital-cyan outline-none">
-                <option *ngFor="let f of fuentesFinanciamiento" [value]="f.id">{{ f.label }}</option>
+                     [value]="fuenteLabel" readonly tabindex="-1"
+                     class="form-readonly">
+              <select *ngIf="!datosGalenhosDisponibles"
+                      formControlName="fuenteFinanciamiento"
+                      class="form-input bg-white">
+                <option *ngFor="let f of fuentesFinanciamiento; trackBy: trackByValue"
+                        [value]="f.id">
+                  {{ f.label }}
+                </option>
               </select>
-              <p *ngIf="esInvalido('fuenteFinanciamiento')" class="text-xs text-red-500 mt-1">
+              <p *ngIf="isInvalidField('fuenteFinanciamiento')" class="form-error-msg">
+                <app-icon name="circle-x" [size]="14"></app-icon>
                 {{ getMensajeError('fuenteFinanciamiento') }}
               </p>
             </div>
@@ -225,7 +286,8 @@
       <!-- ================================================================
            SECCIÓN 2: DATOS DEL FALLECIMIENTO
            ================================================================ -->
-      <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden animate-fade-in-up">
+      <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden
+                  animate-fade-in-up">
         <div class="p-6">
           <div class="flex items-center gap-3 border-b border-gray-200 pb-4 mb-6">
             <div class="p-2.5 bg-red-50 rounded-lg text-red-600">
@@ -238,28 +300,30 @@
 
             <!-- Tipo de Expediente -->
             <div class="md:col-span-2">
-              <label class="block text-sm font-semibold text-gray-700 mb-2">
+              <label class="form-label">
                 Tipo de Expediente <span class="text-red-500">*</span>
               </label>
               <div class="flex gap-6">
                 <label class="flex items-center cursor-pointer group">
                   <input type="radio" formControlName="tipoExpediente" [value]="1"
                          class="mr-2 w-4 h-4 text-hospital-cyan focus:ring-hospital-cyan">
-                  <span class="text-gray-700 font-medium group-hover:text-hospital-cyan transition-colors">
+                  <span class="text-gray-700 font-medium
+                               group-hover:text-hospital-cyan transition-colors">
                     Interno (Hospitalizado)
                   </span>
                 </label>
                 <label class="flex items-center cursor-pointer group">
                   <input type="radio" formControlName="tipoExpediente" [value]="2"
                          class="mr-2 w-4 h-4 text-hospital-cyan focus:ring-hospital-cyan">
-                  <span class="text-gray-700 font-medium group-hover:text-hospital-cyan transition-colors">
+                  <span class="text-gray-700 font-medium
+                               group-hover:text-hospital-cyan transition-colors">
                     Externo (Emergencia / Vía pública)
                   </span>
                 </label>
               </div>
             </div>
 
-            <!-- Causa violenta / dudosa -->
+            <!-- Causa violenta -->
             <div class="md:col-span-2">
               <label class="flex items-center gap-3 cursor-pointer w-fit">
                 <input type="checkbox" formControlName="causaViolentaODudosa"
@@ -273,109 +337,111 @@
               </label>
             </div>
 
-            <!-- Servicio donde Falleció -->
+            <!-- Servicio -->
             <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+              <label class="form-label">
                 Servicio donde Falleció <span class="text-red-500">*</span>
               </label>
               <select formControlName="servicioFallecimiento"
-                      class="w-full p-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-hospital-cyan outline-none">
+                      class="form-input bg-white"
+                      [class.form-input-error]="isInvalidField('servicioFallecimiento')">
                 <option value="">Seleccione...</option>
                 <option *ngFor="let srv of servicios" [value]="srv">{{ srv }}</option>
               </select>
-              <p *ngIf="esInvalido('servicioFallecimiento')" class="text-xs text-red-500 mt-1">
+              <p *ngIf="isInvalidField('servicioFallecimiento')" class="form-error-msg">
+                <app-icon name="circle-x" [size]="14"></app-icon>
                 {{ getMensajeError('servicioFallecimiento') }}
               </p>
             </div>
 
             <!-- Número de Cama -->
             <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1.5">Número de Cama</label>
-              <input type="text"
-                     formControlName="numeroCama"
-                     inputmode="numeric"
-                     maxlength="4"
-                     (keydown)="soloNumerosKeydown($event)"
-                     class="w-full p-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-hospital-cyan outline-none"
-                     placeholder="Ej: 402">
-              <p *ngIf="esInvalido('numeroCama')" class="text-xs text-red-500 mt-1">
+              <label class="form-label">Número de Cama</label>
+              <input type="text" formControlName="numeroCama"
+                     appSoloNumeros inputmode="numeric" maxlength="4"
+                     placeholder="Ej: 402"
+                     class="form-input"
+                     [class.form-input-error]="isInvalidField('numeroCama')">
+              <p *ngIf="isInvalidField('numeroCama')" class="form-error-msg">
+                <app-icon name="circle-x" [size]="14"></app-icon>
                 {{ getMensajeError('numeroCama') }}
               </p>
             </div>
 
-            <!-- Fecha y Hora de Fallecimiento -->
+            <!-- Fecha y Hora Fallecimiento -->
             <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+              <label class="form-label">
                 Fecha y Hora de Fallecimiento <span class="text-red-500">*</span>
               </label>
-              <input type="datetime-local"
-                     formControlName="fechaHoraFallecimiento"
+              <input type="datetime-local" formControlName="fechaHoraFallecimiento"
                      [max]="maxFechaHoraActual"
-                     (change)="expedienteForm.get('fechaHoraFallecimiento')?.markAsTouched()"
-                     (blur)="expedienteForm.get('fechaHoraFallecimiento')?.markAsTouched()"
-                     class="w-full p-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-hospital-cyan outline-none">
-              <p *ngIf="esInvalido('fechaHoraFallecimiento')" class="text-xs text-red-500 mt-1">
+                     (change)="f['fechaHoraFallecimiento'].markAsTouched()"
+                     (blur)="f['fechaHoraFallecimiento'].markAsTouched()"
+                     class="form-input"
+                     [class.form-input-error]="isInvalidField('fechaHoraFallecimiento')">
+              <p *ngIf="isInvalidField('fechaHoraFallecimiento')" class="form-error-msg">
+                <app-icon name="circle-x" [size]="14"></app-icon>
                 {{ getMensajeError('fechaHoraFallecimiento') }}
               </p>
             </div>
 
             <!-- Diagnóstico Final -->
             <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1.5">Diagnóstico Final (CIE-10)</label>
+              <label class="form-label">Diagnóstico Final (CIE-10)</label>
               <input type="text" formControlName="diagnosticoFinal"
-                     class="w-full p-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-hospital-cyan outline-none"
-                     placeholder="Ej: I21.9 - Infarto agudo de miocardio">
+                     placeholder="Ej: I21.9 - Infarto agudo de miocardio"
+                     class="form-input">
             </div>
 
-            <!-- Médico que Certifica -->
+            <!-- Médico Certificante -->
             <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+              <label class="form-label">
                 Médico que Certifica <span class="text-red-500">*</span>
               </label>
               <input type="text" formControlName="medicoCertificaNombre"
-                     class="w-full p-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-hospital-cyan outline-none"
-                     placeholder="Nombre completo del médico">
-              <p *ngIf="esInvalido('medicoCertificaNombre')" class="text-xs text-red-500 mt-1">
+                     placeholder="Nombre completo del médico"
+                     class="form-input"
+                     [class.form-input-error]="isInvalidField('medicoCertificaNombre')">
+              <p *ngIf="isInvalidField('medicoCertificaNombre')" class="form-error-msg">
+                <app-icon name="circle-x" [size]="14"></app-icon>
                 {{ getMensajeError('medicoCertificaNombre') }}
               </p>
             </div>
 
             <!-- CMP -->
             <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1.5">
-                CMP <span class="text-red-500">*</span>
-              </label>
-              <input type="text"
-                     formControlName="medicoCMP"
-                     inputmode="numeric"
-                     maxlength="6"
-                     (keydown)="soloNumerosKeydown($event)"
-                     class="w-full p-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-hospital-cyan outline-none"
-                     placeholder="Ej: 12345">
-              <p *ngIf="esInvalido('medicoCMP')" class="text-xs text-red-500 mt-1">
+              <label class="form-label">CMP <span class="text-red-500">*</span></label>
+              <input type="text" formControlName="medicoCMP"
+                     appSoloNumeros inputmode="numeric" maxlength="6"
+                     placeholder="Ej: 12345"
+                     class="form-input font-mono"
+                     [class.form-input-error]="isInvalidField('medicoCMP')">
+              <p *ngIf="isInvalidField('medicoCMP')" class="form-error-msg">
+                <app-icon name="circle-x" [size]="14"></app-icon>
                 {{ getMensajeError('medicoCMP') }}
               </p>
             </div>
 
             <!-- RNE -->
             <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+              <label class="form-label">
                 RNE
-                <span class="text-xs font-normal text-gray-500">(Registro de Especialidad — 5 dígitos)</span>
+                <span class="text-xs font-normal text-gray-500">
+                  (Registro de Especialidad — 5 dígitos)
+                </span>
               </label>
-              <input type="text"
-                     formControlName="medicoRNE"
-                     inputmode="numeric"
-                     maxlength="5"
-                     (keydown)="soloNumerosKeydown($event)"
-                     class="w-full p-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-hospital-cyan outline-none"
-                     placeholder="Ej: 12345">
-              <p *ngIf="esInvalido('medicoRNE')" class="text-xs text-red-500 mt-1">
+              <input type="text" formControlName="medicoRNE"
+                     appSoloNumeros inputmode="numeric" maxlength="5"
+                     placeholder="Ej: 12345"
+                     class="form-input font-mono"
+                     [class.form-input-error]="isInvalidField('medicoRNE')">
+              <p *ngIf="isInvalidField('medicoRNE')" class="form-error-msg">
+                <app-icon name="circle-x" [size]="14"></app-icon>
                 {{ getMensajeError('medicoRNE') }}
               </p>
             </div>
 
-            <!-- Médico Externo (solo Externo sin causa violenta) -->
+            <!-- Médico Externo -->
             <div *ngIf="medicoExternoHabilitado" class="md:col-span-2">
               <div class="p-4 bg-blue-50 border border-blue-200 rounded-xl">
                 <p class="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
@@ -384,21 +450,20 @@
                 </p>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label class="block text-xs font-semibold text-gray-600 mb-1">Nombre del Médico</label>
+                    <label class="form-label">Nombre del Médico</label>
                     <input type="text" formControlName="medicoExternoNombre"
-                           class="w-full p-2.5 border border-blue-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-400 outline-none"
-                           placeholder="Nombre completo">
+                           placeholder="Nombre completo"
+                           class="form-input">
                   </div>
                   <div>
-                    <label class="block text-xs font-semibold text-gray-600 mb-1">CMP del Médico Externo</label>
-                    <input type="text"
-                           formControlName="medicoExternoCMP"
-                           inputmode="numeric"
-                           maxlength="6"
-                           (keydown)="soloNumerosKeydown($event)"
-                           class="w-full p-2.5 border border-blue-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-400 outline-none"
-                           placeholder="Ej: 12345">
-                    <p *ngIf="esInvalido('medicoExternoCMP')" class="text-xs text-red-500 mt-1">
+                    <label class="form-label">CMP del Médico Externo</label>
+                    <input type="text" formControlName="medicoExternoCMP"
+                           appSoloNumeros inputmode="numeric" maxlength="6"
+                           placeholder="Ej: 12345"
+                           class="form-input font-mono"
+                           [class.form-input-error]="isInvalidField('medicoExternoCMP')">
+                    <p *ngIf="isInvalidField('medicoExternoCMP')" class="form-error-msg">
+                      <app-icon name="circle-x" [size]="14"></app-icon>
                       {{ getMensajeError('medicoExternoCMP') }}
                     </p>
                   </div>
@@ -408,18 +473,18 @@
 
             <!-- Observaciones -->
             <div class="md:col-span-2">
-              <label class="block text-sm font-semibold text-gray-700 mb-1.5">Observaciones</label>
+              <label class="form-label">Observaciones</label>
               <textarea formControlName="observaciones"
-                        rows="3"
-                        maxlength="1000"
-                        class="w-full p-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-hospital-cyan outline-none resize-none"
-                        placeholder="Información adicional relevante (máx. 1000 caracteres)"></textarea>
+                        rows="3" maxlength="1000"
+                        placeholder="Información adicional relevante (máx. 1000 caracteres)"
+                        class="form-input resize-none"></textarea>
               <div class="flex justify-between items-center mt-1">
-                <p *ngIf="esInvalido('observaciones')" class="text-xs text-red-500">
+                <p *ngIf="isInvalidField('observaciones')" class="form-error-msg">
+                  <app-icon name="circle-x" [size]="14"></app-icon>
                   {{ getMensajeError('observaciones') }}
                 </p>
-                <p class="text-xs text-gray-400 ml-auto">
-                  {{ expedienteForm.get('observaciones')?.value?.length ?? 0 }}/1000
+                <p class="form-hint ml-auto">
+                  {{ f['observaciones'].value?.length ?? 0 }}/1000
                 </p>
               </div>
             </div>
@@ -431,9 +496,11 @@
       <!-- ================================================================
            SECCIÓN 3: PERTENENCIAS
            ================================================================ -->
-      <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden animate-fade-in-up">
+      <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden
+                  animate-fade-in-up">
         <div class="p-6">
-          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-gray-200 pb-4 mb-6">
+          <div class="flex flex-col sm:flex-row justify-between items-start
+                      sm:items-center gap-3 border-b border-gray-200 pb-4 mb-6">
             <div class="flex items-center gap-3">
               <div class="p-2.5 bg-purple-50 rounded-lg text-purple-600">
                 <app-icon name="archive" [size]="24"></app-icon>
@@ -441,44 +508,48 @@
               <h3 class="text-xl font-bold text-gray-800">Registro de Pertenencias</h3>
             </div>
             <button type="button" (click)="agregarPertenencia()"
-                    class="flex items-center gap-2 bg-hospital-cyan text-white font-medium px-4 py-2 rounded-lg
-                           text-sm hover:bg-cyan-700 transition-colors shadow-sm">
+                    class="flex items-center gap-2 bg-hospital-cyan text-white font-medium
+                           px-4 py-2 rounded-lg text-sm hover:bg-cyan-700 transition-colors
+                           shadow-sm">
               <app-icon name="plus" [size]="18"></app-icon>
               <span>Agregar Pertenencia</span>
             </button>
           </div>
 
           <div formArrayName="pertenencias" class="space-y-4">
-            <div *ngFor="let pertenencia of pertenencias.controls; let i = index"
+            <div *ngFor="let p of pertenencias.controls; let i = index;
+                         trackBy: trackByIndex"
                  [formGroupName]="i"
-                 class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center bg-gray-50 p-4 rounded-lg border border-gray-200">
+                 class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center
+                        bg-gray-50 p-4 rounded-lg border border-gray-200">
               <div class="md:col-span-5">
                 <label class="block text-sm font-semibold text-gray-700 mb-1.5">
                   Descripción <span class="text-red-500">*</span>
                 </label>
-                <input type="text" formControlName="descripcion"
-                       maxlength="500"
-                       class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hospital-cyan outline-none"
-                       placeholder="Ej: Reloj Casio">
+                <input type="text" formControlName="descripcion" maxlength="500"
+                       placeholder="Ej: Reloj Casio"
+                       class="form-input text-sm">
               </div>
               <div class="md:col-span-6">
-                <label class="block text-sm font-semibold text-gray-700 mb-1.5">Observaciones</label>
-                <input type="text" formControlName="observaciones"
-                       maxlength="500"
-                       class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hospital-cyan outline-none"
-                       placeholder="Detalles adicionales (opcional)">
+                <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+                  Observaciones
+                </label>
+                <input type="text" formControlName="observaciones" maxlength="500"
+                       placeholder="Detalles adicionales (opcional)"
+                       class="form-input text-sm">
               </div>
               <div class="md:col-span-1 flex justify-end pt-6">
                 <button type="button" (click)="eliminarPertenencia(i)"
-                        class="text-red-500 hover:text-red-700 p-2 rounded-lg hover:bg-red-100 transition-colors"
-                        title="Eliminar">
+                        class="text-red-500 hover:text-red-700 p-2 rounded-lg
+                               hover:bg-red-100 transition-colors">
                   <app-icon name="trash" [size]="20"></app-icon>
                 </button>
               </div>
             </div>
 
             <div *ngIf="pertenencias.length === 0"
-                 class="text-center text-gray-500 py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                 class="text-center text-gray-500 py-12 bg-gray-50 rounded-lg
+                        border border-dashed border-gray-300">
               <div class="flex flex-col items-center gap-3">
                 <app-icon name="inbox" [size]="48" class="text-gray-400"></app-icon>
                 <p class="font-medium">No se han agregado pertenencias</p>
@@ -493,25 +564,20 @@
            FOOTER: BOTONES DE ACCIÓN
            ================================================================ -->
       <div class="flex flex-col sm:flex-row justify-end items-center gap-4 p-6
-                  bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl shadow-inner border border-gray-200">
+                  bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl shadow-inner
+                  border border-gray-200">
         <button type="button" (click)="cancelar()"
-                class="flex items-center justify-center gap-2 bg-white text-gray-700 font-bold py-3 px-8
-                       rounded-lg border-2 border-gray-300 hover:bg-gray-50 hover:border-gray-400
-                       transition-all w-full sm:w-auto shadow-sm">
+                class="btn-secondary flex items-center justify-center gap-2
+                       w-full sm:w-auto px-8 py-3">
           <app-icon name="x" [size]="18"></app-icon>
           <span>Cancelar</span>
         </button>
-
         <button type="submit" [disabled]="isLoading"
-                class="flex items-center justify-center gap-2 bg-hospital-cyan text-white font-bold py-3 px-8
-                       rounded-lg shadow-lg hover:bg-cyan-700 transition-all
-                       disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto">
-          <div *ngIf="isLoading" class="animate-spin">
-            <app-icon name="refresh-cw" [size]="18"></app-icon>
-          </div>
-          <div *ngIf="!isLoading">
-            <app-icon name="circle-check" [size]="18"></app-icon>
-          </div>
+                class="btn-primary flex items-center justify-center gap-2
+                       w-full sm:w-auto px-8 py-3
+                       disabled:opacity-50 disabled:cursor-not-allowed">
+          <app-icon [name]="isLoading ? 'loader' : 'circle-check'" [size]="18"
+                    [class.animate-spin]="isLoading"></app-icon>
           <span>{{ isLoading ? 'GENERANDO...' : 'GENERAR EXPEDIENTE' }}</span>
         </button>
       </div>

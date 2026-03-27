@@ -27,5 +27,24 @@
         // Auditoría
         public DateTime FechaCreacion { get; set; }
         public DateTime? FechaModificacion { get; set; }
+        // Solo tienen valor cuando Estado = "Mantenimiento"
+
+        /// <summary>Motivo: Limpieza | Reparacion | InspeccionSanitaria | FallaTecnica | Otro</summary>
+        public string? MotivoMantenimiento { get; set; }
+
+        /// <summary>Descripción libre del mantenimiento.</summary>
+        public string? DetalleMantenimiento { get; set; }
+
+        /// <summary>Fecha y hora de inicio del mantenimiento.</summary>
+        public DateTime? FechaInicioMantenimiento { get; set; }
+
+        /// <summary>Fecha estimada de fin (para planificación del turno).</summary>
+        public DateTime? FechaEstimadaFinMantenimiento { get; set; }
+
+        /// <summary>Nombre del responsable externo (texto libre).</summary>
+        public string? ResponsableMantenimiento { get; set; }
+
+        /// <summary>Nombre del usuario SGM que registró el mantenimiento.</summary>
+        public string? UsuarioRegistraMantenimientoNombre { get; set; }
     }
 }

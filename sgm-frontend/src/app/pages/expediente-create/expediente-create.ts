@@ -1,6 +1,9 @@
 import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, Validators, FormGroup, FormArray, AbstractControl, ValidatorFn } from '@angular/forms';
+import {
+  ReactiveFormsModule, FormBuilder, Validators,
+  FormGroup, FormArray, AbstractControl, ValidatorFn
+} from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subject, takeUntil, switchMap } from 'rxjs';
 import Swal from 'sweetalert2';
@@ -8,72 +11,75 @@ import Swal from 'sweetalert2';
 import { ExpedienteService, CreateExpedienteDTO } from '../../services/expediente';
 import { IntegracionService, PacienteParaForm } from '../../services/integracion';
 import { IconComponent } from '../../components/icon/icon.component';
+import { SoloNumerosDirective } from '../../shared/directives/solo-numeros';
 
 // ===================================================================
 // ENUMS (alineados con backend)
 // ===================================================================
-
 export enum TipoIngreso {
   Interno = 1,
   Externo = 2
 }
-
 export enum FuenteFinanciamiento {
-  SIS = 1,
-  EsSalud = 2,
-  Particular = 3,
-  SOAT = 4,
-  PendientePago = 5,
-  Otros = 6
+  SIS = 1, EsSalud = 2, Particular = 3,
+  SOAT = 4, PendientePago = 5, Otros = 6
 }
-
 export enum TipoDocumentoIdentidad {
-  DNI = 1,
-  Pasaporte = 2,
-  CarneExtranjeria = 3,
-  SinDocumento = 4,
-  NN = 5
+  DNI = 1, Pasaporte = 2, CarneExtranjeria = 3,
+  SinDocumento = 4, NN = 5
 }
 
 // ===================================================================
 // VALIDADORES CUSTOM
 // ===================================================================
 
-/** Validador que bloquea caracteres no numéricos en tiempo real */
-function soloNumerosValidator(): ValidatorFn {
-  return (control: AbstractControl) => {
-    if (!control.value) return null;
-    return /^[0-9]+$/.test(control.value) ? null : { soloNumeros: true };
-  };
-}
-
-/** Validador de N° Documento dinámico según tipo */
+/**
+ * Validador de N° Documento dinámico según tipo seleccionado.
+ * DNI            → exactamente 8 dígitos numéricos
+ * CE / Pasaporte → alfanumérico, máx 12 caracteres
+ * SinDocumento / NN → sin validación de formato
+ */
 function documentoValidator(tipoControl: AbstractControl | null): ValidatorFn {
   return (control: AbstractControl) => {
     if (!control.value) return null;
     const tipo = Number(tipoControl?.value);
     if (tipo === TipoDocumentoIdentidad.DNI) {
-      return /^[0-9]{8}$/.test(control.value) ? null : { formatoDocumento: 'El DNI debe tener exactamente 8 dígitos numéricos' };
+      return /^\d{8}$/.test(control.value)
+        ? null
+        : { formatoDocumento: 'El DNI debe tener exactamente 8 dígitos numéricos' };
     }
-    if (tipo === TipoDocumentoIdentidad.CarneExtranjeria || tipo === TipoDocumentoIdentidad.Pasaporte) {
-      return control.value.length <= 12 ? null : { formatoDocumento: 'Máximo 12 caracteres' };
+    if (
+      tipo === TipoDocumentoIdentidad.CarneExtranjeria ||
+      tipo === TipoDocumentoIdentidad.Pasaporte
+    ) {
+      return control.value.length <= 12
+        ? null
+        : { formatoDocumento: 'Máximo 12 caracteres' };
     }
     return null;
+  };
+}
+
+/** Valida que la fecha/hora no sea futura (comparación local). */
+function fechaNoFuturaValidator(): ValidatorFn {
+  return (control: AbstractControl) => {
+    if (!control.value) return null;
+    return new Date(control.value) > new Date()
+      ? { fechaFutura: true }
+      : null;
   };
 }
 
 @Component({
   selector: 'app-expediente-create',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, IconComponent],
+  imports: [CommonModule, ReactiveFormsModule, IconComponent, SoloNumerosDirective],
   templateUrl: './expediente-create.html',
   styleUrl: './expediente-create.css'
 })
 export class ExpedienteCreateComponent implements OnInit, OnDestroy {
 
-  // ===================================================================
-  // INYECCIÓN
-  // ===================================================================
+  // ── Inyección ────────────────────────────────────────────────────
   private fb = inject(FormBuilder);
   private expedienteService = inject(ExpedienteService);
   private router = inject(Router);
@@ -81,28 +87,26 @@ export class ExpedienteCreateComponent implements OnInit, OnDestroy {
   private integracionService = inject(IntegracionService);
   private destroy$ = new Subject<void>();
 
-  // ===================================================================
-  // ESTADO
-  // ===================================================================
+  // ── Estado ───────────────────────────────────────────────────────
   expedienteForm!: FormGroup;
   isLoading = false;
   pacienteData: PacienteParaForm | null = null;
   modoManual = false;
   datosGalenhosDisponibles = false;
 
-  // ===================================================================
-  // FECHAS MÁXIMAS PARA VALIDACIÓN EN TEMPLATE
-  // TODO: GMT-5 Perú — DateTime.Now en backend usa hora del servidor.
-  // Implementar TimeZoneInfo.ConvertTimeBySystemTimeZoneId en backend
-  // y ajustar appsettings.json con "TimeZone": "SA Pacific Standard Time"
-  // ===================================================================
-  readonly maxFechaHoy: string = new Date().toISOString().substring(0, 10);
-  readonly maxFechaHoraActual: string = new Date().toISOString().substring(0, 16);
+  /**
+   * Bandera que bloquea los listeners de valueChanges durante el
+   * patchValue inicial de Galenhos, evitando que limpien los datos
+   * recién cargados.
+   */
+  private actualizandoDesdeCarga = false;
 
-  // ===================================================================
-  // CATÁLOGOS
-  // ===================================================================
-  tiposDocumento = [
+  // Fechas máximas para validación en template — hora local Lima GMT-5
+  readonly maxFechaHoy: string = new Date().toISOString().substring(0, 10);
+  readonly maxFechaHoraActual: string = this.formatDateTimeLocal(new Date());
+
+  // ── Catálogos ─────────────────────────────────────────────────────
+  readonly tiposDocumento = [
     { id: TipoDocumentoIdentidad.DNI, label: 'DNI' },
     { id: TipoDocumentoIdentidad.Pasaporte, label: 'Pasaporte' },
     { id: TipoDocumentoIdentidad.CarneExtranjeria, label: 'Carné de Extranjería' },
@@ -110,12 +114,12 @@ export class ExpedienteCreateComponent implements OnInit, OnDestroy {
     { id: TipoDocumentoIdentidad.NN, label: 'NN (No Identificado)' },
   ];
 
-  tiposIngreso = [
+  readonly tiposIngreso = [
     { id: TipoIngreso.Interno, label: 'Interno (hospitalizado)' },
     { id: TipoIngreso.Externo, label: 'Externo (DOA / Traumashock)' },
   ];
 
-  fuentesFinanciamiento = [
+  readonly fuentesFinanciamiento = [
     { id: FuenteFinanciamiento.SIS, label: 'SIS' },
     { id: FuenteFinanciamiento.EsSalud, label: 'EsSalud' },
     { id: FuenteFinanciamiento.Particular, label: 'Particular' },
@@ -124,27 +128,47 @@ export class ExpedienteCreateComponent implements OnInit, OnDestroy {
     { id: FuenteFinanciamiento.Otros, label: 'Otros' },
   ];
 
-  servicios: string[] = [
+  readonly servicios: string[] = [
     'Medicina Interna', 'Cirugía General', 'Cirugía 4A', 'UCI', 'UCINT',
     'Emergencia', 'Trauma Shock', 'Traumatología', 'Neurocirugía',
     'Sala de Recuperación', 'Observaciones', 'UVE', 'Otro'
   ];
 
   // ===================================================================
-  // CONSTRUCTOR
+  // GETTERS
   // ===================================================================
-  constructor() {
-    this.buildForm();
+
+  /** Acceso directo a controls del form */
+  get f() { return this.expedienteForm.controls; }
+
+  /** Raw values — incluye campos disabled */
+  get rv() { return this.expedienteForm?.getRawValue?.() ?? {}; }
+
+  get medicoExternoHabilitado(): boolean {
+    return Number(this.f['tipoExpediente'].value) === TipoIngreso.Externo
+      && !this.f['causaViolentaODudosa'].value;
   }
 
+  get fuenteLabel(): string {
+    const id = Number(this.rv.fuenteFinanciamiento);
+    return this.fuentesFinanciamiento.find(f => f.id === id)?.label ?? 'Pendiente de Pago';
+  }
+
+  get pertenencias(): FormArray {
+    return this.expedienteForm.get('pertenencias') as FormArray;
+  }
+  get esDni(): boolean {
+    return Number(this.rv.tipoDocumento) === TipoDocumentoIdentidad.DNI;
+  }
   // ===================================================================
-  // CICLO DE VIDA
+  // LIFECYCLE
   // ===================================================================
+
   ngOnInit(): void {
+    this.buildForm();
     this.suscribirCambiosCondicionales();
 
     const hc = this.route.snapshot.queryParamMap.get('hc');
-    const origen = this.route.snapshot.queryParamMap.get('origen');
 
     if (hc) {
       this.modoManual = false;
@@ -153,22 +177,24 @@ export class ExpedienteCreateComponent implements OnInit, OnDestroy {
       this.integracionService.consultarPaciente(hc)
         .pipe(takeUntil(this.destroy$))
         .subscribe({
-          next: (data) => {
+          next: data => {
             this.cargarDatosDesdeServicio(data);
             this.isLoading = false;
           },
-          error: (err) => {
-            console.warn('Error consultando integración:', err);
+          error: err => {
+            console.warn('[ExpedienteCreate] Error integración:', err);
             this.isLoading = false;
             this.modoManual = true;
-            this.habilitarCamposDemograficos();
+            this.deshabilitarDemograficos(false); // habilitar en modo manual
             this.expedienteForm.patchValue({ hc });
-            this.mostrarAlertaInfo('No se pudo conectar con SIGEM/Galenhos. Ingrese los datos manualmente.');
+            this.mostrarAlertaInfo(
+              'No se pudo conectar con SIGEM/Galenhos. Ingrese los datos manualmente.'
+            );
           }
         });
     } else {
       this.modoManual = true;
-      this.habilitarCamposDemograficos();
+      // En modo manual los campos ya nacen habilitados — no hay que hacer nada
     }
   }
 
@@ -179,24 +205,22 @@ export class ExpedienteCreateComponent implements OnInit, OnDestroy {
 
   // ===================================================================
   // CONSTRUCCIÓN DEL FORM
+  // Patrón SGM: todos los campos nacen habilitados.
+  // Los demográficos se deshabilitan DESPUÉS del patchValue si vienen
+  // de Galenhos — nunca se crean con { value, disabled }.
   // ===================================================================
   private buildForm(): void {
     this.expedienteForm = this.fb.group({
-      // Datos demográficos
-      hc: [{ value: '', disabled: true }, [
-        Validators.required,
-        Validators.minLength(4),
-        Validators.maxLength(12),
-        soloNumerosValidator()
-      ]],
-      tipoDocumento: [{ value: TipoDocumentoIdentidad.DNI, disabled: true }, Validators.required],
-      numeroDocumento: [{ value: '', disabled: true }, Validators.required],
-      apellidoPaterno: [{ value: '', disabled: true }, Validators.required],
-      apellidoMaterno: [{ value: '', disabled: true }, Validators.required],
-      nombres: [{ value: '', disabled: true }, Validators.required],
-      fechaNacimiento: [{ value: '', disabled: true }, Validators.required],
-      sexo: [{ value: '', disabled: true }, Validators.required],
-      fuenteFinanciamiento: [{ value: FuenteFinanciamiento.PendientePago, disabled: true }, Validators.required],
+      // Demográficos — nacen habilitados
+      hc: ['', [Validators.required, Validators.minLength(4), Validators.maxLength(12)]],
+      tipoDocumento: [TipoDocumentoIdentidad.DNI, Validators.required],
+      numeroDocumento: ['', Validators.required],
+      apellidoPaterno: ['', Validators.required],
+      apellidoMaterno: ['', Validators.required],
+      nombres: ['', Validators.required],
+      fechaNacimiento: ['', Validators.required],
+      sexo: ['', Validators.required],
+      fuenteFinanciamiento: [FuenteFinanciamiento.PendientePago, Validators.required],
 
       // Flags
       esNN: [false],
@@ -205,38 +229,26 @@ export class ExpedienteCreateComponent implements OnInit, OnDestroy {
       // Tipo de expediente
       tipoExpediente: [TipoIngreso.Interno, Validators.required],
 
-      // Datos del fallecimiento
+      // Datos del fallecimiento — siempre editables, nacen habilitados
       servicioFallecimiento: ['', Validators.required],
-      numeroCama: ['', [
-        soloNumerosValidator(),
-        Validators.maxLength(4)
-      ]],
-      fechaHoraFallecimiento: [this.formatDateTimeLocal(new Date()), [
-        Validators.required,
-        this.fechaNoFuturaValidator()
-      ]],
+      numeroCama: ['', Validators.maxLength(4)],
+      fechaHoraFallecimiento: [
+        this.formatDateTimeLocal(new Date()),
+        [Validators.required, fechaNoFuturaValidator()]
+      ],
       diagnosticoFinal: [''],
 
-      // Médico certificante
+      // Médico certificante — siempre editable
       medicoCertificaNombre: ['', Validators.required],
-      medicoCMP: ['', [
-        Validators.required,
-        Validators.pattern('^[0-9]{4,6}$')
-      ]],
-      medicoRNE: ['', [
-        Validators.pattern('^[0-9]{5}$')
-      ]],
+      medicoCMP: ['', [Validators.required, Validators.pattern('^[0-9]{4,6}$')]],
+      medicoRNE: ['', Validators.pattern('^[0-9]{5}$')],
 
-      // Médico externo
-      medicoExternoNombre: [{ value: '', disabled: true }],
-      medicoExternoCMP: [{ value: '', disabled: true }, [
-        Validators.pattern('^[0-9]{4,6}$')
-      ]],
+      // Médico externo — nace habilitado, se deshabilita condicionalmente
+      medicoExternoNombre: [''],
+      medicoExternoCMP: ['', Validators.pattern('^[0-9]{4,6}$')],
 
-      // Observaciones
+      // Extras
       observaciones: ['', Validators.maxLength(1000)],
-
-      // Pertenencias
       pertenencias: this.fb.array([])
     });
   }
@@ -245,12 +257,15 @@ export class ExpedienteCreateComponent implements OnInit, OnDestroy {
   // SUSCRIPCIONES CONDICIONALES
   // ===================================================================
   private suscribirCambiosCondicionales(): void {
+    // Actualizar médico externo cuando cambia tipo expediente o causa violenta
     const actualizarMedicoExterno = () => {
-      const esExterno = Number(this.expedienteForm.get('tipoExpediente')?.value) === TipoIngreso.Externo;
-      const esViolenta = this.expedienteForm.get('causaViolentaODudosa')?.value === true;
+      if (this.actualizandoDesdeCarga) return;
+      const esExterno = Number(this.f['tipoExpediente'].value) === TipoIngreso.Externo;
+      const esViolenta = this.f['causaViolentaODudosa'].value === true;
       const habilitar = esExterno && !esViolenta;
       const nombreCtrl = this.expedienteForm.get('medicoExternoNombre');
       const cmpCtrl = this.expedienteForm.get('medicoExternoCMP');
+
       if (habilitar) {
         nombreCtrl?.enable();
         cmpCtrl?.enable();
@@ -268,21 +283,27 @@ export class ExpedienteCreateComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => actualizarMedicoExterno());
 
-    // Cuando cambia tipoDocumento → actualizar validadores de numeroDocumento
+    // Validadores dinámicos de numeroDocumento según tipo seleccionado
     this.expedienteForm.get('tipoDocumento')?.valueChanges
       .pipe(takeUntil(this.destroy$))
-      .subscribe(() => this.actualizarValidadoresDocumento());
+      .subscribe(() => {
+        if (this.actualizandoDesdeCarga) return;
+        this.actualizarValidadoresDocumento();
+      });
 
     this.expedienteForm.get('esNN')?.valueChanges
       .pipe(takeUntil(this.destroy$))
-      .subscribe((esNN: boolean) => this.actualizarCamposNN(esNN));
+      .subscribe((esNN: boolean) => {
+        if (this.actualizandoDesdeCarga) return;
+        this.actualizarCamposNN(esNN);
+      });
   }
 
   /**
    * Actualiza los validadores de numeroDocumento según el tipo seleccionado.
-   * DNI           → solo números, exactamente 8 dígitos
-   * CE / Pasaporte → alfanumérico, máx 12 chars
-   * SinDocumento/NN → sin validación
+   * DNI            → solo números, exactamente 8 dígitos
+   * CE / Pasaporte → alfanumérico, máx 12 caracteres
+   * SinDocumento/NN → sin validación de formato
    */
   private actualizarValidadoresDocumento(): void {
     const tipo = Number(this.expedienteForm.get('tipoDocumento')?.value);
@@ -302,8 +323,8 @@ export class ExpedienteCreateComponent implements OnInit, OnDestroy {
       ctrl.setValidators([Validators.required, Validators.maxLength(12)]);
     } else {
       // SinDocumento / NN — bloquear y limpiar
-      ctrl.disable();
-      ctrl.reset('');
+      ctrl.disable({ emitEvent: false });
+      ctrl.reset(null, { emitEvent: false });
     }
 
     ctrl.updateValueAndValidity();
@@ -317,7 +338,7 @@ export class ExpedienteCreateComponent implements OnInit, OnDestroy {
 
     if (esNN) {
       camposAfectados.forEach(c => {
-        this.expedienteForm.get(c)?.disable();
+        this.expedienteForm.get(c)?.disable({ emitEvent: false });
         this.expedienteForm.get(c)?.clearValidators();
         this.expedienteForm.get(c)?.updateValueAndValidity();
       });
@@ -328,7 +349,7 @@ export class ExpedienteCreateComponent implements OnInit, OnDestroy {
         apellidoMaterno: 'NN',
         nombres: 'No Identificado',
         fechaNacimiento: '1900-01-01'
-      });
+      }, { emitEvent: false });
     } else {
       this.expedienteForm.patchValue({
         tipoDocumento: TipoDocumentoIdentidad.DNI,
@@ -337,19 +358,18 @@ export class ExpedienteCreateComponent implements OnInit, OnDestroy {
         apellidoMaterno: '',
         nombres: '',
         fechaNacimiento: ''
-      });
+      }, { emitEvent: false });
+
       if (this.modoManual) {
         camposAfectados.forEach(c => {
           this.expedienteForm.get(c)?.enable();
           this.expedienteForm.get(c)?.setValidators(Validators.required);
           this.expedienteForm.get(c)?.updateValueAndValidity();
         });
-        // Restaurar validadores específicos
         this.expedienteForm.get('hc')?.setValidators([
           Validators.required,
           Validators.minLength(4),
           Validators.maxLength(12),
-          soloNumerosValidator()
         ]);
         this.expedienteForm.get('hc')?.updateValueAndValidity();
         this.actualizarValidadoresDocumento();
@@ -358,16 +378,19 @@ export class ExpedienteCreateComponent implements OnInit, OnDestroy {
   }
 
   // ===================================================================
-  // CARGA DE DATOS
+  // CARGA DESDE INTEGRACIÓN
   // ===================================================================
   private cargarDatosDesdeServicio(data: PacienteParaForm): void {
     this.pacienteData = data;
     this.datosGalenhosDisponibles = data.existeEnGalenhos;
 
-    const fechaNac = data.fechaNacimiento ? data.fechaNacimiento.substring(0, 10) : '';
+    const fechaNac = data.fechaNacimiento?.substring(0, 10) ?? '';
     const fechaFallecimiento = data.fechaHoraFallecimiento
       ? this.formatDateTimeLocal(new Date(data.fechaHoraFallecimiento))
       : this.formatDateTimeLocal(new Date());
+
+    // Activar bandera ANTES del patch — bloquea todos los listeners
+    this.actualizandoDesdeCarga = true;
 
     this.expedienteForm.patchValue({
       hc: data.hc,
@@ -388,15 +411,22 @@ export class ExpedienteCreateComponent implements OnInit, OnDestroy {
       medicoCertificaNombre: data.medicoCertificaNombre ?? '',
       medicoCMP: data.medicoCMP ?? '',
       medicoRNE: data.medicoRNE ?? '',
-    });
+    }, { emitEvent: false });
+
+    // Desactivar bandera DESPUÉS del patch
+    this.actualizandoDesdeCarga = false;
 
     if (data.existeEnGalenhos) {
-      if (!data.existeEnSigem) this.habilitarCamposFallecimiento();
+      this.deshabilitarDemograficos(true);
+      if (!data.existeEnSigem) {
+        // Galenhos OK pero SIGEM no → campos de fallecimiento editables (nacen habilitados)
+      }
     } else {
+      // Galenhos no encontró al paciente → modo manual completo
       this.modoManual = true;
-      this.habilitarCamposDemograficos();
-      this.habilitarCamposFallecimiento();
     }
+
+    this.expedienteForm.updateValueAndValidity();
 
     if (data.advertencias?.length > 0) {
       this.mostrarAdvertenciasIntegracion(data.advertencias);
@@ -406,23 +436,28 @@ export class ExpedienteCreateComponent implements OnInit, OnDestroy {
   // ===================================================================
   // HELPERS DE FORM
   // ===================================================================
-  private habilitarCamposDemograficos(): void {
+
+  /**
+   * Habilita o deshabilita los campos demográficos.
+   * deshabilitar=true → readonly (datos de Galenhos)
+   * deshabilitar=false → editables (modo manual)
+   */
+  private deshabilitarDemograficos(deshabilitar: boolean): void {
     const campos = [
       'hc', 'tipoDocumento', 'numeroDocumento',
       'apellidoPaterno', 'apellidoMaterno', 'nombres',
       'fechaNacimiento', 'sexo', 'fuenteFinanciamiento'
     ];
-    campos.forEach(c => this.expedienteForm.get(c)?.enable());
-    // Activar validadores específicos al habilitar
-    this.actualizarValidadoresDocumento();
-  }
-
-  private habilitarCamposFallecimiento(): void {
-    const campos = [
-      'servicioFallecimiento', 'numeroCama', 'fechaHoraFallecimiento',
-      'diagnosticoFinal', 'medicoCertificaNombre', 'medicoCMP', 'medicoRNE'
-    ];
-    campos.forEach(c => this.expedienteForm.get(c)?.enable());
+    campos.forEach(c => {
+      if (deshabilitar) {
+        this.expedienteForm.get(c)?.disable();
+      } else {
+        this.expedienteForm.get(c)?.enable();
+      }
+    });
+    if (!deshabilitar) {
+      this.actualizarValidadoresDocumento();
+    }
   }
 
   private mapFuenteFinanciamiento(valor: string): number {
@@ -437,83 +472,64 @@ export class ExpedienteCreateComponent implements OnInit, OnDestroy {
     return mapa[valor] ?? FuenteFinanciamiento.PendientePago;
   }
 
-  private formatDateTimeLocal(date: Date): string {
-    return date.toISOString().substring(0, 16);
-  }
-
-  getInputClasses(editable: boolean): string {
-    return editable
-      ? 'w-full p-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-hospital-cyan focus:border-transparent outline-none transition-all'
-      : 'w-full p-2.5 border-none rounded-lg bg-gray-100 text-gray-800 font-semibold cursor-not-allowed';
+  /**
+   * Formatea un Date a 'YYYY-MM-DDTHH:mm' usando hora local.
+   * NO usa toISOString() (devuelve UTC → bug en GMT-5 Lima).
+   */
+  private formatDateTimeLocal(d: Date): string {
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+      `T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
   getTipoDocumentoNombre(id: number): string {
     return this.tiposDocumento.find(t => t.id === id)?.label ?? 'Desconocido';
   }
 
-  get fuenteLabel(): string {
-    const id = Number(this.expedienteForm.get('fuenteFinanciamiento')?.value);
-    return this.fuentesFinanciamiento.find(f => f.id === id)?.label ?? 'Pendiente de Pago';
+  getSexoLabel(valor: string): string {
+    return valor === 'M' ? 'Masculino' : valor === 'F' ? 'Femenino' : valor;
   }
 
-  get medicoExternoHabilitado(): boolean {
-    return Number(this.expedienteForm.get('tipoExpediente')?.value) === TipoIngreso.Externo
-      && !this.expedienteForm.get('causaViolentaODudosa')?.value;
-  }
-
-  /** True si un campo fue tocado y es inválido */
-  esInvalido(campo: string): boolean {
+  /** Valida si un campo es inválido y fue tocado. */
+  isInvalidField(campo: string): boolean {
     const ctrl = this.expedienteForm.get(campo);
-    return !!(ctrl?.invalid && ctrl?.touched);
+    return !!ctrl?.invalid && (ctrl.dirty || ctrl.touched);
   }
 
-  /**
-   * Retorna el mensaje de error específico para cada campo y tipo de error.
-   * Usado en el template para mensajes descriptivos.
-   */
   getMensajeError(campo: string): string {
     const ctrl = this.expedienteForm.get(campo);
     if (!ctrl?.errors) return '';
+    const { errors } = ctrl;
 
-    if (ctrl.errors['required']) return 'Campo obligatorio';
-    if (ctrl.errors['soloNumeros']) return 'Solo se permiten números';
-    if (ctrl.errors['minlength']) return `Mínimo ${ctrl.errors['minlength'].requiredLength} caracteres`;
-    if (ctrl.errors['maxlength']) return `Máximo ${ctrl.errors['maxlength'].requiredLength} caracteres`;
-    if (ctrl.errors['pattern']) {
-      // Mensajes específicos por campo
-      switch (campo) {
-        case 'hc': return 'Solo números (4–12 dígitos)';
-        case 'numeroCama': return 'Solo números';
-        case 'medicoCMP': return 'Solo números, entre 4 y 6 dígitos';
-        case 'medicoRNE': return 'Solo números, exactamente 5 dígitos';
-        case 'medicoExternoCMP': return 'Solo números, entre 4 y 6 dígitos';
-
-        default: return 'Formato inválido';
-      }
+    if (errors['required']) return 'Campo obligatorio';
+    if (errors['minlength']) return `Mínimo ${errors['minlength'].requiredLength} caracteres`;
+    if (errors['maxlength']) return `Máximo ${errors['maxlength'].requiredLength} caracteres`;
+    if (errors['formatoDocumento']) return errors['formatoDocumento'];
+    if (errors['fechaFutura']) return 'La fecha de fallecimiento no puede ser futura';
+    if (errors['pattern']) {
+      const mensajes: Record<string, string> = {
+        medicoCMP: 'Solo números, entre 4 y 6 dígitos',
+        medicoRNE: 'Solo números, exactamente 5 dígitos',
+        medicoExternoCMP: 'Solo números, entre 4 y 6 dígitos',
+        numeroDocumento: 'El DNI debe tener exactamente 8 dígitos',
+      };
+      return mensajes[campo] ?? 'Formato inválido';
     }
-    if (ctrl.errors['formatoDocumento']) return ctrl.errors['formatoDocumento'];
-    if (ctrl.errors['fechaFutura']) return 'La fecha de fallecimiento no puede ser futura';
     return 'Valor inválido';
   }
-  soloNumerosKeydown(event: KeyboardEvent): boolean {
-    return /[0-9]/.test(event.key) ||
-      ['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight'].includes(event.key);
+
+  /** trackBy para ngFor de catálogos con id numérico */
+  trackByValue(_: number, item: { id: number }): number {
+    return item.id;
   }
-  /** Valida que la fecha/hora no sea futura. */
-  private fechaNoFuturaValidator(): ValidatorFn {
-    return (control: AbstractControl) => {
-      if (!control.value) return null;
-      const fechaIngresada = new Date(control.value);
-      const ahora = new Date();
-      return fechaIngresada > ahora ? { fechaFutura: true } : null;
-    };
+
+  trackByIndex(index: number): number {
+    return index;
   }
+
   // ===================================================================
   // PERTENENCIAS (FormArray)
   // ===================================================================
-  get pertenencias(): FormArray {
-    return this.expedienteForm.get('pertenencias') as FormArray;
-  }
 
   agregarPertenencia(): void {
     this.pertenencias.push(this.fb.group({
@@ -529,7 +545,9 @@ export class ExpedienteCreateComponent implements OnInit, OnDestroy {
   // ===================================================================
   // SUBMIT
   // ===================================================================
+
   onSubmit(): void {
+    if (this.isLoading) return;
     this.expedienteForm.markAllAsTouched();
 
     if (this.expedienteForm.invalid) {
@@ -574,8 +592,8 @@ export class ExpedienteCreateComponent implements OnInit, OnDestroy {
 
     this.expedienteService.create(dto).pipe(
       takeUntil(this.destroy$),
-      switchMap(expediente => {
-        return this.expedienteService.generarQR(expediente.expedienteID).pipe(
+      switchMap(expediente =>
+        this.expedienteService.generarQR(expediente.expedienteID).pipe(
           switchMap(() =>
             this.expedienteService.imprimirBrazalete(expediente.expedienteID)
           ),
@@ -583,8 +601,8 @@ export class ExpedienteCreateComponent implements OnInit, OnDestroy {
             this.descargarPDF(blob, `Brazalete-${expediente.codigoExpediente}`);
             return [expediente];
           })
-        );
-      })
+        )
+      )
     ).subscribe({
       next: (expediente: any) => {
         this.isLoading = false;
@@ -595,8 +613,7 @@ export class ExpedienteCreateComponent implements OnInit, OnDestroy {
               <p>Expediente: <strong>${expediente.codigoExpediente}</strong></p>
               <p>QR generado correctamente</p>
               <p>Brazalete descargado</p>
-            </div>
-          `,
+            </div>`,
           icon: 'success',
           confirmButtonText: 'Ir al Dashboard',
           confirmButtonColor: '#0891B2',
@@ -604,12 +621,11 @@ export class ExpedienteCreateComponent implements OnInit, OnDestroy {
           timerProgressBar: true
         }).then(() => this.router.navigate(['/dashboard']));
       },
-      error: (err) => {
+      error: err => {
         this.isLoading = false;
-        const msg = err.error?.message ?? 'Error al procesar el expediente.';
         Swal.fire({
           title: 'Error',
-          text: msg,
+          text: err.error?.message ?? 'Error al procesar el expediente.',
           icon: 'error',
           confirmButtonColor: '#EF4444',
           confirmButtonText: 'Cerrar'
@@ -619,33 +635,59 @@ export class ExpedienteCreateComponent implements OnInit, OnDestroy {
   }
 
   // ===================================================================
+  // CANCELAR — con protección form.dirty
+  // ===================================================================
+
+  cancelar(): void {
+    if (this.expedienteForm.dirty) {
+      Swal.fire({
+        icon: 'warning',
+        title: '¿Cancelar registro?',
+        text: 'Se perderán los datos ingresados.',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, cancelar',
+        cancelButtonText: 'Continuar',
+        confirmButtonColor: '#EF4444',
+        cancelButtonColor: '#6B7280'
+      }).then(r => {
+        if (r.isConfirmed) this.navegarAtras();
+      });
+    } else {
+      this.navegarAtras();
+    }
+  }
+
+  private navegarAtras(): void {
+    const origen = this.route.snapshot.queryParamMap.get('origen');
+    this.router.navigate([origen === 'bandeja' ? '/bandeja-entrada' : '/dashboard']);
+  }
+
+  // ===================================================================
   // HELPERS PRIVADOS
   // ===================================================================
-  private descargarPDF(blob: Blob, nombreArchivo: string): void {
+
+  private descargarPDF(blob: Blob, nombre: string): void {
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = url;
-    link.download = `${nombreArchivo}.pdf`;
-    link.click();
+    link.href = url; link.download = `${nombre}.pdf`; link.click();
     setTimeout(() => window.URL.revokeObjectURL(url), 100);
   }
 
   private mostrarAlertaInfo(mensaje: string): void {
-    Swal.fire({ title: 'Información', text: mensaje, icon: 'info', confirmButtonColor: '#0891B2' });
+    Swal.fire({
+      title: 'Información', text: mensaje,
+      icon: 'info', confirmButtonColor: '#0891B2'
+    });
   }
 
   private mostrarAdvertenciasIntegracion(advertencias: string[]): void {
     Swal.fire({
       title: 'Datos incompletos de SIGEM',
-      html: `<ul class="text-left text-sm space-y-1">${advertencias.map(a => `<li>• ${a}</li>`).join('')}</ul>`,
+      html: `<ul class="text-left text-sm space-y-1">
+        ${advertencias.map(a => `<li>• ${a}</li>`).join('')}</ul>`,
       icon: 'warning',
       confirmButtonColor: '#F59E0B',
       confirmButtonText: 'Entendido'
     });
-  }
-
-  cancelar(): void {
-    const origen = this.route.snapshot.queryParamMap.get('origen');
-    this.router.navigate([origen === 'bandeja' ? '/bandeja-entrada' : '/dashboard']);
   }
 }

@@ -1,5 +1,6 @@
 import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 import Swal from 'sweetalert2';
@@ -12,90 +13,143 @@ import { FormularioSalida } from '../../components/formulario-salida/formulario-
 import { EstadisticasBandejaDTO, BandejaDTO } from '../../models/notificacion.model';
 
 /**
- * Componente para visualizar el mapa del mortuorio en tiempo real.
- * 
- * CARACTERISTICAS:
- * - Grid visual de 8 bandejas (B-01 a B-08)
- * - Actualizacion en tiempo real via SignalR
- * - KPIs de ocupacion y alertas
- * - Codigo de colores por estado
- * - Auto-refresh cada 30s como respaldo
- * - Modal integrado para registro de salida
- * 
- * FLUJO REGISTRO SALIDA:
- * - Usuario hace click en boton "Salida" de bandeja ocupada
- * - Sistema carga expediente via ExpedienteService
- * - Abre modal FormularioSalida pasando expediente
- * - Modal registra salida y libera bandeja automaticamente
- * - Mapa se actualiza via SignalR
- * 
- * @version 2.3.0
- * @author SGM Development Team
- * 
- * CHANGELOG v2.3.0:
- * - Integrado modal FormularioSalida para registro de salida
- * - Eliminada navegacion a /registro-salida
- * - Agregado metodo abrirModalSalida()
- * - Agregado metodo onSalidaCompletada()
+ * Mapa visual del mortuorio en tiempo real.
+ *
+ * CARACTERÍSTICAS:
+ * - Grid de 8 bandejas con estados (Disponible / Ocupada / Mantenimiento)
+ * - Tiempo real vía SignalR + auto-refresh 30s como respaldo
+ * - KPIs con cache (calcularEstadisticas) — no recalcula en cada CD
+ * - Modal mantenimiento inline (Admin / JefeGuardia / VigilanteSupervisor)
+ * - Modal salida via componente FormularioSalida
+ * - Modo asignación desde Mis Tareas
+ * - Salida forzada solo Admin/JG/VigSup
+ *
+ * @version 3.0.0
+ * @changelog
+ * - v3.0.0: Modal mantenimiento con datos completos (motivo, fechas, responsable).
+ *           Cache _statsCache — KPIs O(1). Toast reutilizable.
+ *           manejarError() centralizado. queryParams con takeUntil.
+ *           ESTADOS_SALIDA_PERMITIDOS readonly. trackByBandeja.
+ *           puedeGestionarMantenimiento → getter puedeLiberar.
+ *           refreshInterval tipado. Fix tiempo >24h (backend).
+ *           Renombrado "Registro Manual" → "Registro".
  */
 @Component({
   selector: 'app-mapa-mortuorio',
   standalone: true,
-  imports: [CommonModule, IconComponent, FormularioSalida],
+  imports: [CommonModule, ReactiveFormsModule, IconComponent, FormularioSalida],
   templateUrl: './mapa-mortuorio.html',
   styleUrls: ['./mapa-mortuorio.css']
 })
 export class MapaMortuorioComponent implements OnInit, OnDestroy {
+
+  // ── Inyección ────────────────────────────────────────────────────
   private bandejaService = inject(BandejaService);
   private notificacionService = inject(NotificacionService);
   private expedienteService = inject(ExpedienteService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
+  private fb = inject(FormBuilder);
+  private destroy$ = new Subject<void>();
 
+  // ── Estado general ───────────────────────────────────────────────
   bandejas: BandejaDTO[] = [];
-  estadisticas: EstadisticasBandejaDTO | null = null;
   isLoading = true;
   errorMessage = '';
   bandejaSeleccionada: BandejaDTO | null = null;
 
-  private destroy$ = new Subject<void>();
-  private refreshInterval: any;
+  // ── Auto-refresh tipado ──────────────────────────────────
+  private refreshInterval: ReturnType<typeof setInterval> | null = null;
 
-  // Estado de alertas
+  // ── Alertas ───────────────────────────────────────────────────────
   alertaOcupacionActiva = false;
   private toastAlertaMostrado = false;
 
-  // Modo asignacion (desde Mis Tareas)
+  // ── Cache de estadísticas ────────────────────────────────────
+  private _statsCache = { disponibles: 0, ocupadas: 0, alertas: 0, mantenimiento: 0 };
+
+  // ── Toast reutilizable ───────────────────────────────────────
+  private readonly toast = Swal.mixin({
+    toast: true,
+    position: 'top-end',
+    showConfirmButton: false,
+    timer: 3000,
+    timerProgressBar: true
+  });
+
+  // ── Estados permitidos para salida ──────────────────────────
+  private readonly ESTADOS_SALIDA_PERMITIDOS = ['PendienteRetiro'];
+
+  // ── Modo asignación ───────────────────────────────────────────────
   modoAsignacion = false;
   expedienteIdParaAsignar: number | null = null;
-  pacienteNombre: string = '';
-  pacienteCodigo: string = '';
+  pacienteNombre = '';
+  pacienteCodigo = '';
 
-  // Modal de registro de salida
+  // ── Modal salida (FormularioSalida) ───────────────────────────────
   mostrarModalSalida = false;
   expedienteParaSalida: any = null;
 
+  // ── Modal mantenimiento ──────────────────────────────────
+  mostrarModalMantenimiento = false;
+  bandejaParaMantenimiento: BandejaDTO | null = null;
+  formMantenimiento!: FormGroup;
+  isLoadingMantenimiento = false;
+
+  // Catálogo motivos)
+  readonly motivosMantenimiento = [
+    { value: 'Limpieza', label: 'Limpieza / Desinfección' },
+    { value: 'Reparacion', label: 'Reparación' },
+    { value: 'InspeccionSanitaria', label: 'Inspección Sanitaria' },
+    { value: 'FallaTecnica', label: 'Falla Técnica' },
+    { value: 'Otro', label: 'Otro' },
+  ];
+
   // ===================================================================
-  // CICLO DE VIDA
+  // GETTERS — KPIs desde cache
+  // ===================================================================
+
+  get totalDisponibles(): number { return this._statsCache.disponibles; }
+  get totalOcupadas(): number { return this._statsCache.ocupadas; }
+  get totalMantenimiento(): number { return this._statsCache.mantenimiento; }
+  get bandejaConAlertas(): number { return this._statsCache.alertas; }
+
+  get porcentajeOcupacion(): number {
+    const total = this.bandejas.length;
+    return total === 0 ? 0 : Math.round((this._statsCache.ocupadas / total) * 100);
+  }
+  get estadoOcupacion(): 'critico' | 'atencion' | 'normal' {
+    if (this.porcentajeOcupacion >= 70) return 'critico';
+    if (this.porcentajeOcupacion >= 50) return 'atencion';
+    return 'normal';
+  }
+  /** Admin / JefeGuardia / VigilanteSupervisor */
+  get puedeLiberar(): boolean {
+    return this.bandejaService.puedeGestionarMantenimiento();
+  }
+
+
+  // ===================================================================
+  // LIFECYCLE
   // ===================================================================
 
   ngOnInit(): void {
+    this.buildFormMantenimiento();
     this.cargarMapa();
     this.suscribirseASignalR();
+    this.route.queryParams
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(params => {
+        const id = params['expedienteId'];
+        if (id) {
+          this.modoAsignacion = true;
+          this.expedienteIdParaAsignar = +id;
+          this.cargarDatosExpediente(this.expedienteIdParaAsignar);
+        }
+      });
 
-    // Detectar si venimos de "Mis Tareas" para asignar bandeja
-    this.route.queryParams.subscribe(params => {
-      const id = params['expedienteId'];
-      if (id) {
-        this.modoAsignacion = true;
-        this.expedienteIdParaAsignar = +id;
-        this.cargarDatosExpediente(this.expedienteIdParaAsignar);
-      }
-    });
-
-    // Auto-refresh cada 30s como respaldo (por si SignalR falla)
+    // Auto-refresh 30s como respaldo si SignalR falla
     this.refreshInterval = setInterval(() => {
-      console.log('[MapaMortuorio] Auto-refresh de bandejas (respaldo)');
       this.cargarMapa();
     }, 30000);
   }
@@ -103,76 +157,111 @@ export class MapaMortuorioComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
-
-    if (this.refreshInterval) {
-      clearInterval(this.refreshInterval);
-    }
+    if (this.refreshInterval) clearInterval(this.refreshInterval);
   }
 
   // ===================================================================
-  // SIGNALR - SUSCRIPCIONES
+  // FORM MANTENIMIENTO
   // ===================================================================
 
-  /**
-   * Suscribe el componente a los eventos SignalR relevantes.
-   */
+  private buildFormMantenimiento(): void {
+    this.formMantenimiento = this.fb.group({
+      motivo: ['', Validators.required],
+      detalle: [''],
+      fechaInicio: [this.formatDateTimeLocal(new Date()), Validators.required],
+      fechaEstimadaFin: [''],
+      responsableExterno: ['']
+    });
+  }
+
+  // ===================================================================
+  // CACHE DE ESTADÍSTICAS
+  // Llamado después de cargar o actualizar bandejas.
+  // ===================================================================
+
+  private calcularEstadisticas(): void {
+    let disponibles = 0, ocupadas = 0, alertas = 0, mantenimiento =0;
+    for (const b of this.bandejas) {
+      const estado = b.estado?.toLowerCase() ?? '';
+      if (estado === 'disponible') disponibles++;
+      if (estado === 'ocupada') ocupadas++;
+      if (estado === 'mantenimiento') mantenimiento++;
+      if (b.tieneAlerta) alertas++;
+    }
+    this._statsCache = { disponibles, ocupadas, alertas, mantenimiento };
+  }
+
+  // ===================================================================
+  // HELPERS DE ESTADO
+  // ===================================================================
+
+  private normalizarEstado(estado: string): string {
+    return estado?.toLowerCase() ?? '';
+  }
+
+  esDisponible(b: BandejaDTO): boolean {
+    return this.normalizarEstado(b.estado) === 'disponible';
+  }
+  esOcupada(b: BandejaDTO): boolean {
+    return this.normalizarEstado(b.estado) === 'ocupada';
+  }
+  esMantenimiento(b: BandejaDTO): boolean {
+    return this.normalizarEstado(b.estado) === 'mantenimiento';
+  }
+
+  getEstadoIcono(b: BandejaDTO): string {
+    return this.bandejaService.getEstadoIcon(b.estado);
+  }
+
+  /** trackBy para *ngFor del grid — evita re-render completo en updates SignalR (C11) */
+  trackByBandeja(_: number, b: BandejaDTO): number {
+    return b.bandejaID;
+  }
+
+  // ===================================================================
+  // SIGNALR
+  // ===================================================================
+
   private suscribirseASignalR(): void {
-    // 1. Actualizacion de bandeja individual (Tiempo Real)
+    // 1. Actualización de bandeja individual
     this.notificacionService.onActualizacionBandeja
       .pipe(takeUntil(this.destroy$))
-      .subscribe((bandejaActualizada: BandejaDTO) => {
-        console.log('[SignalR] Bandeja actualizada:', bandejaActualizada.codigo);
-
-        const index = this.bandejas.findIndex(b => b.bandejaID === bandejaActualizada.bandejaID);
-
+      .subscribe((actualizada: BandejaDTO) => {
+        const index = this.bandejas.findIndex(b => b.bandejaID === actualizada.bandejaID);
         if (index !== -1) {
-          this.bandejas[index] = {
-            ...this.bandejas[index],
-            estado: bandejaActualizada.estado,
-            expedienteID: bandejaActualizada.expedienteID,
-            codigoExpediente: bandejaActualizada.codigoExpediente,
-            nombrePaciente: bandejaActualizada.nombrePaciente,
-            usuarioAsignaNombre: bandejaActualizada.usuarioAsignaNombre,
-            fechaHoraAsignacion: bandejaActualizada.fechaHoraAsignacion,
-            fechaHoraLiberacion: bandejaActualizada.fechaHoraLiberacion,
-            tiempoOcupada: bandejaActualizada.tiempoOcupada,
-            tieneAlerta: bandejaActualizada.tieneAlerta,
-            observaciones: bandejaActualizada.observaciones
-          };
+          // Spread operator — actualiza sin recrear el array (C9)
+          this.bandejas[index] = { ...this.bandejas[index], ...actualizada };
+          this.calcularEstadisticas();
         }
       });
 
-    // 2. Alerta de ocupacion critica
+    // 2. Alerta de ocupación crítica
     this.notificacionService.onAlertaOcupacion
       .pipe(takeUntil(this.destroy$))
-      .subscribe((estadisticas: EstadisticasBandejaDTO) => {
-        console.log('[SignalR] Alerta ocupacion:', estadisticas.porcentajeOcupacion + '%');
-
-        this.alertaOcupacionActiva = estadisticas.porcentajeOcupacion > 70;
-
+      .subscribe((stats: EstadisticasBandejaDTO) => {
+        this.alertaOcupacionActiva = stats.porcentajeOcupacion > 70;
         if (this.alertaOcupacionActiva && !this.toastAlertaMostrado) {
-          this.mostrarAlertaOcupacion(estadisticas);
+          this.toast.fire({
+            icon: 'warning',
+            title: 'Ocupación Crítica',
+            text: `Mortuorio al ${stats.porcentajeOcupacion.toFixed(0)}% de capacidad`
+          });
           this.toastAlertaMostrado = true;
-
-          // Reset despues de 5 minutos
-          setTimeout(() => {
-            this.toastAlertaMostrado = false;
-          }, 300000);
+          setTimeout(() => { this.toastAlertaMostrado = false; }, 300000);
         }
       });
 
-    // 3. Alerta de permanencia (>24h o >48h)
+    // 3. Alerta de permanencia >24h / >48h
     this.notificacionService.onAlertaPermanencia
       .pipe(takeUntil(this.destroy$))
       .subscribe((bandejasConAlerta: BandejaDTO[]) => {
-        console.log('[SignalR] Alerta permanencia:', bandejasConAlerta.length + ' bandejas');
-
-        bandejasConAlerta.forEach(bandeja => {
-          const index = this.bandejas.findIndex(b => b.bandejaID === bandeja.bandejaID);
+        bandejasConAlerta.forEach(b => {
+          const index = this.bandejas.findIndex(x => x.bandejaID === b.bandejaID);
           if (index !== -1) {
-            this.bandejas[index].tieneAlerta = true;
+            this.bandejas[index] = { ...this.bandejas[index], tieneAlerta: true };
           }
         });
+        this.calcularEstadisticas();
       });
   }
 
@@ -180,589 +269,361 @@ export class MapaMortuorioComponent implements OnInit, OnDestroy {
   // CARGA DE DATOS
   // ===================================================================
 
-  /**
-   * Carga el mapa completo de bandejas desde el backend.
-   */
   cargarMapa(): void {
     this.isLoading = true;
     this.errorMessage = '';
 
-    this.bandejaService.getDashboard().subscribe({
-      next: (data) => {
-        this.bandejas = data;
-        this.isLoading = false;
-        console.log('[MapaMortuorio] Mapa cargado:', data.length + ' bandejas');
-      },
-      error: (error) => {
-        console.error('[MapaMortuorio] Error al cargar mapa:', error);
-        this.errorMessage = 'Error al cargar el mapa del mortuorio';
-        this.isLoading = false;
-
-        Swal.fire({
-          icon: 'error',
-          title: 'Error de Conexion',
-          text: 'No se pudo cargar el mapa del mortuorio. Verifica tu conexion.',
-          confirmButtonColor: '#EF4444',
-          showConfirmButton: true
-        });
-      }
-    });
+    this.bandejaService.getDashboard()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: data => {
+          this.bandejas = data;
+          this.calcularEstadisticas();
+          this.isLoading = false;
+        },
+        error: err => {
+          this.isLoading = false;
+          this.manejarError('Error al cargar el mapa del mortuorio', err);
+          this.errorMessage = 'Error al cargar el mapa del mortuorio';
+        }
+      });
   }
 
-  /**
-   * Carga datos del expediente para modo asignacion.
-   */
   private cargarDatosExpediente(id: number): void {
-    this.expedienteService.getById(id).subscribe({
-      next: (exp) => {
-        if (exp) {
-          this.pacienteNombre = exp.nombreCompleto;
-          this.pacienteCodigo = exp.codigoExpediente;
+    this.expedienteService.getById(id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: exp => {
+          if (exp) {
+            this.pacienteNombre = exp.nombreCompleto;
+            this.pacienteCodigo = exp.codigoExpediente;
+          }
+        },
+        error: () => {
+          this.toast.fire({ icon: 'error', title: 'No se pudo cargar el expediente' });
         }
-      },
-      error: () => {
-        this.mostrarAlerta('error', 'No se pudo cargar la informacion del expediente a asignar');
-      }
-    });
+      });
   }
 
   // ===================================================================
-  // GETTERS PARA KPIs
+  // REGISTRO DE SALIDA (MODAL FormularioSalida)
   // ===================================================================
 
-  get totalDisponibles(): number {
-    return this.bandejas.filter(b => b.estado.toLowerCase() === 'disponible').length;
-  }
-
-  get totalOcupadas(): number {
-    return this.bandejas.filter(b => b.estado.toLowerCase() === 'ocupada').length;
-  }
-
-  get porcentajeOcupacion(): number {
-    const total = this.bandejas.length;
-    if (total === 0) return 0;
-    return Math.round((this.totalOcupadas / total) * 100);
-  }
-
-  get bandejaConAlertas(): number {
-    return this.bandejas.filter(b => b.tieneAlerta).length;
-  }
-
-  // ===================================================================
-  // REGISTRO DE SALIDA (MODAL)
-  // ===================================================================
-
-  /**
-   * Abre modal de registro de salida.
-   * Carga expediente y valida estado antes de abrir.
-   */
   registrarSalida(bandeja: BandejaDTO): void {
-    console.log('[MapaMortuorio] Iniciando registro de salida para bandeja:', bandeja.codigo);
-
-    // 1. Validar estado
-    if (bandeja.estado !== 'Ocupada') {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Bandeja No Ocupada',
-        text: 'Solo se puede registrar salida de bandejas ocupadas',
-        confirmButtonColor: '#F59E0B',
-        showConfirmButton: true
-      });
+    // Guard clauses (C7)
+    if (!this.esOcupada(bandeja)) {
+      this.toast.fire({ icon: 'warning', title: 'Solo se puede registrar salida de bandejas ocupadas' });
       return;
     }
-
-    // 2. Validar que tenga expediente asociado
     if (!bandeja.expedienteID) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'No se encontro expediente asociado a esta bandeja',
-        confirmButtonColor: '#EF4444',
-        showConfirmButton: true
-      });
+      this.toast.fire({ icon: 'error', title: 'No se encontró expediente asociado a esta bandeja' });
       return;
     }
 
-    // 3. Cargar expediente completo
     this.isLoading = true;
-    this.expedienteService.getById(bandeja.expedienteID).subscribe({
-      next: (expediente) => {
-        this.isLoading = false;
+    this.expedienteService.getById(bandeja.expedienteID)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: expediente => {
+          this.isLoading = false;
 
-        // 4. Validar estado del expediente
-        const estadosPermitidos = ['EnBandeja', 'PendienteRetiro'];
-        if (!estadosPermitidos.includes(expediente.estadoActual)) {
-          Swal.fire({
-            icon: 'error',
-            title: 'Estado Invalido para Salida',
-            html: `
-              <div class="text-left text-sm">
-                <p>El expediente esta en estado: <strong class="text-red-600">${expediente.estadoActual}</strong></p>
-                <p class="text-gray-600 mt-2">
-                  Solo se puede registrar salida si el expediente esta en:<br>
-                  - <strong>En Bandeja</strong><br>
-                  - <strong>Pendiente Retiro</strong>
-                </p>
-              </div>
-            `,
-            confirmButtonColor: '#EF4444',
-            showConfirmButton: true
-          });
-          return;
+          if (!this.ESTADOS_SALIDA_PERMITIDOS.includes(expediente.estadoActual)) {
+            Swal.fire({
+              icon: 'error',
+              title: 'Estado Inválido para Salida',
+              html: `<div class="text-left text-sm">
+                <p>Estado actual: <strong class="text-red-600">${expediente.estadoActual}</strong></p>
+                <p class="text-gray-500 mt-2">Requerido: Pendiente Retiro</p>
+              </div>`,
+              confirmButtonColor: '#EF4444'
+            });
+            return;
+          }
+
+          expediente.codigoBandeja = bandeja.codigo;
+          this.expedienteParaSalida = expediente;
+          this.mostrarModalSalida = true;
+        },
+        error: err => {
+          this.isLoading = false;
+          this.manejarError('Error al cargar expediente', err);
         }
-
-        // 5. Agregar codigo de bandeja al expediente (para mostrar en modal)
-        expediente.codigoBandeja = bandeja.codigo;
-
-        // 6. Abrir modal
-        this.expedienteParaSalida = expediente;
-        this.mostrarModalSalida = true;
-
-        console.log('[MapaMortuorio] Modal de salida abierto para expediente:', expediente.codigoExpediente);
-      },
-      error: (err) => {
-        this.isLoading = false;
-        console.error('[MapaMortuorio] Error al cargar expediente:', err);
-
-        Swal.fire({
-          icon: 'error',
-          title: 'Error al Cargar Expediente',
-          text: err.error?.message || 'No se pudo cargar el expediente',
-          confirmButtonColor: '#EF4444',
-          showConfirmButton: true
-        });
-      }
-    });
+      });
   }
 
-  /**
-   * Maneja el evento cuando se registra salida exitosamente.
-   * Cierra modal y refresca mapa.
-   */
   onSalidaCompletada(response: any): void {
-    console.log('[MapaMortuorio] Salida completada:', response);
-
-    // Cerrar modal
     this.cerrarModalSalida();
-
-    // Recargar mapa (SignalR tambien actualizara, pero esto es respaldo)
     this.cargarMapa();
-
-    // Mostrar notificacion toast
-    const Toast = Swal.mixin({
-      toast: true,
-      position: 'top-end',
-      showConfirmButton: false,
-      timer: 3000
-    });
-
-    Toast.fire({
-      icon: 'success',
-      title: 'Salida Registrada',
-      text: 'Bandeja liberada exitosamente'
-    });
+    this.toast.fire({ icon: 'success', title: 'Salida Registrada', text: 'Bandeja liberada exitosamente' });
   }
 
-  /**
-   * Cierra el modal de registro de salida.
-   */
   cerrarModalSalida(): void {
     this.mostrarModalSalida = false;
     this.expedienteParaSalida = null;
   }
 
   // ===================================================================
-  // MODO ASIGNACION (DESDE MIS TAREAS)
+  // MODAL MANTENIMIENTO
   // ===================================================================
 
-  /**
-   * Maneja el click en una bandeja.
-   * Si estamos en modo asignacion, valida y confirma asignacion.
-   */
-  seleccionarBandeja(bandeja: BandejaDTO): void {
-    // Modo asignacion (prioridad)
-    if (this.modoAsignacion) {
-      if (bandeja.estado === 'Disponible') {
-        this.confirmarAsignacion(bandeja);
-      } else {
-        this.mostrarAlerta('warning', 'Esta bandeja esta ocupada o en mantenimiento. Elija una verde');
-      }
-      return;
-    }
-
-    // Modo normal (ver detalle si esta ocupada)
-    if (bandeja.estado === 'Ocupada') {
-      this.verDetalleBandeja(bandeja);
-    }
-  }
-
-  /**
-   * Confirma asignacion de bandeja en modo asignacion.
-   */
-  private confirmarAsignacion(bandeja: BandejaDTO): void {
-    if (!this.expedienteIdParaAsignar) return;
-
-    Swal.fire({
-      title: 'Confirmar Asignacion',
-      html: `
-        <div class="text-left text-sm">
-          <p><strong>Paciente:</strong> ${this.pacienteNombre}</p>
-          <p><strong>Expediente:</strong> ${this.pacienteCodigo}</p>
-          <p class="mt-2">Se asignara a la bandeja: <span class="text-green-600 font-bold text-xl">${bandeja.codigo}</span></p>
-        </div>
-      `,
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#10B981',
-      confirmButtonText: 'Si, Asignar',
-      cancelButtonText: 'Cancelar',
-      showConfirmButton: true
-    }).then((result) => {
-      if (result.isConfirmed) {
-        this.ejecutarAsignacion(bandeja.bandejaID);
-      }
-    });
-  }
-
-  /**
-   * Ejecuta la asignacion de bandeja.
-   */
-  private ejecutarAsignacion(bandejaId: number): void {
-    this.bandejaService.asignar({
-      bandejaID: bandejaId,
-      expedienteID: this.expedienteIdParaAsignar!,
-      observaciones: 'Asignacion desde Mapa Mortuorio'
-    }).subscribe({
-      next: () => {
-        Swal.fire({
-          icon: 'success',
-          title: 'Asignado Correctamente',
-          text: `${this.pacienteNombre} ahora esta en la bandeja asignada`,
-          confirmButtonColor: '#10B981',
-          showConfirmButton: true
-        }).then(() => {
-          this.router.navigate(['/mis-tareas']);
-        });
-      },
-      error: (err) => {
-        console.error('[MapaMortuorio] Error al asignar:', err);
-        this.mostrarAlerta('error', 'Error al asignar la bandeja');
-      }
-    });
-  }
-
-  /**
-   * Cancela modo asignacion y vuelve a Mis Tareas.
-   */
-  cancelarAsignacion(): void {
-    this.router.navigate(['/mis-tareas']);
-  }
-
-  // ===================================================================
-  // NAVEGACION Y ACCIONES
-  // ===================================================================
-
-  /**
-   * Muestra detalle de una bandeja.
-   */
-  verDetalleBandeja(bandeja: BandejaDTO): void {
-    this.bandejaSeleccionada = bandeja;
-    console.log('[MapaMortuorio] Ver detalle bandeja:', bandeja.codigo);
-  }
-
-  /**
-   * Marca una bandeja como "En Mantenimiento".
-   */
-  marcarMantenimiento(bandeja: BandejaDTO): void {
-    if (bandeja.estado.toLowerCase() !== 'disponible') {
-      Swal.fire({
+  abrirModalMantenimiento(bandeja: BandejaDTO): void {
+    if (!this.esDisponible(bandeja)) {
+      this.toast.fire({
         icon: 'warning',
-        title: 'Accion No Permitida',
-        text: 'Solo se pueden poner en mantenimiento bandejas disponibles',
-        confirmButtonColor: '#F59E0B',
-        showConfirmButton: true
+        title: 'Solo se puede poner en mantenimiento bandejas disponibles'
       });
       return;
     }
 
-    Swal.fire({
-      title: `Poner ${bandeja.codigo} en mantenimiento`,
-      input: 'textarea',
-      inputLabel: 'Motivo del mantenimiento',
-      inputPlaceholder: 'Ej: Limpieza profunda, reparacion, etc.',
-      inputAttributes: {
-        'aria-label': 'Motivo del mantenimiento'
-      },
-      showCancelButton: true,
-      confirmButtonColor: '#F59E0B',
-      cancelButtonColor: '#6B7280',
-      confirmButtonText: 'Si, marcar',
-      cancelButtonText: 'Cancelar',
-      showConfirmButton: true,
-      inputValidator: (value) => {
-        if (!value) {
-          return 'Debes ingresar un motivo';
+    this.bandejaParaMantenimiento = bandeja;
+    this.formMantenimiento.reset({
+      motivo: '',
+      detalle: '',
+      fechaInicio: this.formatDateTimeLocal(new Date()),
+      fechaEstimadaFin: '',
+      responsableExterno: ''
+    });
+    this.mostrarModalMantenimiento = true;
+  }
+
+  cerrarModalMantenimiento(): void {
+    this.mostrarModalMantenimiento = false;
+    this.bandejaParaMantenimiento = null;
+    this.isLoadingMantenimiento = false;
+  }
+
+  confirmarMantenimiento(): void {
+    if (this.isLoadingMantenimiento) return;
+    this.formMantenimiento.markAllAsTouched();
+    if (this.formMantenimiento.invalid || !this.bandejaParaMantenimiento) return;
+
+    this.isLoadingMantenimiento = true;
+    const raw = this.formMantenimiento.value;
+
+    const dto = {
+      motivo: raw.motivo,
+      detalle: raw.detalle || null,
+      fechaInicio: raw.fechaInicio
+        ? new Date(raw.fechaInicio).toISOString() : null,
+      fechaEstimadaFin: raw.fechaEstimadaFin
+        ? new Date(raw.fechaEstimadaFin).toISOString() : null,
+      responsableExterno: raw.responsableExterno || null
+    };
+
+    this.bandejaService.marcarMantenimiento(
+      this.bandejaParaMantenimiento.bandejaID, dto
+    ).pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          this.isLoadingMantenimiento = false;
+          this.cerrarModalMantenimiento();
+          this.cargarMapa();
+          this.toast.fire({
+            icon: 'success',
+            title: `${this.bandejaParaMantenimiento?.codigo ?? 'Bandeja'} en mantenimiento`
+          });
+        },
+        error: err => {
+          this.isLoadingMantenimiento = false;
+          this.manejarError('Error al iniciar mantenimiento', err);
         }
-        return null;
-      }
-    }).then((result) => {
-      if (result.isConfirmed && result.value) {
-        this.bandejaService.marcarMantenimiento(bandeja.bandejaID, result.value).subscribe({
-          next: () => {
-            Swal.fire({
-              icon: 'success',
-              title: 'Mantenimiento Iniciado',
-              text: `${bandeja.codigo} esta ahora en mantenimiento`,
-              confirmButtonColor: '#10B981',
-              showConfirmButton: true
-            });
-            this.cargarMapa();
-          },
-          error: (err: any) => {
-            console.error('[MapaMortuorio] Error al marcar mantenimiento:', err);
-            Swal.fire({
-              icon: 'error',
-              title: 'Error',
-              text: err.message || 'No se pudo marcar la bandeja en mantenimiento',
-              confirmButtonColor: '#EF4444',
-              showConfirmButton: true
-            });
-          }
-        });
-      }
-    });
+      });
   }
 
-  /**
-   * Finaliza el mantenimiento de una bandeja.
-   */
+  // ===================================================================
+  // FINALIZAR MANTENIMIENTO
+  // ===================================================================
+
   finalizarMantenimiento(bandeja: BandejaDTO): void {
-    if (bandeja.estado.toLowerCase() !== 'mantenimiento') {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Accion No Permitida',
-        text: 'Solo se puede finalizar mantenimiento de bandejas en ese estado',
-        confirmButtonColor: '#F59E0B',
-        showConfirmButton: true
-      });
+    if (!this.esMantenimiento(bandeja)) {
+      this.toast.fire({ icon: 'warning', title: 'Solo se puede finalizar bandejas en mantenimiento' });
       return;
     }
 
     Swal.fire({
       title: `Finalizar mantenimiento de ${bandeja.codigo}`,
-      text: 'La bandeja volvera a estar disponible',
+      text: 'La bandeja volverá a estar disponible',
       icon: 'question',
       showCancelButton: true,
       confirmButtonColor: '#10B981',
       cancelButtonColor: '#6B7280',
-      confirmButtonText: 'Si, finalizar',
+      confirmButtonText: 'Sí, finalizar',
       cancelButtonText: 'Cancelar',
-      showConfirmButton: true
-    }).then((result) => {
-      if (result.isConfirmed) {
-        this.bandejaService.finalizarMantenimiento(bandeja.bandejaID).subscribe({
+      reverseButtons: true
+    }).then(result => {
+      if (!result.isConfirmed) return;
+
+      this.bandejaService.finalizarMantenimiento(bandeja.bandejaID)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
           next: () => {
-            Swal.fire({
-              icon: 'success',
-              title: 'Mantenimiento Finalizado',
-              text: `${bandeja.codigo} esta ahora disponible`,
-              confirmButtonColor: '#10B981',
-              showConfirmButton: true
-            });
             this.cargarMapa();
+            this.toast.fire({ icon: 'success', title: `${bandeja.codigo} disponible` });
           },
-          error: (err: any) => {
-            console.error('[MapaMortuorio] Error al finalizar mantenimiento:', err);
-            Swal.fire({
-              icon: 'error',
-              title: 'Error',
-              text: err.message || 'No se pudo finalizar el mantenimiento',
-              confirmButtonColor: '#EF4444',
-              showConfirmButton: true
-            });
-          }
+          error: err => this.manejarError('Error al finalizar mantenimiento', err)
         });
-      }
     });
   }
 
-  /**
-   * Libera manualmente una bandeja ocupada (emergencia).
-   */
-  liberarBandejaManual(bandeja: BandejaDTO): void {
-    if (!this.bandejaService.puedeGestionarMantenimiento()) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Sin Permisos',
-        text: 'No tienes permisos para liberar bandejas manualmente',
-        confirmButtonColor: '#EF4444',
-        showConfirmButton: true
-      });
-      return;
-    }
 
+  /*@TODO V2 — IMPLEMENTAR CUANDO SE TENGAN CASUISTICAS CONCRETAS DE FALLOS EN SALIDA O ALGUN PROBLEMA CON BANDEJA.
+  // ===================================================================
+  // SALIDA FORZADA ADMIN (solo Admin/JG/VigSup)
+
+  // ===================================================================
+
+  liberarBandejaManual(bandeja: BandejaDTO): void {
     Swal.fire({
       title: `Liberar ${bandeja.codigo} manualmente`,
       html: `
-        <p class="text-sm text-gray-600 mb-4">Esta es una accion de emergencia que quedara registrada en auditoria.</p>
-        <p class="text-sm font-semibold mb-2">Paciente: ${bandeja.nombrePaciente || 'N/A'}</p>
-        <select id="motivo-select" class="swal2-input">
+        <p class="text-sm text-gray-600 mb-4">
+          Acción de emergencia — quedará registrada en auditoría.
+        </p>
+        <p class="text-sm font-semibold text-gray-700 mb-3">
+          Paciente: ${bandeja.nombrePaciente || 'N/A'}
+        </p>
+        <select id="motivo-select" class="swal2-input text-sm">
           <option value="">Seleccionar motivo...</option>
           <option value="Error en sistema de registro">Error en sistema de registro</option>
-          <option value="Salida sin completar tramites">Salida sin completar tramites</option>
-          <option value="Correccion de asignacion incorrecta">Correccion de asignacion incorrecta</option>
-          <option value="Emergencia o evacuacion">Emergencia o evacuacion</option>
-          <option value="otro">Otro (especificar abajo)</option>
+          <option value="Salida sin completar trámites">Salida sin completar trámites</option>
+          <option value="Corrección de asignación incorrecta">Corrección de asignación incorrecta</option>
+          <option value="Emergencia o evacuación">Emergencia o evacuación</option>
+          <option value="Otro">Otro (especificar en observaciones)</option>
         </select>
-        <textarea id="observaciones-textarea" class="swal2-textarea" placeholder="Observaciones detalladas (minimo 20 caracteres)" rows="3"></textarea>
+        <textarea id="obs-textarea" class="swal2-textarea text-sm"
+                  placeholder="Observaciones detalladas (mínimo 20 caracteres)" rows="3"></textarea>
       `,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#EF4444',
       cancelButtonColor: '#6B7280',
-      confirmButtonText: 'Si, liberar',
+      confirmButtonText: 'Sí, liberar',
       cancelButtonText: 'Cancelar',
-      showConfirmButton: true,
+      reverseButtons: true,
       preConfirm: () => {
-        const motivoSelect = document.getElementById('motivo-select') as HTMLSelectElement;
-        const observaciones = (document.getElementById('observaciones-textarea') as HTMLTextAreaElement).value;
-
-        let motivo = motivoSelect.value;
-
-        if (!motivo) {
-          Swal.showValidationMessage('Debes seleccionar un motivo');
-          return false;
-        }
-
-        if (!observaciones || observaciones.length < 20) {
+        const motivo = (document.getElementById('motivo-select') as HTMLSelectElement).value;
+        const obs = (document.getElementById('obs-textarea') as HTMLTextAreaElement).value;
+        if (!motivo) { Swal.showValidationMessage('Selecciona un motivo'); return false; }
+        if (!obs || obs.trim().length < 20) {
           Swal.showValidationMessage('Las observaciones deben tener al menos 20 caracteres');
           return false;
         }
-
-        if (motivo === 'otro') {
-          motivo = observaciones.split('\n')[0].substring(0, 100);
-        }
-
-        return { motivo, observaciones };
+        return { motivo, observaciones: obs };
       }
-    }).then((result) => {
-      if (result.isConfirmed && result.value) {
-        this.bandejaService.liberarManualmente(
-          bandeja.bandejaID,
-          result.value.motivo,
-          result.value.observaciones
-        ).subscribe({
+    }).then(result => {
+      if (!result.isConfirmed || !result.value) return;
+
+      this.bandejaService.liberarManualmente(
+        bandeja.bandejaID,
+        result.value.motivo,
+        result.value.observaciones
+      ).pipe(takeUntil(this.destroy$))
+        .subscribe({
           next: () => {
-            Swal.fire({
-              icon: 'success',
-              title: 'Bandeja Liberada',
-              text: `${bandeja.codigo} esta ahora disponible`,
-              confirmButtonColor: '#10B981',
-              showConfirmButton: true
-            });
             this.cargarMapa();
+            this.toast.fire({ icon: 'success', title: `${bandeja.codigo} liberada` });
           },
-          error: (err: any) => {
-            console.error('[MapaMortuorio] Error al liberar bandeja:', err);
-            Swal.fire({
-              icon: 'error',
-              title: 'Error',
-              text: err.message || 'No se pudo liberar la bandeja',
-              confirmButtonColor: '#EF4444',
-              showConfirmButton: true
-            });
-          }
+          error: err => this.manejarError('Error al liberar bandeja', err)
         });
+    });
+  }
+  */
+
+  // ===================================================================
+  // MODO ASIGNACIÓN
+  // ===================================================================
+
+  seleccionarBandeja(bandeja: BandejaDTO): void {
+    if (this.modoAsignacion) {
+      if (this.esDisponible(bandeja)) {
+        this.confirmarAsignacion(bandeja);
+      } else {
+        this.toast.fire({ icon: 'warning', title: 'Elija una bandeja verde (disponible)' });
       }
+      return;
+    }
+    if (this.esOcupada(bandeja)) this.verDetalleBandeja(bandeja);
+  }
+
+  private confirmarAsignacion(bandeja: BandejaDTO): void {
+    if (!this.expedienteIdParaAsignar) return;
+
+    Swal.fire({
+      title: 'Confirmar Asignación',
+      html: `<div class="text-left text-sm">
+        <p><strong>Paciente:</strong> ${this.pacienteNombre}</p>
+        <p><strong>Expediente:</strong> ${this.pacienteCodigo}</p>
+        <p class="mt-2">Bandeja: <span class="text-green-600 font-bold text-xl">${bandeja.codigo}</span></p>
+      </div>`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#10B981',
+      confirmButtonText: 'Sí, asignar',
+      cancelButtonText: 'Cancelar',
+      reverseButtons: true
+    }).then(result => {
+      if (result.isConfirmed) this.ejecutarAsignacion(bandeja.bandejaID);
+    });
+  }
+
+  private ejecutarAsignacion(bandejaId: number): void {
+    this.bandejaService.asignar({
+      bandejaID: bandejaId,
+      expedienteID: this.expedienteIdParaAsignar!,
+      observaciones: 'Asignación desde Mapa Mortuorio'
+    }).pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          Swal.fire({
+            icon: 'success',
+            title: 'Asignado Correctamente',
+            text: `${this.pacienteNombre} asignado a la bandeja`,
+            confirmButtonColor: '#10B981'
+          }).then(() => this.router.navigate(['/mis-tareas']));
+        },
+        error: err => this.manejarError('Error al asignar la bandeja', err)
+      });
+  }
+
+  cancelarAsignacion(): void {
+    this.router.navigate(['/mis-tareas']);
+  }
+
+  // ===================================================================
+  // VER DETALLE (placeholder — A2)
+  // ===================================================================
+
+  verDetalleBandeja(bandeja: BandejaDTO): void {
+    this.bandejaSeleccionada = bandeja;
+    // TODO: implementar modal Ver Detalle (A2)
+  }
+
+  onVerDetalle(bandeja: BandejaDTO, event: Event): void {
+    event.stopPropagation();
+    this.verDetalleBandeja(bandeja);
+  }
+
+  // ===================================================================
+  // HELPER — manejarError central
+  // ===================================================================
+
+  private manejarError(titulo: string, error: any): void {
+    console.error(`[MapaMortuorio] ${titulo}:`, error);
+    Swal.fire({
+      icon: 'error',
+      title: titulo,
+      text: error?.error?.message || error?.message || 'Ocurrió un error inesperado',
+      confirmButtonColor: '#EF4444'
     });
   }
 
   // ===================================================================
-  // ALERTAS Y NOTIFICACIONES
+  // HELPER — formateo hora local Lima GMT-5
   // ===================================================================
 
-  /**
-   * Muestra toast de alerta de ocupacion critica.
-   */
-  private mostrarAlertaOcupacion(estadisticas: EstadisticasBandejaDTO): void {
-    const Toast = Swal.mixin({
-      toast: true,
-      position: 'top-end',
-      showConfirmButton: false,
-      timer: 5000,
-      timerProgressBar: true
-    });
-
-    Toast.fire({
-      icon: 'warning',
-      title: 'Ocupacion Critica',
-      text: `Mortuorio al ${estadisticas.porcentajeOcupacion}% de capacidad`
-    });
-  }
-
-  /**
-   * Muestra alerta toast generica.
-   */
-  private mostrarAlerta(icon: 'success' | 'warning' | 'error' | 'info', title: string): void {
-    const Toast = Swal.mixin({
-      toast: true,
-      position: 'top-end',
-      showConfirmButton: false,
-      timer: 3000
-    });
-    Toast.fire({ icon, title });
-  }
-
-  // ===================================================================
-  // HELPERS VISUALES
-  // ===================================================================
-
-  /**
-   * Obtiene la clase CSS segun el estado de la bandeja.
-   */
-  getEstadoClase(bandeja: BandejaDTO): string {
-    return this.bandejaService.getEstadoColor(bandeja.estado);
-  }
-
-  /**
-   * Obtiene el icono segun el estado de la bandeja.
-   */
-  getEstadoIcono(bandeja: BandejaDTO): string {
-    return this.bandejaService.getEstadoIcon(bandeja.estado);
-  }
-
-  /**
-   * Formatea el tiempo ocupada en formato legible.
-   */
-  formatearTiempoOcupada(tiempoString?: string): string {
-    return this.bandejaService.formatearTiempoOcupada(tiempoString);
-  }
-
-  /**
-   * Verifica si una bandeja esta disponible.
-   */
-  esDisponible(bandeja: BandejaDTO): boolean {
-    return bandeja.estado.toLowerCase() === 'disponible';
-  }
-
-  /**
-   * Verifica si una bandeja esta ocupada.
-   */
-  esOcupada(bandeja: BandejaDTO): boolean {
-    return bandeja.estado.toLowerCase() === 'ocupada';
-  }
-
-  /**
-   * Verifica si una bandeja esta en mantenimiento.
-   */
-  esMantenimiento(bandeja: BandejaDTO): boolean {
-    return bandeja.estado.toLowerCase() === 'mantenimiento';
-  }
-
-  /**
-   * Verifica si el usuario puede gestionar mantenimiento.
-   */
-  puedeGestionarMantenimiento(): boolean {
-    return this.bandejaService.puedeGestionarMantenimiento();
+  private formatDateTimeLocal(d: Date): string {
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+      `T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 }

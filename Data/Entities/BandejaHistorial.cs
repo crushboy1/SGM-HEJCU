@@ -30,14 +30,14 @@ namespace SisMortuorio.Data.Entities
 
         /// <summary>
         /// ID del expediente asignado a la bandeja
+        /// Null cuando la acción es InicioMantenimiento o FinMantenimiento (el mantenimiento no tiene expediente asociado)
         /// </summary>
-        [Required]
-        public int ExpedienteID { get; set; }
+        public int? ExpedienteID { get; set; }
 
         /// <summary>
-        /// Navegación al expediente
+        /// Navegación al expediente (null cuando es registro de mantenimiento)
         /// </summary>
-        public Expediente Expediente { get; set; } = null!;
+        public Expediente? Expediente { get; set; }
 
         /// <summary>
         /// Fecha y hora de ingreso del cuerpo a la bandeja

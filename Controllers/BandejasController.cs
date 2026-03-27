@@ -9,30 +9,24 @@ namespace SisMortuorio.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    public class BandejasController : ControllerBase
+    public class BandejasController(
+        IBandejaService bandejaService,
+        ILogger<BandejasController> logger) : ControllerBase
     {
-        private readonly IBandejaService _bandejaService;
-        private readonly ILogger<BandejasController> _logger;
+        private readonly IBandejaService _bandejaService = bandejaService;
+        private readonly ILogger<BandejasController> _logger = logger;
 
-        public BandejasController(
-            IBandejaService bandejaService,
-            ILogger<BandejasController> logger)
-        {
-            _bandejaService = bandejaService;
-            _logger = logger;
-        }
+        private int UsuarioActualId =>
+            int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-        /// <summary>
-        /// Obtiene el estado actual de todas las bandejas (mapa visual).
-        /// </summary>
+        /// <summary>Todas las bandejas con estado actual (mapa visual).</summary>
         [HttpGet("dashboard")]
         [ProducesResponseType(typeof(List<BandejaDTO>), 200)]
         public async Task<IActionResult> GetOcupacionDashboard()
         {
             try
             {
-                var dashboard = await _bandejaService.GetOcupacionDashboardAsync();
-                return Ok(dashboard);
+                return Ok(await _bandejaService.GetOcupacionDashboardAsync());
             }
             catch (Exception ex)
             {
@@ -41,10 +35,7 @@ namespace SisMortuorio.Controllers
             }
         }
 
-        /// <summary>
-        /// Obtiene los detalles de una bandeja específica por ID.
-        /// (Necesario para la pantalla de asignación)
-        /// </summary>
+        /// <summary>Detalle de una bandeja por ID.</summary>
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(BandejaDTO), 200)]
         [ProducesResponseType(404)]
@@ -53,10 +44,9 @@ namespace SisMortuorio.Controllers
             try
             {
                 var bandeja = await _bandejaService.GetByIdAsync(id);
-                if (bandeja == null)
-                    return NotFound(new { message = $"Bandeja con ID {id} no encontrada" });
-
-                return Ok(bandeja);
+                return bandeja == null
+                    ? NotFound(new { message = $"Bandeja {id} no encontrada" })
+                    : Ok(bandeja);
             }
             catch (Exception ex)
             {
@@ -65,19 +55,13 @@ namespace SisMortuorio.Controllers
             }
         }
 
-        /// <summary>
-        /// Obtiene una lista de bandejas disponibles (para dropdown).
-        /// </summary>
+        /// <summary>Bandejas disponibles (dropdown de asignación).</summary>
         [HttpGet("disponibles")]
         [Authorize(Roles = "Ambulancia, Administrador")]
         [ProducesResponseType(typeof(List<BandejaDisponibleDTO>), 200)]
         public async Task<IActionResult> GetDisponibles()
         {
-            try
-            {
-                var disponibles = await _bandejaService.GetDisponiblesAsync();
-                return Ok(disponibles);
-            }
+            try { return Ok(await _bandejaService.GetDisponiblesAsync()); }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al obtener bandejas disponibles");
@@ -85,98 +69,98 @@ namespace SisMortuorio.Controllers
             }
         }
 
-        /// <summary>
-        /// Obtiene estadísticas de ocupación del mortuorio.
-        /// </summary>
+        /// <summary>Estadísticas de ocupación del mortuorio.</summary>
         [HttpGet("estadisticas")]
-        [Authorize(Roles = "Administrador, JefeGuardia, VigilanteSupervisor, EnfermeriaTecnica, EnfermeriaLicenciada")]
+        [Authorize(Roles = "Administrador, JefeGuardia, VigilanteSupervisor, " +
+                           "EnfermeriaTecnica, EnfermeriaLicenciada")]
         [ProducesResponseType(typeof(EstadisticasBandejaDTO), 200)]
         public async Task<IActionResult> GetEstadisticas()
         {
-            try
-            {
-                var stats = await _bandejaService.GetEstadisticasAsync();
-                return Ok(stats);
-            }
+            try { return Ok(await _bandejaService.GetEstadisticasAsync()); }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error al obtener estadísticas de bandejas");
+                _logger.LogError(ex, "Error al obtener estadísticas");
                 return StatusCode(500, new { message = "Error interno del servidor" });
             }
         }
 
-        /// <summary>
-        /// Asigna un expediente a una bandeja (Técnico de Ambulancia).
-        /// </summary>
+        /// <summary>Asigna un expediente a una bandeja disponible.</summary>
         [HttpPost("asignar")]
         [Authorize(Roles = "Ambulancia, Administrador")]
         [ProducesResponseType(typeof(BandejaDTO), 200)]
         [ProducesResponseType(400)]
-        [ProducesResponseType(404)]
         public async Task<IActionResult> AsignarBandeja([FromBody] AsignarBandejaDTO dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
             try
             {
-                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-                var resultado = await _bandejaService.AsignarBandejaAsync(dto, userId);
-
-                _logger.LogInformation("Usuario {UsuarioID} asignó Expediente {ExpedienteID} a Bandeja {BandejaID}",
-                    userId, dto.ExpedienteID, dto.BandejaID);
-
+                var resultado = await _bandejaService.AsignarBandejaAsync(dto, UsuarioActualId);
                 return Ok(resultado);
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "Error de negocio al asignar bandeja. Expediente: {ExpedienteID}, Bandeja: {BandejaID}",
-                    dto.ExpedienteID, dto.BandejaID);
                 return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error al asignar bandeja. Expediente: {ExpedienteID}", dto.ExpedienteID);
+                _logger.LogError(ex, "Error al asignar bandeja");
                 return StatusCode(500, new { message = "Error interno del servidor" });
             }
         }
 
+        // ═══════════════════════════════════════════════════════════
+        // MANTENIMIENTO — ACTUALIZADO v2
+        // ═══════════════════════════════════════════════════════════
+
         /// <summary>
-        /// Pone una bandeja en estado de Mantenimiento.
+        /// Pone una bandeja en Mantenimiento con datos completos del modal.
+        /// CAMBIOS v2: acepta IniciarMantenimientoDTO en lugar de string.
         /// </summary>
         [HttpPut("{bandejaId}/mantenimiento/iniciar")]
         [Authorize(Roles = "Administrador, JefeGuardia, VigilanteSupervisor")]
         [ProducesResponseType(typeof(BandejaDTO), 200)]
         [ProducesResponseType(400)]
-        public async Task<IActionResult> IniciarMantenimiento(int bandejaId, [FromBody] string observaciones)
+        public async Task<IActionResult> IniciarMantenimiento(
+            int bandejaId,
+            [FromBody] IniciarMantenimientoDTO dto)
         {
-            if (string.IsNullOrWhiteSpace(observaciones))
-                return BadRequest(new { message = "Se requiere un motivo/observaciones para iniciar mantenimiento." });
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            if (string.IsNullOrWhiteSpace(dto.Motivo))
+                return BadRequest(new { message = "El motivo del mantenimiento es obligatorio." });
+
+            if (!MotivoMantenimiento.EsValido(dto.Motivo))
+                return BadRequest(new
+                {
+                    message = $"Motivo inválido. Valores permitidos: " +
+                              string.Join(", ", MotivoMantenimiento.Valores)
+                });
 
             try
             {
-                var usuarioId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-                var resultado = await _bandejaService.IniciarMantenimientoAsync(bandejaId, observaciones, usuarioId);
+                var resultado = await _bandejaService.IniciarMantenimientoAsync(
+                    bandejaId, dto, UsuarioActualId);
 
-                _logger.LogInformation("Usuario {UsuarioID} puso Bandeja {BandejaID} en mantenimiento", usuarioId, bandejaId);
+                _logger.LogInformation(
+                    "Usuario {UID} → Bandeja {BID} en Mantenimiento. Motivo: {Motivo}",
+                    UsuarioActualId, bandejaId, dto.Motivo);
 
                 return Ok(resultado);
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "Error de negocio al iniciar mantenimiento de Bandeja {BandejaID}", bandejaId);
                 return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error al iniciar mantenimiento de Bandeja {BandejaID}", bandejaId);
+                _logger.LogError(ex, "Error al iniciar mantenimiento de Bandeja {BID}", bandejaId);
                 return StatusCode(500, new { message = "Error interno del servidor" });
             }
         }
 
-        /// <summary>
-        /// Saca una bandeja de Mantenimiento y la pone Disponible.
-        /// </summary>
+        /// <summary>Finaliza el mantenimiento y pone la bandeja Disponible.</summary>
         [HttpPut("{bandejaId}/mantenimiento/finalizar")]
         [Authorize(Roles = "Administrador, JefeGuardia, VigilanteSupervisor")]
         [ProducesResponseType(typeof(BandejaDTO), 200)]
@@ -185,70 +169,67 @@ namespace SisMortuorio.Controllers
         {
             try
             {
-                var usuarioId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-                var resultado = await _bandejaService.FinalizarMantenimientoAsync(bandejaId, usuarioId);
+                var resultado = await _bandejaService.FinalizarMantenimientoAsync(
+                    bandejaId, UsuarioActualId);
 
-                _logger.LogInformation("Usuario {UsuarioID} finalizó mantenimiento de Bandeja {BandejaID}", usuarioId, bandejaId);
+                _logger.LogInformation(
+                    "Usuario {UID} finalizó mantenimiento de Bandeja {BID}",
+                    UsuarioActualId, bandejaId);
 
                 return Ok(resultado);
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "Error de negocio al finalizar mantenimiento de Bandeja {BandejaID}", bandejaId);
                 return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error al finalizar mantenimiento de Bandeja {BandejaID}", bandejaId);
+                _logger.LogError(ex, "Error al finalizar mantenimiento de Bandeja {BID}", bandejaId);
                 return StatusCode(500, new { message = "Error interno del servidor" });
             }
         }
 
         /// <summary>
-        /// Libera manualmente una bandeja ocupada (emergencia/corrección).
-        /// Solo para roles administrativos. Registra motivo y observaciones para auditoría.
+        /// Libera manualmente una bandeja ocupada (emergencia/corrección admin).
+        /// Requiere motivo obligatorio para auditoría.
         /// </summary>
         [HttpPut("{bandejaId}/liberar-manualmente")]
         [Authorize(Roles = "Administrador, JefeGuardia, VigilanteSupervisor")]
         [ProducesResponseType(typeof(BandejaDTO), 200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
-        public async Task<IActionResult> LiberarManualmente(int bandejaId, [FromBody] LiberarBandejaManualDTO dto)
+        public async Task<IActionResult> LiberarManualmente(
+            int bandejaId,
+            [FromBody] LiberarBandejaManualDTO dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            // Validar que el bandejaId del parámetro coincida con el del DTO
             if (dto.BandejaID != bandejaId)
-                return BadRequest(new { message = "El ID de la bandeja no coincide con el parámetro de la URL" });
+                return BadRequest(new { message = "El ID de la bandeja no coincide." });
 
             try
             {
-                var usuarioId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-                dto.UsuarioLiberaID = usuarioId; // Sobrescribir con el usuario autenticado
-
+                dto.UsuarioLiberaID = UsuarioActualId;
                 var resultado = await _bandejaService.LiberarManualmenteAsync(dto);
 
                 _logger.LogWarning(
-                    "LIBERACIÓN MANUAL: Usuario {UsuarioID} liberó Bandeja {BandejaID}. Motivo: {Motivo}",
-                    usuarioId, bandejaId, dto.MotivoLiberacion
-                );
+                    "LIBERACIÓN MANUAL: Usuario {UID} liberó Bandeja {BID}. Motivo: {Motivo}",
+                    UsuarioActualId, bandejaId, dto.MotivoLiberacion);
 
                 return Ok(resultado);
             }
             catch (KeyNotFoundException ex)
             {
-                _logger.LogWarning(ex, "Bandeja {BandejaID} no encontrada", bandejaId);
                 return NotFound(new { message = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "Error de negocio al liberar manualmente Bandeja {BandejaID}", bandejaId);
                 return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error al liberar manualmente Bandeja {BandejaID}", bandejaId);
+                _logger.LogError(ex, "Error al liberar manualmente Bandeja {BID}", bandejaId);
                 return StatusCode(500, new { message = "Error interno del servidor" });
             }
         }

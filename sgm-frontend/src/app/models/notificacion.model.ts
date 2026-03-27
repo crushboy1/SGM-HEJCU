@@ -84,6 +84,12 @@ export interface BandejaDTO {
   fechaHoraAsignacion?: Date;
   tiempoOcupada?: string;
   tieneAlerta?: boolean;
+  motivoMantenimiento?: string;
+  detalleMantenimiento?: string;
+  fechaInicioMantenimiento?: Date;
+  fechaEstimadaFinMantenimiento?: Date;
+  responsableMantenimiento?: string;
+  usuarioRegistraMantenimientoNombre?: string;
 }
 
 
@@ -153,7 +159,18 @@ export interface SolicitudCorreccionDTO {
   tiempoTranscurrido: string;
   superaTiempoAlerta: boolean;
 }
-
+/**
+ * DTO para iniciar mantenimiento de una bandeja.
+ * Debe coincidir con IniciarMantenimientoDTO.cs del backend.
+ * Motivos válidos: Limpieza | Reparacion | InspeccionSanitaria | FallaTecnica | Otro
+ */
+export interface IniciarMantenimientoDTO {
+  motivo: string;
+  detalle?: string;
+  fechaInicio?: string | null;   // ISO 8601
+  fechaEstimadaFin?: string | null;   // ISO 8601
+  responsableExterno?: string | null;
+}
 /**
  * Configuración de colores por tipo de notificación (Tailwind CSS).
  * Actualizado: "exito" → "success"
