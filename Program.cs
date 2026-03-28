@@ -132,7 +132,8 @@ builder.Services.AddScoped<IVerificacionService, VerificacionService>();
 builder.Services.AddScoped<IBandejaService, BandejaService>();
 builder.Services.AddScoped<ISalidaMortuorioService, SalidaMortuorioService>();
 builder.Services.AddScoped<ISolicitudCorreccionService, SolicitudCorreccionService>();
-
+// Servicio de consulta Expediente Vigilante Supervisor
+builder.Services.AddScoped<IVigilanteSupervisorService, VigilanteSupervisorService>();
 // Servicios de sistemas externos
 builder.Services.AddScoped<IGalenhosService, GalenhosService>();
 builder.Services.AddScoped<ISigemService, SigemService>();

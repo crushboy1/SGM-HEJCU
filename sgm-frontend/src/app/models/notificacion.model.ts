@@ -206,10 +206,72 @@ export const COLORES_NOTIFICACION: Record<TipoNotificacion, {
     icon: 'text-red-500'
   }
 };
+// ========================================
+// INTERFACES VIGILANTE SUPERVISOR
+// ========================================
 
 /**
+ * DTO para la tabla principal del módulo Supervisor de Vigilancia.
+ * Debe coincidir con ExpedienteVigilanciaDTO.cs del backend.
+ *
+ * SEMÁFORO (bool | null):
+ *   null  → amarillo: sin registro de deuda / sin evaluación
+ *           EXCEPCIÓN: si tipoExpediente = 'Externo' y bloqueaEconomica = null → verde
+ *           (externos no generan deuda económica por definición)
+ *   true  → rojo: deuda existe y bloquea retiro
+ *   false → verde: deuda existe y no bloquea retiro
+ *
+ * Si bypassDeudaAutorizado = true → ambos semáforos se muestran verde
+ * con indicador visual de bypass activo.
+ */
+export interface ExpedienteVigilanciaDTO {
+  expedienteID: number;
+  codigoExpediente: string;
+  hc: string;
+  nombreCompleto: string;
+  tipoDocumento: string;
+  numeroDocumento: string;
+  servicioFallecimiento: string;
+  fechaHoraFallecimiento: Date;
+  tipoExpediente: string;
+  estadoActual: string;
+  codigoBandeja?: string;
+  fechaIngresoBandeja?: Date;
+  tiempoEnMortuorio?: string;
+  bloqueaSangre: boolean | null;
+  bloqueaEconomica: boolean | null;
+  descripcionSangre: string;
+  descripcionEconomica: string;
+  bypassDeudaAutorizado: boolean;
+  bypassDeudaJustificacion?: string;
+  tieneActa: boolean;
+  tipoSalida?: string;
+}
+
+/**
+ * DTO para el modal "Ver Detalle" del módulo Supervisor de Vigilancia.
+ */
+export interface DetalleVigilanciaDTO extends ExpedienteVigilanciaDTO {
+  diagnosticoFinal?: string;
+  causaViolentaODudosa: boolean;
+  esNN: boolean;
+  fechaNacimiento: Date;
+  sexo: string;
+  fuenteFinanciamiento: string;
+  estadoSangre: string;      
+  detalleSangre?: string;
+  estadoEconomica: string;
+  mensajeEconomica: string;
+  documentacionCompleta: boolean;
+  responsableRetiro?: string;
+  parentescoOCargo?: string;
+  destino?: string;
+  actaRetiroID?: number;
+  jefeGuardiaNombre?: string;
+  jefeGuardiaCMP?: string;
+}
+/**
  * Iconos por tipo de notificación (para app-icon component).
- * Actualizado: "exito" → "success"
  */
 export const ICONOS_NOTIFICACION: Record<TipoNotificacion, string> = {
   info: 'info',

@@ -27,9 +27,9 @@ import { CommonModule } from '@angular/common';
  * - Identificadores: hash, qr-code
  * - Financiero: credit-card
  * - Hospital: droplet, building-2, truck, map-pin
- * - Configuración: settings, ban
+ * - Configuración: settings, ban, wrench, unlock, user-plus
  * - Administrativo: bell, book, shield, bar-chart
- */
+ */ 
 @Component({
   selector: 'app-icon',
   standalone: true,
@@ -375,13 +375,30 @@ import { CommonModule } from '@angular/common';
              CONFIGURACIÓN
              ============================================ -->
 
-        <!-- ⭐ NUEVO: Settings (Mantenimiento) -->
+        <!--  Settings (Mantenimiento) -->
         <g *ngSwitchCase="'settings'">
           <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
           <circle cx="12" cy="12" r="3"></circle>
         </g>
+        <!-- Wrench (Mantenimiento de Bandejas) -->
+        <g *ngSwitchCase="'wrench'">
+          <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+        </g>
 
-        <!-- ⭐ NUEVO: Ban (Fuera de Servicio) -->
+        <!-- User Plus (Asignación de bandeja) -->
+        <g *ngSwitchCase="'user-plus'">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+          <line x1="19" x2="19" y1="8" y2="14"></line>
+          <line x1="22" x2="16" y1="11" y2="11"></line>
+        </g>
+
+        <!-- Unlock (Liberar bandeja manual) -->
+        <g *ngSwitchCase="'unlock'">
+          <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+        </g>
+        <!-- : Ban (Fuera de Servicio) -->
         <g *ngSwitchCase="'ban'">
           <circle cx="12" cy="12" r="10"></circle>
           <path d="m4.9 4.9 14.2 14.2"></path>
