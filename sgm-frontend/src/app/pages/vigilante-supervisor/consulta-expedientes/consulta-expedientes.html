@@ -1,0 +1,513 @@
+<div class="min-h-screen bg-hospital-bg">
+  <div class="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-4">
+
+    <!-- HEADER -->
+    <div class="mb-2 bg-gradient-to-r from-hospital-cyan to-cyan-600 rounded-xl shadow-md p-6 text-white">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <div class="p-3 bg-white/20 rounded-xl">
+            <app-icon name="eye" [size]="32"></app-icon>
+          </div>
+          <div>
+            <h1 class="text-2xl font-bold">Consulta de Expedientes</h1>
+            <p class="text-sm text-white/80">
+              Supervisor de Vigilancia — semáforo de deudas y estado de retiro
+            </p>
+          </div>
+        </div>
+        <button type="button"
+                (click)="cargarExpedientes()"
+                [disabled]="cargando"
+                class="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition
+                   flex items-center gap-2 disabled:opacity-50">
+          <app-icon [name]="cargando ? 'loader' : 'refresh-cw'"
+                    [size]="18"
+                    [class.animate-spin]="cargando"></app-icon>
+          <span class="font-medium">Actualizar</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- FILTROS -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+      <div class="flex flex-col sm:flex-row gap-3 flex-wrap">
+
+        <!-- Búsqueda texto libre -->
+        <div class="flex-1 min-w-[200px] flex items-center gap-2 px-3 py-2
+            border border-gray-300 rounded-lg bg-white
+            focus-within:ring-2 focus-within:ring-hospital-cyan
+            focus-within:border-hospital-cyan transition-all">
+          <app-icon name="search" [size]="16" class="text-gray-400 flex-shrink-0"></app-icon>
+          <input type="text"
+                 [ngModel]="textoBusqueda"
+                 (ngModelChange)="onBusquedaChange($event)"
+                 placeholder="Buscar por HC, DNI o Nombre..."
+                 class="flex-1 outline-none text-sm text-gray-700
+                placeholder-gray-400 bg-transparent">
+        </div>
+
+        <!-- Filtro estado -->
+        <select [(ngModel)]="filtroEstado" (ngModelChange)="aplicarFiltros()"
+                class="form-input bg-white sm:w-48">
+          <option value="">Todos los estados</option>
+          <option value="EnBandeja">En Bandeja</option>
+          <option value="PendienteRetiro">Pendiente Retiro</option>
+          <option value="Retirado">Retirado</option>
+          <option value="PendienteAsignacionBandeja">Pend. Asignación</option>
+        </select>
+
+        <!-- Filtro deuda -->
+        <select [(ngModel)]="filtroDeuda" (ngModelChange)="aplicarFiltros()"
+                class="form-input bg-white sm:w-52">
+          <option value="">Todas las deudas</option>
+          <option value="pendiente">Con deuda pendiente</option>
+          <option value="sinDeuda">Sin deuda registrada</option>
+          <option value="bypass">Con bypass activo</option>
+        </select>
+
+        <!-- Limpiar filtros -->
+        <button *ngIf="filtrosActivos > 0" type="button" (click)="limpiarFiltros()"
+                class="btn-secondary flex items-center gap-1.5 whitespace-nowrap">
+          <app-icon name="x" [size]="14"></app-icon>
+          Limpiar
+          <span class="bg-hospital-cyan text-white text-xs rounded-full
+                       w-4 h-4 flex items-center justify-center font-bold">
+            {{ filtrosActivos }}
+          </span>
+        </button>
+      </div>
+    </div>
+
+    <!-- LEYENDA SEMÁFORO -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-2.5">
+      <div class="flex flex-wrap items-center gap-4 text-xs text-gray-600">
+        <span class="font-bold text-gray-700 uppercase tracking-wide text-[10px]">
+          Semáforo:
+        </span>
+        <div class="flex items-center gap-1.5">
+          <span class="w-3 h-3 rounded-full bg-green-500 inline-block"></span>
+          Sin deuda / Resuelta
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span>
+          Deuda pendiente — bloquea retiro
+        </div>
+      </div>
+    </div>
+
+    <!-- TABLA -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+
+      <!-- Loading -->
+      <div *ngIf="cargando" class="p-16 text-center">
+        <app-icon name="loader" [size]="40"
+                  class="animate-spin text-hospital-cyan mx-auto mb-3"></app-icon>
+        <span class="text-gray-500 text-sm">Cargando expedientes...</span>
+      </div>
+
+      <!-- Error -->
+      <div *ngIf="error && !cargando" class="p-16 text-center">
+        <app-icon name="alert-circle" [size]="44" class="text-red-400 mx-auto mb-3"></app-icon>
+        <p class="text-red-600 font-medium mb-3">{{ error }}</p>
+        <button type="button" (click)="cargarExpedientes()" class="btn-primary text-sm">
+          Reintentar
+        </button>
+      </div>
+
+      <!-- Datos -->
+      <div *ngIf="!cargando && !error" class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wide">
+                Expediente / HC
+              </th>
+              <!-- Paciente — izquierda por ser más largo -->
+              <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide">
+                Paciente
+              </th>
+              <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase
+                         tracking-wide hidden md:table-cell">
+                Servicio
+              </th>
+              <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wide">
+                Estado
+              </th>
+              <th class="px-3 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wide">
+                <div class="flex items-center justify-center gap-1">
+                  <app-icon name="droplet" [size]="12"></app-icon>
+                  Sangre
+                </div>
+              </th>
+              <th class="px-3 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wide">
+                <div class="flex items-center justify-center gap-1">
+                  <app-icon name="credit-card" [size]="12"></app-icon>
+                  Económica
+                </div>
+              </th>
+              <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase
+                         tracking-wide hidden lg:table-cell">
+                Tiempo
+              </th>
+              <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wide">
+                Acción
+              </th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+
+            <!-- Sin resultados -->
+            <tr *ngIf="paginatedItems.length === 0">
+              <td colspan="8" class="px-4 py-12 text-center text-gray-400">
+                <app-icon name="search" [size]="36" class="mx-auto mb-2 opacity-40"></app-icon>
+                <p class="font-medium">No se encontraron expedientes</p>
+                <p *ngIf="filtrosActivos > 0" class="text-xs mt-1">
+                  Intenta ajustar los filtros
+                </p>
+              </td>
+            </tr>
+
+            <!-- Filas -->
+            <tr *ngFor="let e of paginatedItems; trackBy: trackById"
+                class="hover:bg-gray-50 transition-colors">
+
+              <!-- Expediente / HC -->
+              <td class="px-4 py-3 text-center">
+                <p class="font-mono text-xs font-semibold text-hospital-cyan">
+                  {{ e.codigoExpediente }}
+                </p>
+                <p class="text-xs text-gray-500 mt-0.5">HC: {{ e.hc }}</p>
+              </td>
+
+              <!-- Paciente — izquierda -->
+              <td class="px-4 py-3">
+                <p class="font-semibold text-gray-800 text-sm leading-tight">
+                  {{ e.nombreCompleto }}
+                </p>
+                <p class="text-xs text-gray-500 mt-0.5">
+                  {{ e.tipoDocumento }}: {{ e.numeroDocumento }}
+                </p>
+              </td>
+
+              <!-- Servicio -->
+              <td class="px-4 py-3 text-center hidden md:table-cell">
+                <span class="text-xs text-gray-600">{{ e.servicioFallecimiento }}</span>
+              </td>
+
+              <!-- Estado + bypass -->
+              <td class="px-4 py-3 text-center">
+                <div class="flex flex-col items-center gap-1">
+                  <span class="inline-flex items-center justify-center px-2.5 py-1
+                               rounded-full text-xs font-semibold min-w-[90px]"
+                        [ngClass]="getBadge(e.estadoActual)">
+                    {{ e.estadoActual }}
+                  </span>
+                  <!-- Bypass — segunda línea -->
+                  <span *ngIf="e.bypassDeudaAutorizado"
+                        class="inline-flex items-center gap-0.5 px-1.5 py-0.5
+                               bg-amber-100 text-amber-700 text-[10px] rounded-full
+                               font-semibold leading-tight"
+                        [title]="e.bypassDeudaJustificacion ?? 'Bypass autorizado'">
+                    <app-icon name="shield" [size]="9"></app-icon>
+                    Bypass
+                  </span>
+                </div>
+              </td>
+
+              <!-- Semáforo sangre -->
+              <td class="px-3 py-3 text-center">
+                <span class="w-3.5 h-3.5 rounded-full inline-block cursor-help mx-auto"
+                      [ngClass]="getSemaforoClase(e.bloqueaSangre, e.tipoExpediente === 'Externo')"
+                      [title]="getSemaforoTooltip(
+                        e.bloqueaSangre, e.descripcionSangre, e.tipoExpediente === 'Externo'
+                      )">
+                </span>
+              </td>
+
+              <!-- Semáforo económico -->
+              <td class="px-3 py-3 text-center">
+                <span class="w-3.5 h-3.5 rounded-full inline-block cursor-help mx-auto"
+                      [ngClass]="getSemaforoClase(
+                        e.bloqueaEconomica, e.tipoExpediente === 'Externo', true
+                      )"
+                      [title]="getSemaforoTooltip(
+                        e.bloqueaEconomica, e.descripcionEconomica,
+                        e.tipoExpediente === 'Externo', true
+                      )">
+                </span>
+              </td>
+
+              <!-- Tiempo -->
+              <td class="px-4 py-3 text-center hidden lg:table-cell">
+                <span *ngIf="e.tiempoEnMortuorio"
+                      class="text-xs font-mono text-gray-600">
+                  {{ e.tiempoEnMortuorio }}
+                </span>
+                <span *ngIf="!e.tiempoEnMortuorio" class="text-xs text-gray-300">—</span>
+              </td>
+
+              <!-- Acción -->
+              <td class="px-4 py-3 text-center">
+                <button type="button" (click)="abrirDetalle(e)"
+                        class="px-3 py-1.5 bg-hospital-cyan text-white text-xs font-semibold
+                               rounded-lg hover:bg-cyan-700 transition-colors
+                               inline-flex items-center gap-1.5">
+                  <app-icon name="eye" [size]="14"></app-icon>
+                  Ver
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- PAGINACIÓN -->
+      <div *ngIf="!cargando && !error && totalItems > 0"
+           class="px-4 py-3 border-t border-gray-200 flex flex-col sm:flex-row
+                  items-center justify-between gap-3 text-xs text-gray-500">
+        <span>
+          Mostrando
+          {{ (paginaActual - 1) * itemsPorPagina + 1 }}–{{ Math.min(paginaActual * itemsPorPagina, totalItems) }}
+          de {{ totalItems }} expedientes
+        </span>
+        <div class="flex items-center gap-2">
+          <button type="button" (click)="paginaAnterior()" [disabled]="paginaActual === 1"
+                  class="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50
+                         disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+            <app-icon name="chevron-left" [size]="16"></app-icon>
+          </button>
+          <span class="font-semibold text-gray-700">{{ paginaActual }} / {{ totalPaginas }}</span>
+          <button type="button" (click)="paginaSiguiente()" [disabled]="paginaActual === totalPaginas"
+                  class="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50
+                         disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+            <app-icon name="chevron-right" [size]="16"></app-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================================================================
+     MODAL DETALLE
+     =================================================================== -->
+<div *ngIf="mostrarModalDetalle"
+     class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4
+            animate-fade-in"
+     (click)="cerrarDetalle()">
+  <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden
+              max-h-[90vh] flex flex-col animate-fade-in-up"
+       (click)="$event.stopPropagation()">
+
+    <!-- Header -->
+    <div class="bg-hospital-cyan p-5 text-white flex items-center justify-between gap-3
+                flex-shrink-0">
+      <div class="flex items-center gap-3">
+        <div class="p-2 bg-white/20 rounded-xl">
+          <app-icon name="file-text" [size]="20"></app-icon>
+        </div>
+        <div>
+          <p class="font-bold text-base">Detalle del Expediente</p>
+          <p class="text-xs text-cyan-100 mt-0.5">
+            {{ detalleSeleccionado?.codigoExpediente ?? '...' }}
+          </p>
+        </div>
+      </div>
+      <button type="button" (click)="cerrarDetalle()"
+              class="p-2 hover:bg-white/20 rounded-lg transition-colors">
+        <app-icon name="x" [size]="20"></app-icon>
+      </button>
+    </div>
+
+    <!-- Loading -->
+    <div *ngIf="cargandoDetalle" class="p-12 text-center">
+      <app-icon name="loader" [size]="36"
+                class="animate-spin text-hospital-cyan mx-auto mb-3"></app-icon>
+      <p class="text-gray-500 text-sm">Cargando detalle...</p>
+    </div>
+
+    <!-- Contenido -->
+    <div *ngIf="!cargandoDetalle && detalleSeleccionado"
+         class="overflow-y-auto p-5 space-y-5">
+
+      <!-- Datos del fallecido -->
+      <section>
+        <h3 class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-3">
+          Datos del Fallecido
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+          <div>
+            <p class="text-xs text-gray-400">Nombre</p>
+            <p class="font-semibold text-gray-800">{{ detalleSeleccionado.nombreCompleto }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-400">HC</p>
+            <p class="font-mono font-semibold text-gray-700">{{ detalleSeleccionado.hc }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-400">Documento</p>
+            <p class="text-gray-700">
+              {{ detalleSeleccionado.tipoDocumento }}: {{ detalleSeleccionado.numeroDocumento }}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-400">Servicio</p>
+            <p class="text-gray-700">{{ detalleSeleccionado.servicioFallecimiento }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-400">Diagnóstico</p>
+            <p class="text-gray-700">{{ detalleSeleccionado.diagnosticoFinal || '—' }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-400">Bandeja / Tiempo</p>
+            <p class="text-gray-700">
+              {{ detalleSeleccionado.codigoBandeja || '—' }}
+              <span *ngIf="detalleSeleccionado.tiempoEnMortuorio"
+                    class="ml-1 font-mono text-xs text-gray-500">
+                ({{ detalleSeleccionado.tiempoEnMortuorio }})
+              </span>
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Estado de Deudas -->
+      <section>
+        <h3 class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-3">
+          Estado de Deudas
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+          <!-- Sangre -->
+          <div class="p-3 rounded-xl border"
+               [ngClass]="detalleSeleccionado.bloqueaSangre === true
+                 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                    [ngClass]="getSemaforoClase(
+                      detalleSeleccionado.bloqueaSangre,
+                      detalleSeleccionado.tipoExpediente === 'Externo'
+                    )">
+              </span>
+              <p class="text-xs font-bold text-gray-600 uppercase">Sangre</p>
+            </div>
+            <p class="text-sm font-semibold text-gray-800">
+              {{ detalleSeleccionado.estadoSangre }}
+            </p>
+            <p *ngIf="detalleSeleccionado.detalleSangre"
+               class="text-xs text-gray-500 mt-0.5">
+              {{ detalleSeleccionado.detalleSangre }}
+            </p>
+          </div>
+
+          <!-- Económica -->
+          <div class="p-3 rounded-xl border"
+               [ngClass]="detalleSeleccionado.bloqueaEconomica === true
+                 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                    [ngClass]="getSemaforoClase(
+                      detalleSeleccionado.bloqueaEconomica,
+                      detalleSeleccionado.tipoExpediente === 'Externo',
+                      true
+                    )">
+              </span>
+              <p class="text-xs font-bold text-gray-600 uppercase">Económica</p>
+            </div>
+            <p class="text-sm font-semibold text-gray-800">
+              {{ detalleSeleccionado.estadoEconomica }}
+            </p>
+            <p class="text-xs text-gray-500 mt-0.5">
+              {{ getMensajeEconomica(detalleSeleccionado) }}
+            </p>
+          </div>
+        </div>
+
+        <!-- Bypass activo -->
+        <div *ngIf="detalleSeleccionado.bypassDeudaAutorizado"
+             class="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+          <div class="flex items-center gap-2 mb-1">
+            <app-icon name="shield" [size]="15" class="text-amber-600 flex-shrink-0"></app-icon>
+            <p class="text-xs font-bold text-amber-800">Retiro autorizado por excepción</p>
+          </div>
+          <p class="text-xs text-amber-700">
+            {{ detalleSeleccionado.bypassDeudaJustificacion }}
+          </p>
+        </div>
+      </section>
+
+      <!-- Retiro -->
+      <section *ngIf="detalleSeleccionado.tieneActa">
+        <h3 class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-3">
+          Retiro
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+          <div>
+            <p class="text-xs text-gray-400">Tipo de Salida</p>
+            <p class="font-semibold text-gray-700">{{ detalleSeleccionado.tipoSalida }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-400">Responsable</p>
+            <p class="text-gray-700">{{ detalleSeleccionado.responsableRetiro || '—' }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-400">Parentesco / Cargo</p>
+            <p class="text-gray-700">{{ detalleSeleccionado.parentescoOCargo || '—' }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-400">Destino</p>
+            <p class="text-gray-700">{{ detalleSeleccionado.destino || '—' }}</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Jefe de Guardia -->
+      <section *ngIf="detalleSeleccionado.jefeGuardiaNombre">
+        <h3 class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">
+          Jefe de Guardia
+        </h3>
+        <p class="text-sm text-gray-800 font-semibold">
+          {{ detalleSeleccionado.jefeGuardiaNombre }}
+          <span *ngIf="detalleSeleccionado.jefeGuardiaCMP"
+                class="text-xs text-gray-500 font-normal ml-1">
+            CMP {{ detalleSeleccionado.jefeGuardiaCMP }}
+          </span>
+        </p>
+      </section>
+    </div>
+
+    <!-- Footer modal -->
+    <div *ngIf="!cargandoDetalle && detalleSeleccionado"
+         class="flex-shrink-0 px-5 py-4 border-t border-gray-200
+                flex items-center justify-between gap-3">
+
+      <!-- Botón Ver Acta — solo si existe acta -->
+      <button *ngIf="detalleSeleccionado.tieneActa && detalleSeleccionado.actaRetiroID"
+              type="button"
+              (click)="verActa(detalleSeleccionado)"
+              [disabled]="cargandoPdf"
+              class="flex items-center gap-2 px-4 py-2 bg-hospital-cyan text-white
+                     text-sm font-semibold rounded-lg hover:bg-cyan-700 transition-colors
+                     disabled:opacity-50 disabled:cursor-not-allowed">
+        <app-icon *ngIf="!cargandoPdf" name="file-text" [size]="16"></app-icon>
+        <app-icon *ngIf="cargandoPdf" name="loader" [size]="16" class="animate-spin"></app-icon>
+        {{ cargandoPdf ? 'Cargando...' : 'Ver Acta' }}
+      </button>
+
+      <div *ngIf="!detalleSeleccionado.tieneActa" class="text-xs text-gray-400 italic">
+        Sin acta de retiro registrada
+      </div>
+
+      <button type="button" (click)="cerrarDetalle()" class="btn-secondary ml-auto">
+        Cerrar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- VISOR PDF — montado fuera del modal para evitar z-index conflictos -->
+<app-visor-pdf-modal *ngIf="pdfBlob"
+                     [titulo]="tituloPdf"
+                     [archivoBlob]="pdfBlob"
+                     (cerrar)="cerrarPdf()">
+</app-visor-pdf-modal>

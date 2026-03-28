@@ -600,7 +600,7 @@ namespace SisMortuorio.Data
                 // ═══════════════════════════════════════════════════════════
                 // Relación 1:1 con Expediente
                 entity.HasOne(a => a.Expediente)
-                    .WithOne()
+                    .WithOne(e => e.ActaRetiro)
                     .HasForeignKey<ActaRetiro>(a => a.ExpedienteID)
                     .OnDelete(DeleteBehavior.Cascade);
 

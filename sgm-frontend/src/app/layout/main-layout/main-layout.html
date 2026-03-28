@@ -1,620 +1,601 @@
 <div class="flex h-screen bg-hospital-bg overflow-hidden relative">
 
-  <!-- ===================================================================
-       OVERLAY MOBILE
-       =================================================================== -->
+  <!-- OVERLAY MOBILE -->
   <div *ngIf="sidebarOpen"
        (click)="toggleSidebar()"
-       class="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden transition-opacity duration-300">
+       class="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden">
   </div>
 
   <!-- ===================================================================
        SIDEBAR
+       hover-expand en desktop: w-20 base → w-64 al hacer hover
+       mobile: overlay controlado por sidebarOpen
        =================================================================== -->
-  <aside [ngClass]="{
-             'translate-x-0': sidebarOpen,
-             '-translate-x-full md:translate-x-0': !sidebarOpen,
-             'w-64': !sidebarCollapsed,
-             'w-20': sidebarCollapsed
-           }"
-         class="fixed md:relative z-50 h-full bg-sgm-dark text-white flex flex-col shadow-xl transition-all duration-300 ease-in-out">
+  <aside (mouseenter)="onSidebarMouseEnter()"
+         (mouseleave)="onSidebarMouseLeave()"
+         [ngClass]="{
+           'translate-x-0':          sidebarOpen,
+           '-translate-x-full md:translate-x-0': !sidebarOpen,
+           'w-64':  sidebarExpanded,
+           'w-20': !sidebarExpanded
+         }"
+         class="fixed md:relative z-50 h-full bg-sgm-dark text-white
+                flex flex-col shadow-xl transition-all duration-300 ease-in-out">
 
-    <!-- Header del Sidebar -->
-    <div class="h-16 flex items-center px-4 bg-gray-800 border-b border-gray-700 justify-between shrink-0">
-      <div class="flex items-center gap-3 overflow-hidden">
-
-        <!-- Logo Image -->
-        <div class="h-10 w-10 flex-shrink-0 transition-all"
-             [ngClass]="{'h-10 w-10': !sidebarCollapsed, 'h-8 w-8': sidebarCollapsed}">
-          <img src="logo.png"
-               alt="Logo HEJCU"
-               class="w-full h-full object-contain"
-               [class.scale-90]="sidebarCollapsed">
-        </div>
-
-        <!-- Texto (se oculta al colapsar) -->
-        <div *ngIf="!sidebarCollapsed" class="transition-opacity duration-300 min-w-0">
-          <h1 class="font-bold text-base tracking-wide text-white truncate">HEJCU</h1>
-          <p class="text-xs text-gray-400 uppercase leading-tight truncate">Gestión Mortuoria</p>
+    <!-- Header -->
+    <div class="h-16 flex items-center px-4 bg-gray-800 border-b border-gray-700
+                justify-between shrink-0 overflow-hidden">
+      <div class="flex items-center gap-3 min-w-0">
+        <img src="logo.png" alt="Logo HEJCU"
+             class="h-8 w-8 object-contain flex-shrink-0">
+        <div *ngIf="sidebarExpanded" class="min-w-0 transition-opacity duration-200">
+          <p class="font-bold text-sm text-white truncate">HEJCU</p>
+          <p class="text-xs text-gray-400 uppercase leading-tight truncate">
+            Gestión Mortuoria
+          </p>
         </div>
       </div>
-
-      <!-- Botón cerrar (solo móvil) -->
+      <!-- Cerrar — solo mobile -->
       <button (click)="toggleSidebar()"
               class="md:hidden text-gray-400 hover:text-white p-1 rounded transition-colors">
         <app-icon name="x" [size]="20"></app-icon>
       </button>
     </div>
 
-    <!-- Navegación Principal -->
+    <!-- Navegación -->
     <nav class="flex-1 py-4 overflow-y-auto scrollbar-custom">
       <ul class="space-y-1 px-3">
 
-        <!-- ============================================================
-  SECCIÓN: INICIO
-  ============================================================ -->
-        <li *ngIf="!sidebarCollapsed" class="px-3 py-2">
-          <p class="text-xs text-gray-500 uppercase font-bold">Inicio</p>
+        <!-- ── INICIO ─────────────────────────────────────────────── -->
+        <li *ngIf="sidebarExpanded" class="px-2 pb-1">
+          <p class="text-[10px] text-gray-500 uppercase font-bold tracking-wider">
+            Inicio
+          </p>
         </li>
+        <li *ngIf="!sidebarExpanded"><div class="border-t border-gray-700 my-1"></div></li>
 
-        <!-- Dashboard -->
         <li>
-          <a routerLink="/dashboard"
-             routerLinkActive="bg-hospital-cyan text-white shadow-md"
+          <a routerLink="/dashboard" routerLinkActive="bg-hospital-cyan text-white shadow-md"
              (click)="closeMobileSidebar()"
-             class="flex items-center px-3 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
-             [ngClass]="{'justify-center': sidebarCollapsed}">
-            <app-icon name="home" [size]="20" [className]="!sidebarCollapsed ? 'mr-3' : ''"></app-icon>
-            <span *ngIf="!sidebarCollapsed" class="font-medium text-sm">Dashboard</span>
-
-            <!-- Tooltip para collapsed -->
-            <span *ngIf="sidebarCollapsed"
-                  class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+             class="flex items-center gap-3 px-3 py-2.5 text-gray-300
+                    hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
+             [class.justify-center]="!sidebarExpanded">
+            <app-icon name="home" [size]="20" class="flex-shrink-0"></app-icon>
+            <span *ngIf="sidebarExpanded" class="font-medium text-sm truncate">
+              Dashboard
+            </span>
+            <span *ngIf="!sidebarExpanded"
+                  class="absolute left-16 bg-gray-900 text-white text-xs px-2 py-1
+                         rounded opacity-0 group-hover:opacity-100 transition-opacity
+                         whitespace-nowrap z-50 pointer-events-none shadow-lg">
               Dashboard
             </span>
           </a>
         </li>
 
-        <!-- Bandeja Entrada -->
-        <li>
-          <a routerLink="/bandeja-entrada"
-             routerLinkActive="bg-hospital-cyan text-white shadow-md"
-             (click)="closeMobileSidebar()"
-             class="flex items-center px-3 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
-             [ngClass]="{'justify-center': sidebarCollapsed}">
-            <app-icon name="inbox" [size]="20" [className]="!sidebarCollapsed ? 'mr-3' : ''"></app-icon>
-            <span *ngIf="!sidebarCollapsed" class="font-medium text-sm">Bandeja Entrada</span>
+        <!-- ── EXPEDIENTES ────────────────────────────────────────── -->
+        <li class="pt-2">
+          <div class="border-t border-gray-700 mb-2"></div>
+          <p *ngIf="sidebarExpanded"
+             class="text-[10px] text-gray-500 uppercase font-bold tracking-wider px-2 pb-1">
+            Expedientes
+          </p>
+        </li>
 
-            <span *ngIf="sidebarCollapsed"
-                  class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+        <li>
+          <a routerLink="/bandeja-entrada" routerLinkActive="bg-hospital-cyan text-white shadow-md"
+             (click)="closeMobileSidebar()"
+             class="flex items-center gap-3 px-3 py-2.5 text-gray-300
+                    hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
+             [class.justify-center]="!sidebarExpanded">
+            <app-icon name="inbox" [size]="20" class="flex-shrink-0"></app-icon>
+            <span *ngIf="sidebarExpanded" class="font-medium text-sm truncate">
+              Bandeja Entrada
+            </span>
+            <span *ngIf="!sidebarExpanded"
+                  class="absolute left-16 bg-gray-900 text-white text-xs px-2 py-1
+                         rounded opacity-0 group-hover:opacity-100 transition-opacity
+                         whitespace-nowrap z-50 pointer-events-none shadow-lg">
               Bandeja Entrada
             </span>
           </a>
         </li>
 
-        <!-- ============================================================
-  SECCIÓN: EXPEDIENTES
-  ============================================================ -->
-        <li *ngIf="!sidebarCollapsed" class="px-3 py-2 mt-2">
-          <div class="border-t border-gray-700 mb-2"></div>
-          <p class="text-xs text-gray-500 uppercase font-bold">Expedientes</p>
-        </li>
-        <li *ngIf="sidebarCollapsed" class="px-3 py-2">
-          <div class="border-t border-gray-700"></div>
-        </li>
-
-        <!-- Mis Expedientes -->
         <li>
-          <a routerLink="/mis-expedientes"
-             routerLinkActive="bg-hospital-cyan text-white shadow-md"
+          <a routerLink="/mis-expedientes" routerLinkActive="bg-hospital-cyan text-white shadow-md"
              (click)="closeMobileSidebar()"
-             class="flex items-center px-3 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
-             [ngClass]="{'justify-center': sidebarCollapsed}">
-            <app-icon name="file-text" [size]="20" [className]="!sidebarCollapsed ? 'mr-3' : ''"></app-icon>
-            <span *ngIf="!sidebarCollapsed" class="font-medium text-sm">Mis Expedientes</span>
-
-            <span *ngIf="sidebarCollapsed"
-                  class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+             class="flex items-center gap-3 px-3 py-2.5 text-gray-300
+                    hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
+             [class.justify-center]="!sidebarExpanded">
+            <app-icon name="file-text" [size]="20" class="flex-shrink-0"></app-icon>
+            <span *ngIf="sidebarExpanded" class="font-medium text-sm truncate">
+              Mis Expedientes
+            </span>
+            <span *ngIf="!sidebarExpanded"
+                  class="absolute left-16 bg-gray-900 text-white text-xs px-2 py-1
+                         rounded opacity-0 group-hover:opacity-100 transition-opacity
+                         whitespace-nowrap z-50 pointer-events-none shadow-lg">
               Mis Expedientes
             </span>
           </a>
         </li>
 
-        <!-- Registro Manual -->
-        <li>
-          <a routerLink="/nuevo-expediente"
-             routerLinkActive="bg-hospital-cyan text-white shadow-md"
+        <li *ngIf="userRole === 'EnfermeriaTecnica' || userRole === 'EnfermeriaLicenciada' ||
+                   userRole === 'SupervisoraEnfermeria' || userRole === 'Administrador'">
+          <a routerLink="/nuevo-expediente" routerLinkActive="bg-hospital-cyan text-white shadow-md"
              (click)="closeMobileSidebar()"
-             class="flex items-center px-3 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
-             [ngClass]="{'justify-center': sidebarCollapsed}">
-            <app-icon name="file-plus" [size]="20" [className]="!sidebarCollapsed ? 'mr-3' : ''"></app-icon>
-            <span *ngIf="!sidebarCollapsed" class="font-medium text-sm">Registro Manual</span>
-
-            <span *ngIf="sidebarCollapsed"
-                  class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
-              Registro Manual
+             class="flex items-center gap-3 px-3 py-2.5 text-gray-300
+                    hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
+             [class.justify-center]="!sidebarExpanded">
+            <app-icon name="file-plus" [size]="20" class="flex-shrink-0"></app-icon>
+            <span *ngIf="sidebarExpanded" class="font-medium text-sm truncate">
+              Nuevo Expediente
+            </span>
+            <span *ngIf="!sidebarExpanded"
+                  class="absolute left-16 bg-gray-900 text-white text-xs px-2 py-1
+                         rounded opacity-0 group-hover:opacity-100 transition-opacity
+                         whitespace-nowrap z-50 pointer-events-none shadow-lg">
+              Nuevo Expediente
             </span>
           </a>
         </li>
 
-        <!-- ============================================================
-  SECCIÓN: OPERACIONES
-  ============================================================ -->
-        <li *ngIf="!sidebarCollapsed" class="px-3 py-2 mt-2">
+        <!-- ── OPERACIONES ────────────────────────────────────────── -->
+        <li class="pt-2">
           <div class="border-t border-gray-700 mb-2"></div>
-          <p class="text-xs text-gray-500 uppercase font-bold">Operaciones</p>
-        </li>
-        <li *ngIf="sidebarCollapsed" class="px-3 py-2">
-          <div class="border-t border-gray-700"></div>
+          <p *ngIf="sidebarExpanded"
+             class="text-[10px] text-gray-500 uppercase font-bold tracking-wider px-2 pb-1">
+            Operaciones
+          </p>
         </li>
 
-        <!-- Mis Tareas (Solo Ambulancia) -->
+        <!-- Mis Tareas — Ambulancia -->
         <li *ngIf="userRole === 'Ambulancia' || userRole === 'Administrador'">
-          <a routerLink="/mis-tareas"
-             routerLinkActive="bg-hospital-cyan text-white shadow-md"
+          <a routerLink="/mis-tareas" routerLinkActive="bg-hospital-cyan text-white shadow-md"
              (click)="closeMobileSidebar()"
-             class="flex items-center px-3 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
-             [ngClass]="{'justify-center': sidebarCollapsed}">
-            <app-icon name="truck" [size]="20" [className]="!sidebarCollapsed ? 'mr-3' : ''"></app-icon>
-            <span *ngIf="!sidebarCollapsed" class="font-medium text-sm">Mis Tareas (Móvil)</span>
-
-            <span *ngIf="sidebarCollapsed"
-                  class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
-              Mis Tareas
+             class="flex items-center gap-3 px-3 py-2.5 text-gray-300
+                    hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
+             [class.justify-center]="!sidebarExpanded">
+            <app-icon name="truck" [size]="20" class="flex-shrink-0"></app-icon>
+            <span *ngIf="sidebarExpanded" class="font-medium text-sm truncate">
+              Traslados
+            </span>
+            <span *ngIf="!sidebarExpanded"
+                  class="absolute left-16 bg-gray-900 text-white text-xs px-2 py-1
+                         rounded opacity-0 group-hover:opacity-100 transition-opacity
+                         whitespace-nowrap z-50 pointer-events-none shadow-lg">
+              Traslados
             </span>
           </a>
         </li>
 
-        <!-- Verificación Ingreso (Solo Vigilancia) -->
-        <li *ngIf="userRole === 'VigilanciaMortuorio' || userRole === 'VigilanteSupervisor' || userRole === 'Administrador'">
-          <a routerLink="/verificacion-ingreso"
-             routerLinkActive="bg-hospital-cyan text-white shadow-md"
+        <!-- Verificación Ingreso — VigMort / VigSup -->
+        <li *ngIf="userRole === 'VigilanciaMortuorio' || userRole === 'VigilanteSupervisor' ||
+                   userRole === 'Administrador'">
+          <a routerLink="/verificacion-ingreso" routerLinkActive="bg-hospital-cyan text-white shadow-md"
              (click)="closeMobileSidebar()"
-             class="flex items-center px-3 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
-             [ngClass]="{'justify-center': sidebarCollapsed}">
-            <app-icon name="shield" [size]="20" [className]="!sidebarCollapsed ? 'mr-3' : ''"></app-icon>
-            <span *ngIf="!sidebarCollapsed" class="font-medium text-sm">Verificación Ingreso</span>
-
-            <span *ngIf="sidebarCollapsed"
-                  class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
-              Verificación
+             class="flex items-center gap-3 px-3 py-2.5 text-gray-300
+                    hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
+             [class.justify-center]="!sidebarExpanded">
+            <app-icon name="qr-code" [size]="20" class="flex-shrink-0"></app-icon>
+            <span *ngIf="sidebarExpanded" class="font-medium text-sm truncate">
+              Verificar Ingreso
             </span>
-          </a>
-        </li>
-        <li *ngIf="userRole === 'VigilanciaMortuorio' || userRole === 'VigilanteSupervisor' || userRole === 'Administrador'">
-          <a routerLink="/busqueda-salida"
-             routerLinkActive="bg-hospital-cyan text-white shadow-md"
-             (click)="closeMobileSidebar()"
-             class="flex items-center px-3 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
-             [ngClass]="{'justify-center': sidebarCollapsed}">
-            <app-icon name="log-out" [size]="20" [className]="!sidebarCollapsed ? 'mr-3' : ''"></app-icon>
-            <span *ngIf="!sidebarCollapsed" class="font-medium text-sm">Registro Salida</span>
-
-            <span *ngIf="sidebarCollapsed"
-                  class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
-              Registro Salida
+            <span *ngIf="!sidebarExpanded"
+                  class="absolute left-16 bg-gray-900 text-white text-xs px-2 py-1
+                         rounded opacity-0 group-hover:opacity-100 transition-opacity
+                         whitespace-nowrap z-50 pointer-events-none shadow-lg">
+              Verificar Ingreso
             </span>
           </a>
         </li>
 
-        <!-- Mapa Mortuorio -->
+        <!-- Registro Salida — VigMort / VigSup -->
+        <li *ngIf="userRole === 'VigilanciaMortuorio' || userRole === 'VigilanteSupervisor' ||
+                   userRole === 'Administrador'">
+          <a routerLink="/busqueda-salida" routerLinkActive="bg-hospital-cyan text-white shadow-md"
+             (click)="closeMobileSidebar()"
+             class="flex items-center gap-3 px-3 py-2.5 text-gray-300
+                    hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
+             [class.justify-center]="!sidebarExpanded">
+            <app-icon name="log-out" [size]="20" class="flex-shrink-0"></app-icon>
+            <span *ngIf="sidebarExpanded" class="font-medium text-sm truncate">
+              Registrar Salida
+            </span>
+            <span *ngIf="!sidebarExpanded"
+                  class="absolute left-16 bg-gray-900 text-white text-xs px-2 py-1
+                         rounded opacity-0 group-hover:opacity-100 transition-opacity
+                         whitespace-nowrap z-50 pointer-events-none shadow-lg">
+              Registrar Salida
+            </span>
+          </a>
+        </li>
+
+        <!-- Mapa Mortuorio — todos -->
         <li>
-          <a routerLink="/mapa-mortuorio"
-             routerLinkActive="bg-hospital-cyan text-white shadow-md"
+          <a routerLink="/mapa-mortuorio" routerLinkActive="bg-hospital-cyan text-white shadow-md"
              (click)="closeMobileSidebar()"
-             class="flex items-center px-3 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
-             [ngClass]="{'justify-center': sidebarCollapsed}">
-            <app-icon name="building-2" [size]="20" [className]="!sidebarCollapsed ? 'mr-3' : ''"></app-icon>
-            <span *ngIf="!sidebarCollapsed" class="font-medium text-sm">Mapa Mortuorio</span>
-
-            <span *ngIf="sidebarCollapsed"
-                  class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+             class="flex items-center gap-3 px-3 py-2.5 text-gray-300
+                    hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
+             [class.justify-center]="!sidebarExpanded">
+            <app-icon name="building-2" [size]="20" class="flex-shrink-0"></app-icon>
+            <span *ngIf="sidebarExpanded" class="font-medium text-sm truncate">
+              Mapa Mortuorio
+            </span>
+            <span *ngIf="!sidebarExpanded"
+                  class="absolute left-16 bg-gray-900 text-white text-xs px-2 py-1
+                         rounded opacity-0 group-hover:opacity-100 transition-opacity
+                         whitespace-nowrap z-50 pointer-events-none shadow-lg">
               Mapa Mortuorio
             </span>
           </a>
         </li>
 
-        <!-- ============================================================
-  SECCIÓN: DEUDAS (Solo roles autorizados)
-  ============================================================ -->
-        <li *ngIf="!sidebarCollapsed && (userRole === 'CuentasPacientes' || userRole === 'BancoSangre' || userRole === 'ServicioSocial' || userRole === 'Administrador')"
-            class="px-3 py-2 mt-2">
+        <!-- ── DEUDAS ──────────────────────────────────────────────── -->
+        <li *ngIf="userRole === 'CuentasPacientes' || userRole === 'BancoSangre' ||
+                   userRole === 'ServicioSocial' || userRole === 'Administrador'"
+            class="pt-2">
           <div class="border-t border-gray-700 mb-2"></div>
-          <p class="text-xs text-gray-500 uppercase font-bold">Deudas</p>
-        </li>
-        <li *ngIf="sidebarCollapsed && (userRole === 'CuentasPacientes' || userRole === 'BancoSangre' || userRole === 'ServicioSocial' || userRole === 'Administrador')"
-            class="px-3 py-2">
-          <div class="border-t border-gray-700"></div>
+          <p *ngIf="sidebarExpanded"
+             class="text-[10px] text-gray-500 uppercase font-bold tracking-wider px-2 pb-1">
+            Deudas
+          </p>
         </li>
 
-        <!-- Registrar Deuda Económica (Cuentas Pacientes) -->
         <li *ngIf="userRole === 'CuentasPacientes' || userRole === 'Administrador'">
           <a routerLink="/deudas/registrar-economica"
              routerLinkActive="bg-hospital-cyan text-white shadow-md"
              (click)="closeMobileSidebar()"
-             class="flex items-center px-3 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
-             [ngClass]="{'justify-center': sidebarCollapsed}">
-            <app-icon name="plus-circle" [size]="20" [className]="!sidebarCollapsed ? 'mr-3' : ''"></app-icon>
-            <span *ngIf="!sidebarCollapsed" class="font-medium text-sm">Registrar Deuda Económica</span>
-
-            <span *ngIf="sidebarCollapsed"
-                  class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+             class="flex items-center gap-3 px-3 py-2.5 text-gray-300
+                    hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
+             [class.justify-center]="!sidebarExpanded">
+            <app-icon name="plus" [size]="20" class="flex-shrink-0"></app-icon>
+            <span *ngIf="sidebarExpanded" class="font-medium text-sm truncate">
+              Registrar Deuda Económica
+            </span>
+            <span *ngIf="!sidebarExpanded"
+                  class="absolute left-16 bg-gray-900 text-white text-xs px-2 py-1
+                         rounded opacity-0 group-hover:opacity-100 transition-opacity
+                         whitespace-nowrap z-50 pointer-events-none shadow-lg">
               Deuda Económica
             </span>
           </a>
         </li>
 
-        <!-- Liquidar Deuda Económica (Caja) -->
         <li *ngIf="userRole === 'CuentasPacientes' || userRole === 'Administrador'">
           <a routerLink="/deudas/liquidar-economica"
              routerLinkActive="bg-hospital-cyan text-white shadow-md"
              (click)="closeMobileSidebar()"
-             class="flex items-center px-3 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
-             [ngClass]="{'justify-center': sidebarCollapsed}">
-            <app-icon name="credit-card" [size]="20" [className]="!sidebarCollapsed ? 'mr-3' : ''"></app-icon>
-            <span *ngIf="!sidebarCollapsed" class="font-medium text-sm">Liquidar Deuda Económica</span>
-
-            <span *ngIf="sidebarCollapsed"
-                  class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+             class="flex items-center gap-3 px-3 py-2.5 text-gray-300
+                    hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
+             [class.justify-center]="!sidebarExpanded">
+            <app-icon name="credit-card" [size]="20" class="flex-shrink-0"></app-icon>
+            <span *ngIf="sidebarExpanded" class="font-medium text-sm truncate">
+              Liquidar Deuda Económica
+            </span>
+            <span *ngIf="!sidebarExpanded"
+                  class="absolute left-16 bg-gray-900 text-white text-xs px-2 py-1
+                         rounded opacity-0 group-hover:opacity-100 transition-opacity
+                         whitespace-nowrap z-50 pointer-events-none shadow-lg">
               Liquidar Económica
             </span>
           </a>
         </li>
 
-        <!-- Registrar Deuda Sangre (Banco Sangre) -->
         <li *ngIf="userRole === 'BancoSangre' || userRole === 'Administrador'">
           <a routerLink="/deudas/registrar-sangre"
              routerLinkActive="bg-hospital-cyan text-white shadow-md"
              (click)="closeMobileSidebar()"
-             class="flex items-center px-3 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
-             [ngClass]="{'justify-center': sidebarCollapsed}">
-            <app-icon name="droplet" [size]="20" [className]="!sidebarCollapsed ? 'mr-3' : ''"></app-icon>
-            <span *ngIf="!sidebarCollapsed" class="font-medium text-sm">Registrar Deuda Sangre</span>
-
-            <span *ngIf="sidebarCollapsed"
-                  class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+             class="flex items-center gap-3 px-3 py-2.5 text-gray-300
+                    hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
+             [class.justify-center]="!sidebarExpanded">
+            <app-icon name="droplet" [size]="20" class="flex-shrink-0"></app-icon>
+            <span *ngIf="sidebarExpanded" class="font-medium text-sm truncate">
+              Registrar Deuda Sangre
+            </span>
+            <span *ngIf="!sidebarExpanded"
+                  class="absolute left-16 bg-gray-900 text-white text-xs px-2 py-1
+                         rounded opacity-0 group-hover:opacity-100 transition-opacity
+                         whitespace-nowrap z-50 pointer-events-none shadow-lg">
               Deuda Sangre
             </span>
           </a>
         </li>
 
-        <!-- Liquidar Deuda Sangre (Banco Sangre) -->
         <li *ngIf="userRole === 'BancoSangre' || userRole === 'Administrador'">
           <a routerLink="/deudas/liquidar-sangre"
              routerLinkActive="bg-hospital-cyan text-white shadow-md"
              (click)="closeMobileSidebar()"
-             class="flex items-center px-3 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
-             [ngClass]="{'justify-center': sidebarCollapsed}">
-            <app-icon name="check-circle" [size]="20" [className]="!sidebarCollapsed ? 'mr-3' : ''"></app-icon>
-            <span *ngIf="!sidebarCollapsed" class="font-medium text-sm">Liquidar Deuda Sangre</span>
-
-            <span *ngIf="sidebarCollapsed"
-                  class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+             class="flex items-center gap-3 px-3 py-2.5 text-gray-300
+                    hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
+             [class.justify-center]="!sidebarExpanded">
+            <app-icon name="check-circle" [size]="20" class="flex-shrink-0"></app-icon>
+            <span *ngIf="sidebarExpanded" class="font-medium text-sm truncate">
+              Liquidar Deuda Sangre
+            </span>
+            <span *ngIf="!sidebarExpanded"
+                  class="absolute left-16 bg-gray-900 text-white text-xs px-2 py-1
+                         rounded opacity-0 group-hover:opacity-100 transition-opacity
+                         whitespace-nowrap z-50 pointer-events-none shadow-lg">
               Liquidar Sangre
             </span>
           </a>
         </li>
 
-        <!-- Gestionar Exoneración (Servicio Social) -->
         <li *ngIf="userRole === 'ServicioSocial' || userRole === 'Administrador'">
           <a routerLink="/deudas/gestionar-exoneracion"
              routerLinkActive="bg-hospital-cyan text-white shadow-md"
              (click)="closeMobileSidebar()"
-             class="flex items-center px-3 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
-             [ngClass]="{'justify-center': sidebarCollapsed}">
-            <app-icon name="shield-check" [size]="20" [className]="!sidebarCollapsed ? 'mr-3' : ''"></app-icon>
-            <span *ngIf="!sidebarCollapsed" class="font-medium text-sm">Gestionar Exoneración</span>
-
-            <span *ngIf="sidebarCollapsed"
-                  class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+             class="flex items-center gap-3 px-3 py-2.5 text-gray-300
+                    hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
+             [class.justify-center]="!sidebarExpanded">
+            <app-icon name="shield" [size]="20" class="flex-shrink-0"></app-icon>
+            <span *ngIf="sidebarExpanded" class="font-medium text-sm truncate">
+              Gestionar Exoneración
+            </span>
+            <span *ngIf="!sidebarExpanded"
+                  class="absolute left-16 bg-gray-900 text-white text-xs px-2 py-1
+                         rounded opacity-0 group-hover:opacity-100 transition-opacity
+                         whitespace-nowrap z-50 pointer-events-none shadow-lg">
               Exoneración
             </span>
           </a>
         </li>
-        <!-- ============================================================
-     SECCIÓN: EXPEDIENTE LEGAL (Solo roles autorizados)
-  ============================================================ -->
-        <li *ngIf="!sidebarCollapsed && (userRole === 'VigilanteSupervisor' || userRole === 'Admision' || userRole === 'JefeGuardia' || userRole === 'Administrador')"
-            class="px-3 py-2 mt-2">
+
+        <!-- ── RETIRO ──────────────────────────────────────────────── -->
+        <li *ngIf="userRole === 'Admision' || userRole === 'VigilanteSupervisor' ||
+                   userRole === 'JefeGuardia' || userRole === 'Administrador'"
+            class="pt-2">
           <div class="border-t border-gray-700 mb-2"></div>
-          <p class="text-xs text-gray-500 uppercase font-bold">Expediente Legal</p>
-        </li>
-        <li *ngIf="sidebarCollapsed && (userRole === 'VigilanteSupervisor' || userRole === 'Admision' || userRole === 'JefeGuardia' || userRole === 'Administrador')"
-            class="px-3 py-2">
-          <div class="border-t border-gray-700"></div>
-        </li>
-
-        <!-- Lista Expedientes Legales (Vigilante Supervisor) -->
-        <li *ngIf="userRole === 'VigilanteSupervisor' || userRole === 'Administrador'">
-          <a routerLink="/administrativo/legal/lista"
-             routerLinkActive="bg-hospital-cyan text-white shadow-md"
-             (click)="closeMobileSidebar()"
-             class="flex items-center px-3 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
-             [ngClass]="{'justify-center': sidebarCollapsed}">
-            <app-icon name="folder" [size]="20" [className]="!sidebarCollapsed ? 'mr-3' : ''"></app-icon>
-            <span *ngIf="!sidebarCollapsed" class="font-medium text-sm">Lista de Expedientes</span>
-
-            <span *ngIf="sidebarCollapsed"
-                  class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
-              Expedientes Legales
-            </span>
-          </a>
+          <p *ngIf="sidebarExpanded"
+             class="text-[10px] text-gray-500 uppercase font-bold tracking-wider px-2 pb-1">
+            Retiro
+          </p>
         </li>
 
-        <!-- Crear Expediente Legal (Vigilante Supervisor) -->
-        <li *ngIf="userRole === 'VigilanteSupervisor' || userRole === 'Administrador'">
-          <a routerLink="/administrativo/legal/crear"
-             routerLinkActive="bg-hospital-cyan text-white shadow-md"
-             (click)="closeMobileSidebar()"
-             class="flex items-center px-3 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
-             [ngClass]="{'justify-center': sidebarCollapsed}">
-            <app-icon name="file-plus" [size]="20" [className]="!sidebarCollapsed ? 'mr-3' : ''"></app-icon>
-            <span *ngIf="!sidebarCollapsed" class="font-medium text-sm">Crear Expediente Legal</span>
-
-            <span *ngIf="sidebarCollapsed"
-                  class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
-              Crear Legal
-            </span>
-          </a>
-        </li>
-
-        <!-- Validar Admisión (Admisión) -->
-        <li *ngIf="userRole === 'Admision' || userRole === 'Administrador' || userRole === 'JefeGuardia'">
+        <!-- Validar Admisión — Admision / JG / Admin -->
+        <li *ngIf="userRole === 'Admision' || userRole === 'JefeGuardia' ||
+                   userRole === 'Administrador'">
           <a routerLink="/administrativo/expedientes/validar-admision"
              routerLinkActive="bg-hospital-cyan text-white shadow-md"
              (click)="closeMobileSidebar()"
-             class="flex items-center px-3 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
-             [ngClass]="{'justify-center': sidebarCollapsed}">
-            <app-icon name="check-circle" [size]="20" [className]="!sidebarCollapsed ? 'mr-3' : ''"></app-icon>
-            <span *ngIf="!sidebarCollapsed" class="font-medium text-sm">Validar Admisión</span>
-
-            <span *ngIf="sidebarCollapsed"
-                  class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+             class="flex items-center gap-3 px-3 py-2.5 text-gray-300
+                    hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
+             [class.justify-center]="!sidebarExpanded">
+            <app-icon name="file-check" [size]="20" class="flex-shrink-0"></app-icon>
+            <span *ngIf="sidebarExpanded" class="font-medium text-sm truncate">
+              Validar Admisión
+            </span>
+            <span *ngIf="!sidebarExpanded"
+                  class="absolute left-16 bg-gray-900 text-white text-xs px-2 py-1
+                         rounded opacity-0 group-hover:opacity-100 transition-opacity
+                         whitespace-nowrap z-50 pointer-events-none shadow-lg">
               Validar Admisión
             </span>
           </a>
         </li>
 
-        <!-- Autorizar Levantamientos (Jefe Guardia) -->
-        <li *ngIf="userRole === 'JefeGuardia' || userRole === 'Administrador'">
-          <a routerLink="/administrativo/legal/autorizar-jefe-guardia"
+        <!-- Consulta Expedientes — VigSup / JG / Admin -->
+        <li *ngIf="userRole === 'VigilanteSupervisor' || userRole === 'JefeGuardia' ||
+                   userRole === 'Administrador'">
+          <a routerLink="/administrativo/vigsup"
              routerLinkActive="bg-hospital-cyan text-white shadow-md"
              (click)="closeMobileSidebar()"
-             class="flex items-center px-3 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
-             [ngClass]="{'justify-center': sidebarCollapsed}">
-            <app-icon name="shield-check" [size]="20" [className]="!sidebarCollapsed ? 'mr-3' : ''"></app-icon>
-            <span *ngIf="!sidebarCollapsed" class="font-medium text-sm">Autorizar Levantamientos</span>
-
-            <span *ngIf="sidebarCollapsed"
-                  class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
-              Autorizar
+             class="flex items-center gap-3 px-3 py-2.5 text-gray-300
+                    hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
+             [class.justify-center]="!sidebarExpanded">
+            <app-icon name="eye" [size]="20" class="flex-shrink-0"></app-icon>
+            <span *ngIf="sidebarExpanded" class="font-medium text-sm truncate">
+              Consulta de Expedientes
+            </span>
+            <span *ngIf="!sidebarExpanded"
+                  class="absolute left-16 bg-gray-900 text-white text-xs px-2 py-1
+                         rounded opacity-0 group-hover:opacity-100 transition-opacity
+                         whitespace-nowrap z-50 pointer-events-none shadow-lg">
+              Consulta Expedientes
             </span>
           </a>
         </li>
 
-        <!-- ============================================================
-  SECCIÓN: ADMINISTRACIÓN
-  ============================================================ -->
-        <li *ngIf="!sidebarCollapsed" class="px-3 py-2 mt-2">
+        <!-- ── ADMINISTRACIÓN ─────────────────────────────────────── -->
+        <li *ngIf="userRole === 'Administrador' || userRole === 'JefeGuardia' ||
+                   userRole === 'VigilanteSupervisor'"
+            class="pt-2">
           <div class="border-t border-gray-700 mb-2"></div>
-          <p class="text-xs text-gray-500 uppercase font-bold">Administración</p>
-        </li>
-        <li *ngIf="sidebarCollapsed" class="px-3 py-2">
-          <div class="border-t border-gray-700"></div>
+          <p *ngIf="sidebarExpanded"
+             class="text-[10px] text-gray-500 uppercase font-bold tracking-wider px-2 pb-1">
+            Administración
+          </p>
         </li>
 
-        <!-- Gestión de Usuarios -->
-        <li>
-          <a routerLink="/usuarios"
-             routerLinkActive="bg-hospital-cyan text-white shadow-md"
+        <!-- Reportes — VigSup / JG / Admin (futuro) -->
+        <li *ngIf="userRole === 'Administrador' || userRole === 'JefeGuardia' ||
+                   userRole === 'VigilanteSupervisor'">
+          <a routerLink="/reportes" routerLinkActive="bg-hospital-cyan text-white shadow-md"
              (click)="closeMobileSidebar()"
-             class="flex items-center px-3 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
-             [ngClass]="{'justify-center': sidebarCollapsed}">
-            <app-icon name="users" [size]="20" [className]="!sidebarCollapsed ? 'mr-3' : ''"></app-icon>
-            <span *ngIf="!sidebarCollapsed" class="font-medium text-sm">Usuarios</span>
+             class="flex items-center gap-3 px-3 py-2.5 text-gray-300
+                    hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
+             [class.justify-center]="!sidebarExpanded">
+            <app-icon name="bar-chart" [size]="20" class="flex-shrink-0"></app-icon>
+            <span *ngIf="sidebarExpanded" class="font-medium text-sm truncate">
+              Reportes
+            </span>
+            <span *ngIf="!sidebarExpanded"
+                  class="absolute left-16 bg-gray-900 text-white text-xs px-2 py-1
+                         rounded opacity-0 group-hover:opacity-100 transition-opacity
+                         whitespace-nowrap z-50 pointer-events-none shadow-lg">
+              Reportes
+            </span>
+          </a>
+        </li>
 
-            <span *ngIf="sidebarCollapsed"
-                  class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+        <!-- Usuarios — solo Admin (futuro) -->
+        <li *ngIf="userRole === 'Administrador'">
+          <a routerLink="/usuarios" routerLinkActive="bg-hospital-cyan text-white shadow-md"
+             (click)="closeMobileSidebar()"
+             class="flex items-center gap-3 px-3 py-2.5 text-gray-300
+                    hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
+             [class.justify-center]="!sidebarExpanded">
+            <app-icon name="users" [size]="20" class="flex-shrink-0"></app-icon>
+            <span *ngIf="sidebarExpanded" class="font-medium text-sm truncate">
+              Usuarios
+            </span>
+            <span *ngIf="!sidebarExpanded"
+                  class="absolute left-16 bg-gray-900 text-white text-xs px-2 py-1
+                         rounded opacity-0 group-hover:opacity-100 transition-opacity
+                         whitespace-nowrap z-50 pointer-events-none shadow-lg">
               Usuarios
             </span>
           </a>
         </li>
 
-        <!-- Gestión de Catálogos -->
-        <li>
-          <a routerLink="/catalogos"
-             routerLinkActive="bg-hospital-cyan text-white shadow-md"
+        <!-- Auditoría — solo Admin (futuro) -->
+        <li *ngIf="userRole === 'Administrador'">
+          <a routerLink="/auditoria" routerLinkActive="bg-hospital-cyan text-white shadow-md"
              (click)="closeMobileSidebar()"
-             class="flex items-center px-3 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
-             [ngClass]="{'justify-center': sidebarCollapsed}">
-            <app-icon name="book" [size]="20" [className]="!sidebarCollapsed ? 'mr-3' : ''"></app-icon>
-            <span *ngIf="!sidebarCollapsed" class="font-medium text-sm">Catálogos</span>
-
-            <span *ngIf="sidebarCollapsed"
-                  class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
-              Catálogos
-            </span>
-          </a>
-        </li>
-
-        <!-- Auditoría -->
-        <li>
-          <a routerLink="/auditoria"
-             routerLinkActive="bg-hospital-cyan text-white shadow-md"
-             (click)="closeMobileSidebar()"
-             class="flex items-center px-3 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
-             [ngClass]="{'justify-center': sidebarCollapsed}">
-            <app-icon name="shield" [size]="20" [className]="!sidebarCollapsed ? 'mr-3' : ''"></app-icon>
-            <span *ngIf="!sidebarCollapsed" class="font-medium text-sm">Auditoría</span>
-
-            <span *ngIf="sidebarCollapsed"
-                  class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+             class="flex items-center gap-3 px-3 py-2.5 text-gray-300
+                    hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
+             [class.justify-center]="!sidebarExpanded">
+            <app-icon name="shield" [size]="20" class="flex-shrink-0"></app-icon>
+            <span *ngIf="sidebarExpanded" class="font-medium text-sm truncate">
               Auditoría
             </span>
-          </a>
-        </li>
-
-        <!-- Reportes -->
-        <li>
-          <a routerLink="/reportes"
-             routerLinkActive="bg-hospital-cyan text-white shadow-md"
-             (click)="closeMobileSidebar()"
-             class="flex items-center px-3 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-all group"
-             [ngClass]="{'justify-center': sidebarCollapsed}">
-            <app-icon name="bar-chart" [size]="20" [className]="!sidebarCollapsed ? 'mr-3' : ''"></app-icon>
-            <span *ngIf="!sidebarCollapsed" class="font-medium text-sm">Reportes</span>
-
-            <span *ngIf="sidebarCollapsed"
-                  class="absolute left-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
-              Reportes
+            <span *ngIf="!sidebarExpanded"
+                  class="absolute left-16 bg-gray-900 text-white text-xs px-2 py-1
+                         rounded opacity-0 group-hover:opacity-100 transition-opacity
+                         whitespace-nowrap z-50 pointer-events-none shadow-lg">
+              Auditoría
             </span>
           </a>
         </li>
 
       </ul>
     </nav>
-
-    <!-- Footer del Sidebar: Contraer -->
-    <div class="p-4 border-t border-gray-700 bg-gray-800 hidden md:block shrink-0">
-      <button (click)="toggleCollapse()"
-              class="flex items-center w-full text-gray-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-gray-700"
-              [ngClass]="{'justify-center': sidebarCollapsed}">
-        <app-icon [name]="sidebarCollapsed ? 'chevron-right' : 'chevron-left'" [size]="20"></app-icon>
-        <span *ngIf="!sidebarCollapsed" class="ml-3 font-medium text-xs">Contraer Menú</span>
-      </button>
-    </div>
+    <!-- Sin footer — hover-expand reemplaza el botón de contraer -->
   </aside>
 
   <!-- ===================================================================
        CONTENIDO PRINCIPAL
        =================================================================== -->
-  <div class="flex-1 flex flex-col min-w-0 overflow-hidden h-full relative">
+  <div class="flex-1 flex flex-col min-w-0 overflow-hidden h-full">
 
-    <!-- ===================================================================
-         HEADER / TOPBAR
-         =================================================================== -->
-    <header class="bg-hospital-cyan shadow-md h-16 flex items-center justify-between px-4 z-30 shrink-0">
+    <!-- TOPBAR -->
+    <header class="bg-hospital-cyan shadow-md h-16 flex items-center
+                   justify-between px-4 z-30 shrink-0">
 
-      <!-- Left: Logo + Título -->
+      <!-- Izquierda -->
       <div class="flex items-center gap-3">
-        <button (click)="toggleSidebar()" class="md:hidden text-white p-1 rounded hover:bg-white/10">
+        <button (click)="toggleSidebar()"
+                class="md:hidden text-white p-1 rounded hover:bg-white/10">
           <app-icon name="menu" [size]="24"></app-icon>
         </button>
-
-        <!-- Indicador de conexión SignalR (visible en desarrollo) -->
         <div class="hidden md:flex items-center gap-2">
-          <span class="text-white font-semibold text-sm">Sistema de Gestión Mortuoria</span>
-          <span *ngIf="conexionSignalREstablecida"
-                class="h-2 w-2 bg-green-400 rounded-full animate-pulse"
-                title="Conectado en tiempo real"></span>
-          <span *ngIf="!conexionSignalREstablecida"
-                class="h-2 w-2 bg-red-400 rounded-full"
-                title="Sin conexión en tiempo real"></span>
+          <span class="text-white font-semibold text-sm">
+            Sistema de Gestión Mortuoria
+          </span>
+          <span [class]="conexionSignalREstablecida
+                  ? 'h-2 w-2 bg-green-400 rounded-full animate-pulse'
+                  : 'h-2 w-2 bg-red-400 rounded-full'"
+                [title]="conexionSignalREstablecida
+                  ? 'Conectado en tiempo real'
+                  : 'Sin conexión en tiempo real'">
+          </span>
         </div>
-
         <span class="md:hidden text-white font-bold">SGM</span>
       </div>
 
-      <!-- Right: Notificaciones + Usuario + Logout -->
+      <!-- Derecha -->
       <div class="flex items-center gap-3">
 
-        <!-- ============================================================
-             BOTÓN DE NOTIFICACIONES CON DROPDOWN SIGNALR
-             ============================================================ -->
-        <div class="relative notification-button">
+        <!-- Notificaciones -->
+        <div class="relative">
           <button (click)="toggleNotificaciones()"
                   class="relative text-white hover:bg-white/10 p-2 rounded-lg transition-colors"
-                  title="Notificaciones en tiempo real">
+                  title="Notificaciones">
             <app-icon name="bell" [size]="20"></app-icon>
-
-            <!-- Badge de contador (animado si hay no leídas) -->
             <span *ngIf="notificacionesNoLeidas > 0"
-                  class="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-hospital-cyan animate-pulse">
+                  class="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white
+                         text-[10px] font-bold rounded-full flex items-center justify-center
+                         border-2 border-hospital-cyan animate-pulse">
               {{ notificacionesNoLeidas > 9 ? '9+' : notificacionesNoLeidas }}
             </span>
-
-            <!-- Indicador de conexión SignalR en el ícono -->
             <span *ngIf="!conexionSignalREstablecida"
-                  class="absolute bottom-0 right-0 h-2 w-2 bg-yellow-400 rounded-full border border-hospital-cyan"
-                  title="Reconectando..."></span>
+                  class="absolute bottom-0 right-0 h-2 w-2 bg-yellow-400 rounded-full
+                         border border-hospital-cyan"
+                  title="Reconectando...">
+            </span>
           </button>
 
-          <!-- ============================================================
-               DROPDOWN DE NOTIFICACIONES (SignalR)
-               ============================================================ -->
+          <!-- Dropdown notificaciones -->
           <div *ngIf="notificacionesOpen"
-               class="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-2xl border border-gray-200 z-50 max-h-[32rem] overflow-hidden flex flex-col animate-fade-in">
+               class="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-2xl
+                      border border-gray-200 z-50 max-h-[32rem] overflow-hidden
+                      flex flex-col animate-fade-in">
 
-            <!-- Header del dropdown -->
-            <div class="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-hospital-cyan to-cyan-600 flex items-center justify-between sticky top-0 z-10">
+            <div class="px-4 py-3 border-b border-gray-200
+                        bg-gradient-to-r from-hospital-cyan to-cyan-600
+                        flex items-center justify-between sticky top-0">
               <div class="flex items-center gap-2">
-                <app-icon name="bell" [size]="18" className="text-white"></app-icon>
+                <app-icon name="bell" [size]="16" class="text-white"></app-icon>
                 <h3 class="font-bold text-white text-sm">Notificaciones</h3>
                 <span *ngIf="conexionSignalREstablecida"
                       class="text-xs text-white/80 bg-white/20 px-2 py-0.5 rounded-full">
                   En vivo
                 </span>
               </div>
-              <button (click)="marcarTodasLeidas()"
-                      *ngIf="notificacionesNoLeidas > 0"
-                      class="text-xs text-white hover:text-white/80 font-medium transition-colors">
+              <button *ngIf="notificacionesNoLeidas > 0"
+                      (click)="marcarTodasLeidas()"
+                      class="text-xs text-white hover:text-white/80 font-medium">
                 Marcar todas leídas
               </button>
             </div>
 
-            <!-- Lista de notificaciones (scrollable) -->
             <div class="flex-1 overflow-y-auto divide-y divide-gray-100">
               <div *ngFor="let notif of notificaciones; let i = index"
                    (click)="abrirNotificacion(notif)"
-                   [class]="'px-4 py-3 hover:bg-gray-50 cursor-pointer transition-all duration-200 animate-fade-in-up'"
-                   [style.animation-delay]="i * 50 + 'ms'"
+                   class="px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors"
                    [ngClass]="{
-                      'bg-blue-50 border-l-4 border-blue-500': !notif.leida && notif.tipo === 'info',
-                      'bg-green-50 border-l-4 border-green-500': !notif.leida && notif.tipo === 'success',
-                      'bg-yellow-50 border-l-4 border-yellow-500': !notif.leida && notif.tipo === 'warning',
-                      'bg-red-50 border-l-4 border-red-500': !notif.leida && (notif.tipo === 'error')
-                    }">
+                     'bg-blue-50 border-l-4 border-blue-500':   !notif.leida && notif.tipo === 'info',
+                     'bg-green-50 border-l-4 border-green-500': !notif.leida && notif.tipo === 'success',
+                     'bg-yellow-50 border-l-4 border-yellow-500': !notif.leida && notif.tipo === 'warning',
+                     'bg-red-50 border-l-4 border-red-500':     !notif.leida && notif.tipo === 'error'
+                   }">
                 <div class="flex items-start gap-3">
-                  <!-- Ícono según tipo -->
                   <div [class]="'p-2 rounded-lg flex-shrink-0 ' + getColoresNotificacion(notif.tipo).bg">
-                    <app-icon [name]="getIconoNotificacion(notif.tipo)"
-                              [size]="18"
-                              [className]="getColoresNotificacion(notif.tipo).icon"></app-icon>
+                    <app-icon [name]="getIconoNotificacion(notif.tipo)" [size]="16"
+                              [className]="getColoresNotificacion(notif.tipo).icon">
+                    </app-icon>
                   </div>
-
-                  <!-- Contenido -->
                   <div class="flex-1 min-w-0">
                     <div class="flex items-start justify-between gap-2">
-                      <p class="text-sm font-semibold text-gray-800 line-clamp-1">{{ notif.titulo }}</p>
-                      <span *ngIf="!notif.leida" class="flex-shrink-0">
-                        <span class="h-2 w-2 bg-blue-500 rounded-full block"></span>
+                      <p class="text-sm font-semibold text-gray-800 line-clamp-1">
+                        {{ notif.titulo }}
+                      </p>
+                      <span *ngIf="!notif.leida"
+                            class="h-2 w-2 bg-blue-500 rounded-full flex-shrink-0 mt-1">
                       </span>
                     </div>
-                    <p class="text-xs text-gray-600 line-clamp-2 mt-1">{{ notif.mensaje }}</p>
-
-                    <!-- Footer: Tiempo + Acción sugerida -->
-                    <div class="flex items-center justify-between mt-2">
+                    <p class="text-xs text-gray-600 line-clamp-2 mt-0.5">
+                      {{ notif.mensaje }}
+                    </p>
+                    <div class="flex items-center justify-between mt-1.5">
                       <span class="text-xs text-gray-400 flex items-center gap-1">
-                        <app-icon name="clock" [size]="12"></app-icon>
+                        <app-icon name="clock" [size]="11"></app-icon>
                         {{ formatearTiempo(notif.fechaHora) }}
                       </span>
-
                       <span *ngIf="notif.accionSugerida"
-                            class="text-xs font-medium text-hospital-cyan hover:text-cyan-700 flex items-center gap-1">
+                            class="text-xs font-medium text-hospital-cyan
+                                   flex items-center gap-0.5">
                         {{ notif.accionSugerida }}
-                        <app-icon name="chevron-right" [size]="12"></app-icon>
+                        <app-icon name="chevron-right" [size]="11"></app-icon>
                       </span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <!-- Empty state -->
-              <div *ngIf="notificaciones.length === 0"
-                   class="px-4 py-12 text-center">
-                <div class="text-gray-300 mb-3 flex justify-center">
-                  <app-icon name="bell" [size]="48"></app-icon>
-                </div>
+              <div *ngIf="notificaciones.length === 0" class="px-4 py-12 text-center">
+                <app-icon name="bell" [size]="44" class="text-gray-200 mx-auto mb-3"></app-icon>
                 <p class="text-sm font-medium text-gray-600">Sin notificaciones</p>
                 <p class="text-xs text-gray-400 mt-1">
                   Las alertas en tiempo real aparecerán aquí
@@ -622,46 +603,46 @@
               </div>
             </div>
 
-            <!-- Footer: Acciones -->
-            <div class="px-4 py-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between sticky bottom-0">
-              <button (click)="limpiarTodas()"
-                      *ngIf="notificaciones.length > 0"
-                      class="text-xs text-red-600 hover:text-red-700 font-medium transition-colors flex items-center gap-1">
-                <app-icon name="x" [size]="14"></app-icon>
+            <div class="px-4 py-3 border-t border-gray-200 bg-gray-50
+                        flex items-center justify-between sticky bottom-0">
+              <button *ngIf="notificaciones.length > 0"
+                      (click)="limpiarTodas()"
+                      class="text-xs text-red-600 hover:text-red-700 font-medium
+                             flex items-center gap-1">
+                <app-icon name="x" [size]="13"></app-icon>
                 Limpiar todas
               </button>
-
               <span class="text-xs text-gray-500 ml-auto">
-                {{ notificaciones.length }} notificación{{ notificaciones.length !== 1 ? 'es' : '' }}
+                {{ notificaciones.length }}
+                notificación{{ notificaciones.length !== 1 ? 'es' : '' }}
               </span>
             </div>
           </div>
         </div>
 
-        <!-- Información del Usuario -->
-        <div class="text-right hidden md:block text-white">
-          <div class="text-sm font-bold leading-none">{{ userName }}</div>
-          <div class="text-[10px] uppercase opacity-80">{{ userRole }}</div>
+        <!-- Usuario -->
+        <div class="hidden md:block text-right text-white">
+          <p class="text-sm font-bold leading-none">{{ userName }}</p>
+          <p class="text-[10px] uppercase opacity-75">{{ userRole }}</p>
         </div>
 
         <!-- Avatar -->
-        <div class="h-9 w-9 rounded-full bg-white/20 flex items-center justify-center text-white font-bold border border-white/30">
+        <div class="h-9 w-9 rounded-full bg-white/20 flex items-center justify-center
+                    text-white font-bold border border-white/30 text-sm flex-shrink-0">
           {{ userName.charAt(0) }}
         </div>
 
-        <!-- Botón Logout -->
+        <!-- Logout -->
         <button (click)="confirmLogout()"
                 class="text-white hover:bg-white/10 p-2 rounded-lg transition-colors"
-                title="Salir">
+                title="Cerrar sesión">
           <app-icon name="log-out" [size]="20"></app-icon>
         </button>
       </div>
     </header>
 
-    <!-- ===================================================================
-         MAIN CONTENT
-         =================================================================== -->
-    <main class="flex-1 overflow-y-auto bg-hospital-bg p-0 relative z-0">
+    <!-- Contenido -->
+    <main class="flex-1 overflow-y-auto bg-hospital-bg">
       <router-outlet></router-outlet>
     </main>
   </div>

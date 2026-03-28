@@ -14,11 +14,8 @@ import { LiquidarDeudaEconomicaComponent } from './pages/deudas/liquidar-deuda-e
 import { RegistrarDeudaSangreComponent } from './pages/deudas/registrar-deuda-sangre/registrar-deuda-sangre';
 import { LiquidarDeudaSangreComponent } from './pages/deudas/liquidar-deuda-sangre/liquidar-deuda-sangre';
 import { GestionarExoneracionComponent } from './pages/deudas/gestionar-exoneracion/gestionar-exoneracion';
-import { ListaExpedientesLegales } from './pages/expediente-legal/lista-expedientes-legales/lista-expedientes-legales';
-import { CrearExpedienteLegal } from './pages/expediente-legal/crear-expediente-legal/crear-expediente-legal';
-import { DetalleExpedienteLegal } from './pages/expediente-legal/detalle-expediente-legal/detalle-expediente-legal';
 import { ValidarAdmision } from './pages/expediente-legal/validar-admision/validar-admision';
-import { AutorizarJefeGuardia } from './pages/expediente-legal/autorizar-jefe-guardia/autorizar-jefe-guardia';
+import { ConsultaExpedientes } from './pages/vigilante-supervisor/consulta-expedientes/consulta-expedientes';
 import { BusquedaSalida } from './pages/vigilante/busqueda-salida/busqueda-salida';
 import { authGuard } from './guards/auth.guard';
 
@@ -49,12 +46,10 @@ export const routes: Routes = [
       { path: 'deudas/liquidar-economica', component: LiquidarDeudaEconomicaComponent},
       { path: 'deudas/registrar-sangre', component: RegistrarDeudaSangreComponent},
       { path: 'deudas/liquidar-sangre', component: LiquidarDeudaSangreComponent},
-      { path: 'deudas/gestionar-exoneracion', component: GestionarExoneracionComponent},
-      { path: 'administrativo/legal/lista',component: ListaExpedientesLegales},
-      { path: 'administrativo/legal/crear',component: CrearExpedienteLegal},
-      { path: 'administrativo/legal/detalle/:id',component: DetalleExpedienteLegal},
-      { path: 'administrativo/expedientes/validar-admision',component: ValidarAdmision},
-      { path: 'administrativo/legal/autorizar-jefe-guardia', component: AutorizarJefeGuardia },
+      { path: 'deudas/gestionar-exoneracion', component: GestionarExoneracionComponent },
+      { path: 'administrativo/expedientes/validar-admision', component: ValidarAdmision },
+      { path: 'administrativo/vigsup', component: ConsultaExpedientes },
+     
      
 
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }

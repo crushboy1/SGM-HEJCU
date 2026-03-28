@@ -7,7 +7,7 @@
     public class ConsultarPacienteDTO
     {
         // ═══════════════════════════════════════════════════════════
-        // DATOS DE GALENHOS (Sistema HIS)
+        // DATOS DE GALENHOS
         // ═══════════════════════════════════════════════════════════
 
         public string HC { get; set; } = string.Empty;
