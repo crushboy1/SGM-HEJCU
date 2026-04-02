@@ -27,9 +27,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
 
   // ── Sidebar ──────────────────────────────────────────────────────
-  /** Mobile: overlay abierto */
   sidebarOpen = false;
-  /** Desktop: mouse sobre el sidebar */
   sidebarHovered = false;
 
   /**

@@ -124,7 +124,35 @@ const estadosMap = new Map<string, BadgeConfig>([
     icon: 'circle-x',
     label: 'Inactivo'
   }],
-
+  // ===================================================================
+  // ESTADOS DE ACTAS
+  // ===================================================================
+  ['firmada', {
+    theme: 'success',
+    icon: 'file-check',
+    label: 'Firmada'
+  }],
+  ['borrador', {
+    theme: 'warning',
+    icon: 'file-text',
+    label: 'Borrador'
+  }],
+  ['anulada', {
+    theme: 'error',
+    icon: 'file-x',
+    label: 'Anulada'
+  }],
+  // Estados de Permanencia
+  ['excedido', {
+    theme: 'urgent',
+    icon: 'alert-triangle',
+    label: 'Excedido 48h'
+  }],
+  ['activo_mortuorio', {
+    theme: 'cyan',
+    icon: 'clock',
+    label: 'En Mortuorio'
+  }],
   // ===================================================================
   // ESTADOS DE NOTIFICACIONES SIGNALR
   // ===================================================================

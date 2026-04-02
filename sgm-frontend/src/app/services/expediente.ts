@@ -55,15 +55,15 @@ export interface Expediente {
 /** Mapea CreateExpedienteDTO del backend */
 export interface CreateExpedienteDTO {
   hc: string;
-  tipoDocumento: number;           // TipoDocumentoIdentidad (enum int)
+  tipoDocumento: number;
   numeroDocumento: string;
   apellidoPaterno: string;
   apellidoMaterno: string;
   nombres: string;
   fechaNacimiento: string;
   sexo: string;
-  fuenteFinanciamiento: number;    // FuenteFinanciamiento (enum int)
-  tipoExpediente: number;          // TipoIngreso (enum int: Interno=1, Externo=2)
+  fuenteFinanciamiento: number; 
+  tipoExpediente: number;
   esNN: boolean;
   causaViolentaODudosa: boolean;
   servicioFallecimiento: string;

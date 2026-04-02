@@ -408,7 +408,7 @@
           </p>
         </li>
 
-        <!-- Reportes — VigSup / JG / Admin (futuro) -->
+        <!-- Reportes  -->
         <li *ngIf="userRole === 'Administrador' || userRole === 'JefeGuardia' ||
                    userRole === 'VigilanteSupervisor'">
           <a routerLink="/reportes" routerLinkActive="bg-hospital-cyan text-white shadow-md"
@@ -429,7 +429,7 @@
           </a>
         </li>
 
-        <!-- Usuarios — solo Admin (futuro) -->
+        <!-- Usuarios -->
         <li *ngIf="userRole === 'Administrador'">
           <a routerLink="/usuarios" routerLinkActive="bg-hospital-cyan text-white shadow-md"
              (click)="closeMobileSidebar()"
@@ -449,7 +449,7 @@
           </a>
         </li>
 
-        <!-- Auditoría — solo Admin (futuro) -->
+        <!-- Auditoría -->
         <li *ngIf="userRole === 'Administrador'">
           <a routerLink="/auditoria" routerLinkActive="bg-hospital-cyan text-white shadow-md"
              (click)="closeMobileSidebar()"
@@ -471,7 +471,6 @@
 
       </ul>
     </nav>
-    <!-- Sin footer — hover-expand reemplaza el botón de contraer -->
   </aside>
 
   <!-- ===================================================================

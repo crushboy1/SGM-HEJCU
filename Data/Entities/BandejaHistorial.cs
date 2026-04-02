@@ -118,7 +118,7 @@ namespace SisMortuorio.Data.Entities
 
             FechaHoraSalida = DateTime.Now;
             UsuarioLiberaID = usuarioLiberaId;
-            Accion = AccionBandeja.Liberacion;
+            // Accion NO se modifica — preserva el valor original (Asignacion)
 
             if (!string.IsNullOrEmpty(observaciones))
                 Observaciones = observaciones;

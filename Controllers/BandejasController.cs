@@ -19,7 +19,7 @@ namespace SisMortuorio.Controllers
         private int UsuarioActualId =>
             int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-        /// <summary>Todas las bandejas con estado actual (mapa visual).</summary>
+        /// <summary>Todas las bandejas con estado actual.</summary>
         [HttpGet("dashboard")]
         [ProducesResponseType(typeof(List<BandejaDTO>), 200)]
         public async Task<IActionResult> GetOcupacionDashboard()
@@ -35,7 +35,7 @@ namespace SisMortuorio.Controllers
             }
         }
 
-        /// <summary>Detalle de una bandeja por ID.</summary>
+        /// <summary>Detalle de una bandeja por ID</summary>
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(BandejaDTO), 200)]
         [ProducesResponseType(404)]
@@ -55,7 +55,7 @@ namespace SisMortuorio.Controllers
             }
         }
 
-        /// <summary>Bandejas disponibles (dropdown de asignación).</summary>
+        /// <summary>Bandejas disponibles </summary>
         [HttpGet("disponibles")]
         [Authorize(Roles = "Ambulancia, Administrador")]
         [ProducesResponseType(typeof(List<BandejaDisponibleDTO>), 200)]
@@ -110,12 +110,11 @@ namespace SisMortuorio.Controllers
         }
 
         // ═══════════════════════════════════════════════════════════
-        // MANTENIMIENTO — ACTUALIZADO v2
+        // MANTENIMIENTO
         // ═══════════════════════════════════════════════════════════
 
         /// <summary>
         /// Pone una bandeja en Mantenimiento con datos completos del modal.
-        /// CAMBIOS v2: acepta IniciarMantenimientoDTO en lugar de string.
         /// </summary>
         [HttpPut("{bandejaId}/mantenimiento/iniciar")]
         [Authorize(Roles = "Administrador, JefeGuardia, VigilanteSupervisor")]

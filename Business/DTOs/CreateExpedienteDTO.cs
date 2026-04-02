@@ -71,8 +71,7 @@ namespace SisMortuorio.Business.DTOs
         public string? MedicoRNE { get; set; }
 
         /// <summary>
-        /// Diagnóstico final CIE-10. Opcional al crear — puede completarse después.
-        /// Validación en servicio según TipoExpediente.
+        /// Diagnóstico final CIE-10
         /// </summary>
         [StringLength(500)]
         public string? DiagnosticoFinal { get; set; }
@@ -90,7 +89,7 @@ namespace SisMortuorio.Business.DTOs
         /// <summary>
         /// Médico externo que certifica el fallecimiento.
         /// Aplica cuando CausaViolentaODudosa = false, independientemente del TipoExpediente.
-        /// Casos: Externo (DOA) o Interno con menos de 24h de hospitalización.
+        /// Casos: Externo o Interno con menos de 24h de hospitalización.
         /// </summary>
         [StringLength(200)]
         public string? MedicoExternoNombre { get; set; }

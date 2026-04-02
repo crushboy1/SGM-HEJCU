@@ -10,6 +10,8 @@ namespace SisMortuorio.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            /*
+             *Columna NumeroOficio no existe en BD nueva — ya fue excluida en migración Inicial.
             migrationBuilder.DropIndex(
                 name: "IX_SalidasMortuorio_ActaRetiroID",
                 table: "SalidasMortuorio");
@@ -65,6 +67,7 @@ namespace SisMortuorio.Migrations
                 table: "SalidasMortuorio",
                 column: "ActaRetiroID",
                 unique: true);
+            */
         }
 
         /// <inheritdoc />
