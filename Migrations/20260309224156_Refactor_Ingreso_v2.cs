@@ -10,6 +10,7 @@ namespace SisMortuorio.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            /*
             migrationBuilder.DropForeignKey(
                 name: "FK_AutoridadesExternas_Expedientes_ExpedienteID1",
                 table: "AutoridadesExternas");
@@ -89,6 +90,7 @@ namespace SisMortuorio.Migrations
                 name: "NumeroOficioLegal",
                 table: "ActasRetiro",
                 newName: "NumeroOficioPolicial");
+            */
         }
                 
 

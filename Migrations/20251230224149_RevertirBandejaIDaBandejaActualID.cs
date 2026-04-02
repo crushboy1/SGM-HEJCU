@@ -10,10 +10,12 @@ namespace SisMortuorio.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.RenameColumn(
-                name: "BandejaID",
-                table: "Expedientes",
-                newName: "BandejaActualID");
+            // Columna ya creada con nombre correcto BandejaActualID en BD nueva.
+            // sp_rename solo necesario en BD existentes con nombre anterior BandejaID.
+            //migrationBuilder.RenameColumn(
+            //  name: "BandejaID",
+            //table: "Expedientes",
+            //newName: "BandejaActualID");
         }
 
         /// <inheritdoc />

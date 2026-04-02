@@ -435,7 +435,7 @@ namespace SisMortuorio.Data
             });
 
             // ===================================================================
-            // SALIDA MORTUORIO
+            // CONFIGURACION SALIDA MORTUORIO
             // ===================================================================
             modelBuilder.Entity<SalidaMortuorio>(entity =>
             {
@@ -444,8 +444,8 @@ namespace SisMortuorio.Data
 
                 // Relación con Expediente
                 entity.HasOne(s => s.Expediente)
-                    .WithMany()
-                    .HasForeignKey(s => s.ExpedienteID)
+                    .WithOne(e => e.SalidaMortuorio)
+                    .HasForeignKey<SalidaMortuorio>(s => s.ExpedienteID)
                     .OnDelete(DeleteBehavior.Cascade);
 
                 // Relación con usuario que registró la salida (Vigilante, Admin u otro rol autorizado)

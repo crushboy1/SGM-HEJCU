@@ -17,6 +17,7 @@ import { GestionarExoneracionComponent } from './pages/deudas/gestionar-exonerac
 import { ValidarAdmision } from './pages/expediente-legal/validar-admision/validar-admision';
 import { ConsultaExpedientes } from './pages/vigilante-supervisor/consulta-expedientes/consulta-expedientes';
 import { BusquedaSalida } from './pages/vigilante/busqueda-salida/busqueda-salida';
+import { ReportesComponent } from './pages/reportes/reportes';
 import { authGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
@@ -42,14 +43,14 @@ export const routes: Routes = [
       { path: 'asignar-bandeja/:id', component: AsignarBandejaComponent },
       { path: 'mis-tareas', component: MisTareasComponent },
       { path: 'busqueda-salida', component: BusquedaSalida },
-      { path: 'deudas/registrar-economica', component: RegistrarDeudaEconomicaComponent},
-      { path: 'deudas/liquidar-economica', component: LiquidarDeudaEconomicaComponent},
-      { path: 'deudas/registrar-sangre', component: RegistrarDeudaSangreComponent},
-      { path: 'deudas/liquidar-sangre', component: LiquidarDeudaSangreComponent},
+      { path: 'deudas/registrar-economica', component: RegistrarDeudaEconomicaComponent },
+      { path: 'deudas/liquidar-economica', component: LiquidarDeudaEconomicaComponent },
+      { path: 'deudas/registrar-sangre', component: RegistrarDeudaSangreComponent },
+      { path: 'deudas/liquidar-sangre', component: LiquidarDeudaSangreComponent },
       { path: 'deudas/gestionar-exoneracion', component: GestionarExoneracionComponent },
       { path: 'administrativo/expedientes/validar-admision', component: ValidarAdmision },
       { path: 'administrativo/vigsup', component: ConsultaExpedientes },
-     
+      { path: 'reportes', component: ReportesComponent},
      
 
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }

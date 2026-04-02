@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SisMortuorio.Data;
 
@@ -11,9 +12,11 @@ using SisMortuorio.Data;
 namespace SisMortuorio.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260331063514_UpdatePermanenciaFields")]
+    partial class UpdatePermanenciaFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -446,7 +449,7 @@ namespace SisMortuorio.Migrations
 
                     b.HasIndex("Modulo", "Accion");
 
-                    b.ToTable("AuditLogs", (string)null);
+                    b.ToTable("AuditLogs");
                 });
 
             modelBuilder.Entity("SisMortuorio.Data.Entities.AutoridadExterna", b =>
@@ -646,7 +649,7 @@ namespace SisMortuorio.Migrations
 
                     b.HasIndex("UsuarioRegistraMantenimientoID");
 
-                    b.ToTable("Bandejas", (string)null);
+                    b.ToTable("Bandejas");
                 });
 
             modelBuilder.Entity("SisMortuorio.Data.Entities.BandejaHistorial", b =>
@@ -694,7 +697,7 @@ namespace SisMortuorio.Migrations
 
                     b.HasIndex("BandejaID", "FechaHoraSalida");
 
-                    b.ToTable("BandejaHistoriales", (string)null);
+                    b.ToTable("BandejaHistoriales");
                 });
 
             modelBuilder.Entity("SisMortuorio.Data.Entities.CustodiaTransferencia", b =>
@@ -739,7 +742,7 @@ namespace SisMortuorio.Migrations
 
                     b.HasIndex("UsuarioOrigenID");
 
-                    b.ToTable("CustodiaTransferencias", (string)null);
+                    b.ToTable("CustodiaTransferencias");
                 });
 
             modelBuilder.Entity("SisMortuorio.Data.Entities.DeudaEconomica", b =>
@@ -831,7 +834,7 @@ namespace SisMortuorio.Migrations
 
                     b.HasIndex("UsuarioRegistroID");
 
-                    b.ToTable("DeudasEconomicas", (string)null);
+                    b.ToTable("DeudasEconomicas");
                 });
 
             modelBuilder.Entity("SisMortuorio.Data.Entities.DeudaSangre", b =>
@@ -912,7 +915,7 @@ namespace SisMortuorio.Migrations
 
                     b.HasIndex("UsuarioRegistroID");
 
-                    b.ToTable("DeudasSangre", (string)null);
+                    b.ToTable("DeudasSangre");
                 });
 
             modelBuilder.Entity("SisMortuorio.Data.Entities.DocumentoExpediente", b =>
@@ -986,7 +989,7 @@ namespace SisMortuorio.Migrations
 
                     b.HasIndex("ExpedienteID", "TipoDocumento");
 
-                    b.ToTable("DocumentosExpediente", (string)null);
+                    b.ToTable("DocumentosExpediente");
                 });
 
             modelBuilder.Entity("SisMortuorio.Data.Entities.DocumentoLegal", b =>
@@ -1266,7 +1269,7 @@ namespace SisMortuorio.Migrations
 
                     b.HasIndex("UsuarioCreadorID");
 
-                    b.ToTable("Expedientes", (string)null);
+                    b.ToTable("Expedientes");
                 });
 
             modelBuilder.Entity("SisMortuorio.Data.Entities.ExpedienteLegal", b =>
@@ -1401,7 +1404,7 @@ namespace SisMortuorio.Migrations
 
                     b.HasIndex("ExpedienteID");
 
-                    b.ToTable("Pertenencias", (string)null);
+                    b.ToTable("Pertenencias");
                 });
 
             modelBuilder.Entity("SisMortuorio.Data.Entities.Rol", b =>
@@ -1627,7 +1630,7 @@ namespace SisMortuorio.Migrations
 
                     b.HasIndex("Resuelta", "FechaHoraSolicitud");
 
-                    b.ToTable("SolicitudesCorreccion", (string)null);
+                    b.ToTable("SolicitudesCorreccion");
                 });
 
             modelBuilder.Entity("SisMortuorio.Data.Entities.Usuario", b =>
@@ -1821,7 +1824,7 @@ namespace SisMortuorio.Migrations
 
                     b.HasIndex("ExpedienteID", "Aprobada");
 
-                    b.ToTable("VerificacionesMortuorio", (string)null);
+                    b.ToTable("VerificacionesMortuorio");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<int>", b =>

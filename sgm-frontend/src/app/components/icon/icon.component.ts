@@ -426,7 +426,42 @@ import { CommonModule } from '@angular/common';
           <line x1="18" x2="18" y1="20" y2="4"></line>
           <line x1="6" x2="6" y1="20" y2="16"></line>
         </g>
-        
+
+        <!-- ============================================
+           TENDENCIAS Y GRAFICAS (para Reportes)
+        ============================================ -->
+        <g *ngSwitchCase="'trending-up'">
+          <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+          <polyline points="16 7 22 7 22 13"></polyline>
+        </g>
+
+        <g *ngSwitchCase="'bar-chart-2'">
+          <line x1="18" x2="18" y1="20" y2="10"></line>
+          <line x1="12" x2="12" y1="20" y2="4"></line>
+          <line x1="6" x2="6" y1="20" y2="16"></line>
+        </g>
+
+        <g *ngSwitchCase="'pie-chart'">
+          <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path>
+          <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
+        </g>
+
+        <g *ngSwitchCase="'activity'">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+        </g>
+
+        <g *ngSwitchCase="'chevrons-up-down'">
+          <path d="m7 15 5 5 5-5"></path>
+          <path d="m7 9 5-5 5 5"></path>
+        </g>
+
+        <g *ngSwitchCase="'file-x'">
+          <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="9.5" x2="14.5" y1="10.5" y2="15.5"></line>
+          <line x1="14.5" x2="9.5" y1="10.5" y2="15.5"></line>
+        </g>
+
         <!-- ============================================
              DEFAULT (FALLBACK)
              ============================================ -->
