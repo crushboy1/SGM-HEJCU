@@ -1,14 +1,13 @@
 <div class="min-h-screen bg-slate-100">
 
   <!-- ================================================================
-       HEADER — icono cyan, sin emojis
+       HEADER
        ================================================================ -->
   <header class="bg-white border-b border-slate-200 shadow-soft sticky top-0 z-20">
     <div class="max-w-screen-2xl mx-auto px-4 md:px-6">
 
       <div class="flex items-center justify-between h-16 gap-3">
         <div class="flex items-center gap-3">
-          <!-- Icono con color cyan en lugar de gris -->
           <div class="p-2 bg-cyan-50 rounded-lg text-hospital-cyan">
             <app-icon name="bar-chart-2" [size]="22"></app-icon>
           </div>
@@ -22,7 +21,7 @@
           <button *ngIf="hayFiltrosActivos"
                   (click)="limpiarFiltrosTab()"
                   class="btn-secondary flex items-center gap-1.5 text-sm py-2 px-3
-                   text-orange-600 border-orange-300 hover:bg-orange-50">
+                         text-orange-600 border-orange-300 hover:bg-orange-50">
             <app-icon name="x" [size]="14"></app-icon>
             <span class="hidden sm:inline">Limpiar filtros</span>
           </button>
@@ -30,7 +29,7 @@
           <button (click)="cargarDatosTab()"
                   [disabled]="isLoading"
                   class="btn-secondary flex items-center gap-1.5 text-sm py-2 px-3
-                   disabled:opacity-50 disabled:cursor-not-allowed">
+                         disabled:opacity-50 disabled:cursor-not-allowed">
             <app-icon name="refresh-cw" [size]="14" [class.animate-spin]="isLoading"></app-icon>
             <span class="hidden sm:inline">Actualizar</span>
           </button>
@@ -39,7 +38,7 @@
                   (click)="exportar('excel')"
                   [disabled]="isExportingExcel || isLoading"
                   class="btn-secondary flex items-center gap-1.5 text-sm py-2 px-3
-                   disabled:opacity-50 disabled:cursor-not-allowed">
+                         disabled:opacity-50 disabled:cursor-not-allowed">
             <app-icon [name]="isExportingExcel ? 'loader' : 'download'" [size]="15"
                       [class.animate-spin]="isExportingExcel"></app-icon>
             <span class="hidden sm:inline">Excel</span>
@@ -49,7 +48,7 @@
                   (click)="exportar('pdf')"
                   [disabled]="isExportingPdf || isLoading"
                   class="btn-primary flex items-center gap-1.5 text-sm py-2 px-3
-                   disabled:opacity-50 disabled:cursor-not-allowed">
+                         disabled:opacity-50 disabled:cursor-not-allowed">
             <app-icon [name]="isExportingPdf ? 'loader' : 'file-text'" [size]="15"
                       [class.animate-spin]="isExportingPdf"></app-icon>
             <span class="hidden sm:inline">Ver PDF</span>
@@ -61,8 +60,8 @@
         <button *ngFor="let tab of tabsVisibles; trackBy: trackByTab"
                 (click)="cambiarTab(tab.key)"
                 [ngClass]="tabActivo === tab.key
-            ? 'tab-reporte tab-reporte-active'
-            : 'tab-reporte tab-reporte-inactive'">
+                  ? 'tab-reporte tab-reporte-active'
+                  : 'tab-reporte tab-reporte-inactive'">
           <span class="flex items-center gap-1.5">
             <app-icon [name]="tab.icon" [size]="14"></app-icon>
             {{ tab.label }}
@@ -121,7 +120,14 @@
          ============================================================ -->
     <ng-container *ngIf="tabActivo === 'dashboard' && !isLoading">
 
-      <section class="grid grid-cols-2 md:grid-cols-4 gap-4" *ngIf="dashboard">
+      <!-- Separador: Estado actual -->
+      <div class="flex items-center gap-3">
+        <span class="text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Estado actual</span>
+        <div class="flex-1 h-px bg-slate-200"></div>
+      </div>
+
+      <!-- Cards estado actual: Ocupación + Alertas 48h + 3 Deudas -->
+      <section class="grid grid-cols-2 md:grid-cols-5 gap-4" *ngIf="dashboard">
 
         <article class="bg-gradient-to-br from-cyan-50 to-cyan-100 rounded-xl border border-cyan-200 p-5 shadow-soft animate-fade-in-up">
           <div class="flex items-start justify-between">
@@ -149,7 +155,91 @@
           </div>
         </article>
 
-        <article class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl border border-purple-200 p-5 shadow-soft animate-fade-in-up animate-delay-100">
+        <article [ngClass]="(dashboard.bandeja.conAlerta48h || 0) > 0
+            ? 'bg-gradient-to-br from-red-50 to-red-100 border-red-200'
+            : 'bg-gradient-to-br from-slate-50 to-slate-100 border-slate-200'"
+                 class="rounded-xl border p-5 shadow-soft animate-fade-in-up animate-delay-100">
+          <div class="flex items-start justify-between">
+            <div>
+              <p class="reporte-kpi-label"
+                 [class.text-red-700]="(dashboard.bandeja.conAlerta48h || 0) > 0"
+                 [class.text-slate-500]="(dashboard.bandeja.conAlerta48h || 0) === 0">
+                Alertas 48h
+              </p>
+              <p class="reporte-kpi-valor"
+                 [class.text-red-600]="(dashboard.bandeja.conAlerta48h || 0) > 0"
+                 [class.text-slate-400]="(dashboard.bandeja.conAlerta48h || 0) === 0">
+                {{ dashboard.bandeja.conAlerta48h || 0 }}
+              </p>
+            </div>
+            <span class="p-2.5 rounded-xl"
+                  [ngClass]="(dashboard.bandeja.conAlerta48h || 0) > 0
+                    ? 'bg-red-200 text-red-700'
+                    : 'bg-slate-200 text-slate-500'">
+              <app-icon name="alert-triangle" [size]="22"></app-icon>
+            </span>
+          </div>
+          <p class="text-xs mt-3"
+             [class.text-red-600]="(dashboard.bandeja.conAlerta48h || 0) > 0"
+             [class.text-slate-400]="(dashboard.bandeja.conAlerta48h || 0) === 0">
+            Cuerpos superando 48h
+          </p>
+        </article>
+
+        <article *ngIf="dashboard?.deudas"
+                 class="bg-gradient-to-br from-red-50 to-red-100 rounded-xl border border-red-200 p-5 shadow-soft animate-fade-in-up animate-delay-200">
+          <div class="flex items-start justify-between">
+            <div>
+              <p class="reporte-kpi-label text-red-700">Sangre pendientes</p>
+              <p class="reporte-kpi-valor text-red-600">{{ dashboard!.deudas.sangrePendientes }}</p>
+            </div>
+            <span class="p-2.5 bg-red-200 rounded-xl text-red-700">
+              <app-icon name="droplet" [size]="22"></app-icon>
+            </span>
+          </div>
+          <p class="text-xs text-red-500 mt-3">{{ dashboard!.deudas.sangreAnuladas }} anuladas</p>
+        </article>
+
+        <article *ngIf="dashboard?.deudas"
+                 class="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl border border-orange-200 p-5 shadow-soft animate-fade-in-up animate-delay-300">
+          <div class="flex items-start justify-between">
+            <div>
+              <p class="reporte-kpi-label text-orange-700">Económicas pend.</p>
+              <p class="reporte-kpi-valor text-orange-600">{{ dashboard!.deudas.economicasPendientes }}</p>
+            </div>
+            <span class="p-2.5 bg-orange-200 rounded-xl text-orange-700">
+              <app-icon name="credit-card" [size]="22"></app-icon>
+            </span>
+          </div>
+          <p class="text-xs text-orange-500 mt-3">{{ dashboard!.deudas.economicasExoneradas }} exoneradas</p>
+        </article>
+
+        <article *ngIf="dashboard?.deudas"
+                 class="bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200 p-5 shadow-soft animate-fade-in-up animate-delay-400">
+          <div class="flex items-start justify-between">
+            <div>
+              <p class="reporte-kpi-label text-green-700">Económicas resuelt.</p>
+              <p class="reporte-kpi-valor text-green-600">{{ dashboard!.deudas.economicasLiquidadas }}</p>
+            </div>
+            <span class="p-2.5 bg-green-200 rounded-xl text-green-700">
+              <app-icon name="check-circle" [size]="22"></app-icon>
+            </span>
+          </div>
+          <p class="text-xs text-green-500 mt-3">estado actual</p>
+        </article>
+
+      </section>
+
+      <!-- Separador: Por período -->
+      <div class="flex items-center gap-3">
+        <span class="text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Por período — {{ labelPeriodo }}</span>
+        <div class="flex-1 h-px bg-slate-200"></div>
+      </div>
+
+      <!-- Cards por período: Salidas + Verificaciones -->
+      <section class="grid grid-cols-2 gap-4" *ngIf="dashboard">
+
+        <article class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl border border-purple-200 p-5 shadow-soft animate-fade-in-up">
           <div class="flex items-start justify-between">
             <div>
               <p class="reporte-kpi-label text-purple-700">Salidas</p>
@@ -171,7 +261,7 @@
           </div>
         </article>
 
-        <article class="bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200 p-5 shadow-soft animate-fade-in-up animate-delay-200">
+        <article class="bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200 p-5 shadow-soft animate-fade-in-up animate-delay-100">
           <div class="flex items-start justify-between">
             <div>
               <p class="reporte-kpi-label text-green-700">Verificaciones</p>
@@ -193,77 +283,34 @@
           </div>
         </article>
 
-        <!-- ngClass con string ternario — sin [class.to-X/40] -->
-        <article [ngClass]="(dashboard.bandeja.conAlerta48h || 0) > 0
-            ? 'bg-gradient-to-br from-red-50 to-red-100 border-red-200'
-            : 'bg-gradient-to-br from-slate-50 to-slate-100/50 border-slate-200'"
-                 class="rounded-xl border p-5 shadow-soft animate-fade-in-up animate-delay-300">
-          <div class="flex items-start justify-between">
-            <div>
-              <p class="reporte-kpi-label"
-                 [class.text-red-700]="(dashboard.bandeja.conAlerta48h || 0) > 0"
-                 [class.text-slate-500]="(dashboard.bandeja.conAlerta48h || 0) === 0">
-                Alertas 48h
-              </p>
-              <p class="reporte-kpi-valor"
-                 [class.text-red-600]="(dashboard.bandeja.conAlerta48h || 0) > 0"
-                 [class.text-slate-400]="(dashboard.bandeja.conAlerta48h || 0) === 0">
-                {{ dashboard.bandeja.conAlerta48h || 0 }}
-              </p>
-            </div>
-            <span class="p-2.5 rounded-xl"
-                  [ngClass]="(dashboard.bandeja.conAlerta48h || 0) > 0
-                  ? 'bg-red-200 text-red-700'
-                  : 'bg-slate-200 text-slate-500'">
-              <app-icon name="alert-triangle" [size]="22"></app-icon>
-            </span>
-          </div>
-          <p class="text-xs mt-3"
-             [class.text-red-600]="(dashboard.bandeja.conAlerta48h || 0) > 0"
-             [class.text-slate-400]="(dashboard.bandeja.conAlerta48h || 0) === 0">
-            Cuerpos superando 48h
-          </p>
-        </article>
-
       </section>
 
+      <!-- Gráficas con etiquetas de contexto -->
       <section class="grid grid-cols-1 lg:grid-cols-2 gap-6" *ngIf="dashboard">
         <div class="bg-white rounded-xl border border-slate-200 shadow-soft p-5">
-          <h3 class="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
-            <app-icon name="pie-chart" [size]="16" class="text-hospital-cyan"></app-icon>
-            Ocupación del Mortuorio
-          </h3>
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2">
+              <app-icon name="pie-chart" [size]="16" class="text-hospital-cyan"></app-icon>
+              Ocupación del Mortuorio
+            </h3>
+            <span class="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">Estado actual</span>
+          </div>
           <div class="flex items-center justify-center h-52">
             <canvas #chartDonaDashboard></canvas>
           </div>
         </div>
         <div class="bg-white rounded-xl border border-slate-200 shadow-soft p-5">
-          <h3 class="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
-            <app-icon name="bar-chart-2" [size]="16" class="text-hospital-cyan"></app-icon>
-            Salidas y Verificaciones — {{ labelPeriodo }}
-          </h3>
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2">
+              <app-icon name="bar-chart-2" [size]="16" class="text-hospital-cyan"></app-icon>
+              Salidas y Verificaciones
+            </h3>
+            <span class="text-xs font-medium text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">{{ labelPeriodo }}</span>
+          </div>
           <div class="h-52">
             <canvas #chartBarrasDashboard></canvas>
           </div>
         </div>
-      </section>
-
-      <section *ngIf="dashboard?.deudas" class="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <article class="bg-gradient-to-br from-red-50 to-red-100 rounded-xl border border-red-200 p-5 shadow-soft">
-          <p class="reporte-kpi-label text-red-700">Deudas sangre pendientes</p>
-          <p class="reporte-kpi-valor text-red-600">{{ dashboard!.deudas.sangrePendientes }}</p>
-          <p class="text-xs text-red-500 mt-2">{{ dashboard!.deudas.sangreAnuladas }} anuladas</p>
-        </article>
-        <article class="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl border border-orange-200 p-5 shadow-soft">
-          <p class="reporte-kpi-label text-orange-700">Deudas económicas pendientes</p>
-          <p class="reporte-kpi-valor text-orange-600">{{ dashboard!.deudas.economicasPendientes }}</p>
-          <p class="text-xs text-orange-500 mt-2">{{ dashboard!.deudas.economicasExoneradas }} exoneradas</p>
-        </article>
-        <article class="bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200 p-5 shadow-soft">
-          <p class="reporte-kpi-label text-green-700">Deudas económicas resueltas</p>
-          <p class="reporte-kpi-valor text-green-600">{{ dashboard!.deudas.economicasLiquidadas }}</p>
-          <p class="text-xs text-green-500 mt-2">estado actual</p>
-        </article>
       </section>
 
       <div *ngIf="!dashboard" class="flex flex-col items-center justify-center py-20 text-slate-400">
@@ -278,17 +325,15 @@
          ============================================================ -->
     <ng-container *ngIf="tabActivo === 'permanencia' && !isLoading">
 
-      <!-- KPIs — los grises ahora con color -->
       <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <article class="bg-gradient-to-br from-slate-100 to-white rounded-xl border border-slate-300 p-5 shadow-soft">
-          <p class="reporte-kpi-label text-slate-600">Total registros</p>
-          <p class="reporte-kpi-valor text-slate-600">{{ permanencia.length }}</p>
+        <article class="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl border border-indigo-200 p-5 shadow-soft">
+          <p class="reporte-kpi-label text-indigo-700">Total registros</p>
+          <p class="reporte-kpi-valor text-indigo-700">{{ permanencia.length }}</p>
         </article>
         <article class="bg-gradient-to-br from-cyan-50 to-cyan-100 rounded-xl border border-cyan-200 p-5 shadow-soft">
           <p class="reporte-kpi-label text-cyan-700">En mortuorio ahora</p>
           <p class="reporte-kpi-valor text-cyan-700">{{ totalActivos }}</p>
         </article>
-        <!-- ngClass ternario string completo — sin warning -->
         <article [ngClass]="totalExcedidos > 0
             ? 'bg-gradient-to-br from-red-50 to-red-100 border-red-300'
             : 'bg-gradient-to-br from-green-50 to-green-100 border-green-200'"
@@ -304,13 +349,14 @@
             {{ totalExcedidos }}
           </p>
         </article>
-        <article class="bg-gradient-to-br from-slate-100 to-white rounded-xl border border-slate-300 p-5 shadow-soft">
-          <p class="reporte-kpi-label text-slate-500">Filtrado actual</p>
-          <p class="reporte-kpi-valor text-slate-500">{{ permanenciaFiltrada.length }}</p>
+        <!-- Slate marcado: Filtrado actual -->
+        <article class="bg-gradient-to-br from-slate-200 to-slate-300 rounded-xl border border-slate-400 p-5 shadow-soft">
+          <p class="reporte-kpi-label text-slate-700">Filtrado actual</p>
+          <p class="reporte-kpi-valor text-slate-700">{{ permanenciaFiltrada.length }}</p>
         </article>
       </section>
 
-      <!-- 2 graficas -->
+      <!-- Gráficas -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6" *ngIf="permanencia.length > 0">
         <div class="bg-white rounded-xl border border-slate-200 shadow-soft p-5">
           <h3 class="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
@@ -319,17 +365,6 @@
           </h3>
           <div class="h-60">
             <canvas #chartBarrasPermanencia></canvas>
-          </div>
-          <div class="flex items-center gap-4 mt-3 text-xs text-slate-500">
-            <span class="flex items-center gap-1.5">
-              <span class="w-3 h-3 rounded bg-red-500 inline-block"></span> Excedió 48h
-            </span>
-            <span class="flex items-center gap-1.5">
-              <span class="w-3 h-3 rounded bg-orange-500 inline-block"></span> 24h–48h
-            </span>
-            <span class="flex items-center gap-1.5">
-              <span class="w-3 h-3 rounded bg-hospital-cyan inline-block"></span> Menos de 24h
-            </span>
           </div>
         </div>
         <div class="bg-white rounded-xl border border-slate-200 shadow-soft p-5">
@@ -343,7 +378,7 @@
         </div>
       </div>
 
-      <!-- Filtros -->
+      <!-- Filtros + Leyenda -->
       <div class="bg-white rounded-xl border border-slate-200 shadow-soft p-4">
         <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
           <div class="relative flex-1">
@@ -363,7 +398,9 @@
             </span>
           </button>
         </div>
+        <!-- Leyenda -->
         <div class="flex flex-wrap gap-4 mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500">
+          <span class="font-semibold text-slate-400 uppercase tracking-wide">Leyenda:</span>
           <span class="flex items-center gap-1.5">
             <span class="badge bg-cyan-50 text-cyan-700 border-cyan-200 py-0.5 px-2">En mortuorio</span>
             Cuerpo aún en instalaciones
@@ -379,7 +416,7 @@
         </div>
       </div>
 
-      <!-- Tabla permanencia — código primero, columnas centradas, sin Estado -->
+      <!-- Tabla permanencia -->
       <div class="bg-white rounded-xl border border-slate-200 shadow-soft overflow-hidden">
         <div class="overflow-x-auto scrollbar-custom">
           <table class="w-full text-sm">
@@ -408,44 +445,29 @@
               </tr>
               <tr *ngFor="let item of permanenciaPaginada; trackBy: trackByPermanencia"
                   [ngClass]="item.excedioLimite
-                  ? 'reporte-tr-alerta hover:bg-red-50'
-                  : 'hover:bg-slate-50'"
+                    ? 'reporte-tr-alerta hover:bg-red-50'
+                    : 'hover:bg-slate-50'"
                   class="transition-colors">
-                <td class="reporte-td text-center font-mono text-xs text-hospital-cyan">
-                  {{ item.codigoExpediente }}
-                </td>
+                <td class="reporte-td text-center font-mono text-xs text-hospital-cyan">{{ item.codigoExpediente }}</td>
                 <td class="reporte-td text-center font-bold text-slate-700">{{ item.codigoBandeja }}</td>
                 <td class="reporte-td font-medium text-slate-800 whitespace-nowrap">{{ item.nombreCompleto }}</td>
                 <td class="reporte-td text-center text-slate-500">{{ item.hc }}</td>
                 <td class="reporte-td text-center text-slate-500 text-xs">{{ item.servicio }}</td>
-                <!-- Diagnóstico con truncate y tooltip -->
                 <td class="reporte-td text-center text-slate-600 text-xs max-w-28">
-                  <span class="block truncate" [title]="item.diagnosticoFinal">
-                    {{ item.diagnosticoFinal }}
-                  </span>
+                  <span class="block truncate" [title]="item.diagnosticoFinal">{{ item.diagnosticoFinal }}</span>
                 </td>
-                <!-- Ingreso: fecha arriba, hora abajo -->
                 <td class="reporte-td text-center">
-                  <span class="block text-xs text-slate-700 font-medium">
-                    {{ item.fechaHoraIngreso | date:'dd/MM/yy' }}
-                  </span>
-                  <span class="block text-xs text-slate-400">
-                    {{ item.fechaHoraIngreso | date:'HH:mm' }}
-                  </span>
+                  <span class="block text-xs text-slate-700 font-medium">{{ item.fechaHoraIngreso | date:'dd/MM/yy' }}</span>
+                  <span class="block text-xs text-slate-400">{{ item.fechaHoraIngreso | date:'HH:mm' }}</span>
                 </td>
-                <!-- Retiro: badge si activo, fecha+hora si retirado -->
                 <td class="reporte-td text-center">
                   <span *ngIf="item.estaActivo" class="badge bg-cyan-50 text-cyan-700 border-cyan-200 text-xs">
                     <app-icon name="clock" [size]="10"></app-icon>
                     En mortuorio
                   </span>
                   <ng-container *ngIf="!item.estaActivo && item.fechaHoraSalida">
-                    <span class="block text-xs text-slate-700 font-medium">
-                      {{ item.fechaHoraSalida | date:'dd/MM/yy' }}
-                    </span>
-                    <span class="block text-xs text-slate-400">
-                      {{ item.fechaHoraSalida | date:'HH:mm' }}
-                    </span>
+                    <span class="block text-xs text-slate-700 font-medium">{{ item.fechaHoraSalida | date:'dd/MM/yy' }}</span>
+                    <span class="block text-xs text-slate-400">{{ item.fechaHoraSalida | date:'HH:mm' }}</span>
                   </ng-container>
                 </td>
                 <td class="reporte-td text-center">
@@ -467,8 +489,7 @@
             </tbody>
           </table>
         </div>
-        <ng-container *ngTemplateOutlet="paginacionTpl; context: { total: permanenciaFiltrada.length }">
-        </ng-container>
+        <ng-container *ngTemplateOutlet="paginacionTpl; context: { total: permanenciaFiltrada.length }"></ng-container>
       </div>
 
     </ng-container>
@@ -479,10 +500,9 @@
     <ng-container *ngIf="tabActivo === 'salidas' && !isLoading">
 
       <section class="grid grid-cols-2 md:grid-cols-5 gap-4" *ngIf="estadSalidas">
-        <!-- Total salidas — ahora con color visible -->
-        <article class="bg-gradient-to-br from-slate-100 to-white rounded-xl border border-slate-300 p-5 shadow-soft">
-          <p class="reporte-kpi-label text-slate-600">Total salidas</p>
-          <p class="reporte-kpi-valor text-slate-600">{{ estadSalidas.totalSalidas }}</p>
+        <article class="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl border border-indigo-200 p-5 shadow-soft">
+          <p class="reporte-kpi-label text-indigo-700">Total salidas</p>
+          <p class="reporte-kpi-valor text-indigo-700">{{ estadSalidas.totalSalidas }}</p>
         </article>
         <article class="bg-gradient-to-br from-cyan-50 to-cyan-100 rounded-xl border border-cyan-200 p-5 shadow-soft">
           <p class="reporte-kpi-label text-cyan-700">Por familiar</p>
@@ -507,10 +527,10 @@
             {{ estadSalidas.conIncidentes }}
           </p>
         </article>
-        <!-- % incidentes con color -->
-        <article class="bg-gradient-to-br from-slate-100 to-white rounded-xl border border-slate-300 p-5 shadow-soft">
-          <p class="reporte-kpi-label text-slate-600">% incidentes</p>
-          <p class="reporte-kpi-valor text-slate-600">{{ estadSalidas.porcentajeIncidentes | number:'1.1-1' }}%</p>
+        <!-- Slate marcado: % incidentes -->
+        <article class="bg-gradient-to-br from-slate-200 to-slate-300 rounded-xl border border-slate-400 p-5 shadow-soft">
+          <p class="reporte-kpi-label text-slate-700">% incidentes</p>
+          <p class="reporte-kpi-valor text-slate-700">{{ estadSalidas.porcentajeIncidentes | number:'1.1-1' }}%</p>
         </article>
       </section>
 
@@ -589,13 +609,8 @@
                   <span class="block text-xs text-slate-700 font-medium">{{ s.fechaHoraSalida | date:'dd/MM/yy' }}</span>
                   <span class="block text-xs text-slate-400">{{ s.fechaHoraSalida | date:'HH:mm' }}</span>
                 </td>
-                <td class="reporte-td text-center">
-                  <span *ngIf="s.tipoSalida === 'Familiar'" class="badge bg-cyan-50 text-cyan-700 border-cyan-200">
-                    <app-icon name="user" [size]="11"></app-icon> Familiar
-                  </span>
-                  <span *ngIf="s.tipoSalida !== 'Familiar'" class="badge bg-purple-50 text-purple-700 border-purple-200">
-                    <app-icon name="shield" [size]="11"></app-icon> Autoridad
-                  </span>
+                <td class="reporte-td text-center text-xs text-slate-700">
+                  {{ s.tipoSalida === 'Familiar' ? 'Familiar' : 'Autoridad Legal' }}
                 </td>
                 <td class="reporte-td text-slate-600 text-xs">{{ s.responsableNombre || '—' }}</td>
                 <td class="reporte-td text-slate-500 text-xs">{{ s.nombreFuneraria || '—' }}</td>
@@ -616,8 +631,7 @@
             </tbody>
           </table>
         </div>
-        <ng-container *ngTemplateOutlet="paginacionTpl; context: { total: salidasFiltradas.length }">
-        </ng-container>
+        <ng-container *ngTemplateOutlet="paginacionTpl; context: { total: salidasFiltradas.length }"></ng-container>
       </div>
 
     </ng-container>
@@ -628,10 +642,9 @@
     <ng-container *ngIf="tabActivo === 'actas' && !isLoading">
 
       <section class="grid grid-cols-2 md:grid-cols-4 gap-4" *ngIf="estadActas">
-        <!-- Total actas con color -->
-        <article class="bg-gradient-to-br from-slate-100 to-white rounded-xl border border-slate-300 p-5 shadow-soft">
-          <p class="reporte-kpi-label text-slate-600">Total actas</p>
-          <p class="reporte-kpi-valor text-slate-600">{{ estadActas.total }}</p>
+        <article class="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl border border-indigo-200 p-5 shadow-soft">
+          <p class="reporte-kpi-label text-indigo-700">Total actas</p>
+          <p class="reporte-kpi-valor text-indigo-700">{{ estadActas.total }}</p>
         </article>
         <article class="bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200 p-5 shadow-soft">
           <p class="reporte-kpi-label text-green-700">Firmadas</p>
@@ -639,14 +652,14 @@
         </article>
         <article [ngClass]="estadActas.conBypass > 0
             ? 'bg-gradient-to-br from-orange-50 to-orange-100 border-orange-300'
-            : 'bg-gradient-to-br from-slate-100 to-white border-slate-200'"
+            : 'bg-gradient-to-br from-slate-200 to-slate-300 border-slate-400'"
                  class="rounded-xl border p-5 shadow-soft">
           <p class="reporte-kpi-label"
              [class.text-orange-700]="estadActas.conBypass > 0"
-             [class.text-slate-500]="estadActas.conBypass === 0">Con bypass</p>
+             [class.text-slate-700]="estadActas.conBypass === 0">Con bypass</p>
           <p class="reporte-kpi-valor"
              [class.text-orange-600]="estadActas.conBypass > 0"
-             [class.text-slate-400]="estadActas.conBypass === 0">
+             [class.text-slate-700]="estadActas.conBypass === 0">
             {{ estadActas.conBypass }}
           </p>
         </article>
@@ -680,6 +693,7 @@
         </div>
       </div>
 
+      <!-- Filtros + Leyenda -->
       <div class="bg-white rounded-xl border border-slate-200 shadow-soft p-4">
         <div class="flex flex-col sm:flex-row gap-3">
           <div class="relative flex-1">
@@ -702,34 +716,58 @@
             <span class="text-sm text-slate-600">Solo con bypass</span>
           </label>
         </div>
+        <!-- Leyenda -->
+        <div class="flex flex-wrap gap-4 mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500">
+          <span class="font-semibold text-slate-400 uppercase tracking-wide">Leyenda:</span>
+          <span class="flex items-center gap-1.5">
+            <app-icon name="file-check" [size]="16" class="text-green-500"></app-icon>
+            PDF firmado subido
+          </span>
+          <span class="flex items-center gap-1.5">
+            <app-icon name="clock" [size]="14" class="text-yellow-400"></app-icon>
+            PDF pendiente de subir
+          </span>
+          <span class="flex items-center gap-1.5">
+            <span class="badge bg-green-50 text-green-700 border-green-200 py-0.5 px-2">
+              <app-icon name="file-check" [size]="10"></app-icon> Firmada
+            </span>
+            Acta con PDF firmado registrado
+          </span>
+          <span class="flex items-center gap-1.5">
+            <span class="badge bg-yellow-50 text-yellow-700 border-yellow-200 py-0.5 px-2">
+              <app-icon name="file-text" [size]="10"></app-icon> Borrador
+            </span>
+            Acta pendiente de firma
+          </span>
+          <span class="flex items-center gap-1.5">
+            <span class="badge bg-orange-50 text-orange-700 border-orange-200 py-0.5 px-2">Bypass</span>
+            Retiro con deuda pendiente autorizado por JG
+          </span>
+        </div>
       </div>
 
+      <!-- Tabla actas -->
       <div class="bg-white rounded-xl border border-slate-200 shadow-soft overflow-hidden">
         <div class="overflow-x-auto scrollbar-custom">
           <table class="w-full text-sm">
             <thead>
               <tr>
+                <th class="reporte-th text-center">N° Acta</th>
                 <th class="reporte-th">Código</th>
                 <th class="reporte-th">Paciente</th>
                 <th class="reporte-th text-center">HC</th>
                 <th class="reporte-th text-center">Fecha</th>
                 <th class="reporte-th text-center">Tipo Salida</th>
-                <th class="reporte-th text-center">
-                  Estado Acta
-                  <span class="block text-slate-400 font-normal normal-case tracking-normal text-xs">Borrador / Firmada</span>
-                </th>
+                <th class="reporte-th text-center">Estado Acta</th>
                 <th class="reporte-th text-center">Bypass</th>
                 <th class="reporte-th text-center">Med. Ext.</th>
-                <th class="reporte-th text-center">
-                  PDF
-                  <span class="block text-slate-400 font-normal normal-case tracking-normal text-xs">subido / pendiente</span>
-                </th>
+                <th class="reporte-th text-center">PDF</th>
                 <th class="reporte-th">Responsable</th>
               </tr>
             </thead>
             <tbody>
               <tr *ngIf="actasFiltradas.length === 0">
-                <td colspan="10" class="reporte-td text-center py-12 text-slate-400">
+                <td colspan="11" class="reporte-td text-center py-12 text-slate-400">
                   <app-icon name="file-text" [size]="36"></app-icon>
                   <p class="mt-2 font-medium">Sin actas para este período</p>
                 </td>
@@ -737,13 +775,15 @@
               <tr *ngFor="let a of actasPaginadas; trackBy: trackByActa"
                   [ngClass]="a.tieneBypass ? 'bg-orange-50 hover:bg-orange-100' : 'hover:bg-slate-50'"
                   class="transition-colors">
+                <td class="reporte-td text-center font-bold text-xs">
+                  {{ a.actaRetiroID.toString().padStart(3, '0') }}
+                </td>
                 <td class="reporte-td font-mono text-xs text-hospital-cyan">{{ a.codigoExpediente }}</td>
                 <td class="reporte-td font-medium text-slate-800">{{ a.nombreCompleto }}</td>
                 <td class="reporte-td text-center text-slate-500">{{ a.hc }}</td>
                 <td class="reporte-td text-center text-xs text-slate-500 whitespace-nowrap">{{ a.fechaRegistro | date:'dd/MM/yy' }}</td>
-                <td class="reporte-td text-center">
-                  <span *ngIf="a.tipoSalida === 'Familiar'" class="badge bg-cyan-50 text-cyan-700 border-cyan-200">Familiar</span>
-                  <span *ngIf="a.tipoSalida !== 'Familiar'" class="badge bg-purple-50 text-purple-700 border-purple-200">Autoridad</span>
+                <td class="reporte-td text-center text-xs text-slate-700">
+                  {{ a.tipoSalida === 'Familiar' ? 'Familiar' : 'Autoridad Legal' }}
                 </td>
                 <td class="reporte-td text-center">
                   <span *ngIf="a.estadoActa === 'Firmada'" class="badge bg-green-50 text-green-700 border-green-200">
@@ -776,8 +816,7 @@
             </tbody>
           </table>
         </div>
-        <ng-container *ngTemplateOutlet="paginacionTpl; context: { total: actasFiltradas.length }">
-        </ng-container>
+        <ng-container *ngTemplateOutlet="paginacionTpl; context: { total: actasFiltradas.length }"></ng-container>
       </div>
 
     </ng-container>
@@ -882,10 +921,9 @@
     <ng-container *ngIf="tabActivo === 'servicios' && !isLoading">
 
       <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <!-- Total y filtrado con color visible -->
-        <article class="bg-gradient-to-br from-slate-100 to-white rounded-xl border border-slate-300 p-5 shadow-soft">
-          <p class="reporte-kpi-label text-slate-600">Total expedientes</p>
-          <p class="reporte-kpi-valor text-slate-600">{{ servicios.length }}</p>
+        <article class="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl border border-indigo-200 p-5 shadow-soft">
+          <p class="reporte-kpi-label text-indigo-700">Total expedientes</p>
+          <p class="reporte-kpi-valor text-indigo-700">{{ servicios.length }}</p>
         </article>
         <article class="bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200 p-5 shadow-soft">
           <p class="reporte-kpi-label text-green-700">Con acta generada</p>
@@ -895,12 +933,13 @@
           <p class="reporte-kpi-label text-yellow-700">Sin acta</p>
           <p class="reporte-kpi-valor text-yellow-600">{{ totalSinActa }}</p>
         </article>
-        <article class="bg-gradient-to-br from-slate-100 to-white rounded-xl border border-slate-300 p-5 shadow-soft">
-          <p class="reporte-kpi-label text-slate-500">Filtrado actual</p>
-          <p class="reporte-kpi-valor text-slate-500">{{ serviciosFiltrados.length }}</p>
+        <article class="bg-gradient-to-br from-slate-200 to-slate-300 rounded-xl border border-slate-400 p-5 shadow-soft">
+          <p class="reporte-kpi-label text-slate-700">Filtrado actual</p>
+          <p class="reporte-kpi-valor text-slate-700">{{ serviciosFiltrados.length }}</p>
         </article>
       </section>
 
+      <!-- Filtros + Leyenda -->
       <div class="bg-white rounded-xl border border-slate-200 shadow-soft p-4">
         <div class="flex flex-col sm:flex-row gap-3">
           <div class="relative flex-1">
@@ -917,8 +956,21 @@
             <option *ngFor="let s of serviciosHospital; trackBy: trackByServicioStr" [value]="s">{{ s }}</option>
           </select>
         </div>
+        <!-- Leyenda -->
+        <div class="flex flex-wrap gap-4 mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500">
+          <span class="font-semibold text-slate-400 uppercase tracking-wide">Leyenda:</span>
+          <span class="flex items-center gap-1.5">
+            <app-icon name="file-check" [size]="16" class="text-green-500"></app-icon>
+            Acta generada
+          </span>
+          <span class="flex items-center gap-1.5">
+            <app-icon name="clock" [size]="14" class="text-yellow-400"></app-icon>
+            Acta pendiente
+          </span>
+        </div>
       </div>
 
+      <!-- Tabla por servicio -->
       <div class="bg-white rounded-xl border border-slate-200 shadow-soft overflow-hidden">
         <div class="overflow-x-auto scrollbar-custom">
           <table class="w-full text-sm">
@@ -931,10 +983,7 @@
                 <th class="reporte-th text-center">Estado</th>
                 <th class="reporte-th text-center">Bandeja</th>
                 <th class="reporte-th text-center">Tiempo</th>
-                <th class="reporte-th text-center">
-                  Acta
-                  <span class="block text-slate-400 font-normal normal-case tracking-normal text-xs">generada / pendiente</span>
-                </th>
+                <th class="reporte-th text-center">Acta</th>
                 <th class="reporte-th text-center">Creado por</th>
               </tr>
             </thead>
@@ -950,10 +999,7 @@
                 <td class="reporte-td text-center font-mono text-xs text-hospital-cyan">{{ e.codigoExpediente }}</td>
                 <td class="reporte-td font-medium text-slate-800">{{ e.nombreCompleto }}</td>
                 <td class="reporte-td text-center text-slate-500">{{ e.hc }}</td>
-                <!-- Badge servicio con color azul en lugar de gris -->
-                <td class="reporte-td text-center">
-                  <span class="badge bg-blue-50 text-blue-700 border-blue-200 text-xs">{{ e.servicio }}</span>
-                </td>
+                <td class="reporte-td text-center font-bold text-slate-700 text-xs">{{ e.servicio }}</td>
                 <td class="reporte-td text-center">
                   <span [class]="e.badge.classes + ' text-xs'">
                     <app-icon [name]="e.badge.icon" [size]="11"></app-icon>
@@ -975,8 +1021,7 @@
             </tbody>
           </table>
         </div>
-        <ng-container *ngTemplateOutlet="paginacionTpl; context: { total: serviciosFiltrados.length }">
-        </ng-container>
+        <ng-container *ngTemplateOutlet="paginacionTpl; context: { total: serviciosFiltrados.length }"></ng-container>
       </div>
 
     </ng-container>
@@ -991,37 +1036,41 @@
                      (cerrar)="cerrarPdf()">
 </app-visor-pdf-modal>
 
-<!-- Template paginacion -->
+<!-- ================================================================
+     TEMPLATE PAGINACIÓN
+     ================================================================ -->
 <ng-template #paginacionTpl let-total="total">
   <div *ngIf="total > itemsPorPagina"
-       class="px-4 md:px-6 py-4 bg-slate-50 border-t border-slate-200
+       class="px-4 md:px-6 py-3 bg-slate-50 border-t border-slate-200
               flex flex-col sm:flex-row justify-between items-center gap-3">
-    <span class="text-sm text-slate-500">
+    <span class="text-xs text-slate-500">
       Mostrando
-      <strong>{{ (paginaActual - 1) * itemsPorPagina + 1 }}</strong>
-      –
-      <strong>{{ Math.min(paginaActual * itemsPorPagina, total) }}</strong>
-      de <strong>{{ total }}</strong>
+      <strong class="text-slate-700">{{ (paginaActual - 1) * itemsPorPagina + 1 }}</strong>–<strong class="text-slate-700">{{ Math.min(paginaActual * itemsPorPagina, total) }}</strong>
+      de <strong class="text-slate-700">{{ total }}</strong>
     </span>
     <div class="flex items-center gap-1.5">
-      <button (click)="irAPagina(paginaActual - 1)" [disabled]="paginaActual === 1"
-              class="px-3 py-1.5 rounded-lg border border-slate-300 text-sm text-slate-600
+      <button type="button"
+              (click)="irAPagina(paginaActual - 1)"
+              [disabled]="paginaActual === 1"
+              class="p-1.5 rounded-lg border border-slate-300 text-slate-600
                      hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-        <app-icon name="chevron-left" [size]="14"></app-icon>
+        <app-icon name="chevron-left" [size]="15"></app-icon>
       </button>
       <button *ngFor="let p of paginasVisibles; trackBy: trackByPagina"
+              type="button"
               (click)="irAPagina(p)"
-              [class.bg-hospital-cyan]="p === paginaActual"
-              [class.text-white]="p === paginaActual"
-              [class.border-hospital-cyan]="p === paginaActual"
-              [class.text-slate-600]="p !== paginaActual"
-              class="w-8 h-8 rounded-lg border border-slate-300 text-sm font-medium transition-colors">
+              [ngClass]="p === paginaActual
+                ? 'bg-hospital-cyan text-white border-hospital-cyan'
+                : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'"
+              class="w-8 h-8 rounded-lg border text-xs font-semibold transition-colors">
         {{ p }}
       </button>
-      <button (click)="irAPagina(paginaActual + 1)" [disabled]="paginaActual === totalPaginas"
-              class="px-3 py-1.5 rounded-lg border border-slate-300 text-sm text-slate-600
+      <button type="button"
+              (click)="irAPagina(paginaActual + 1)"
+              [disabled]="paginaActual === totalPaginas"
+              class="p-1.5 rounded-lg border border-slate-300 text-slate-600
                      hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-        <app-icon name="chevron-right" [size]="14"></app-icon>
+        <app-icon name="chevron-right" [size]="15"></app-icon>
       </button>
     </div>
   </div>

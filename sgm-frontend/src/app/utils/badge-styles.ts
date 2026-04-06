@@ -58,7 +58,7 @@ const estadosMap = new Map<string, BadgeConfig>([
     label: 'Pendiente Asignación'
   }],
   ['enbandeja', {
-    theme: 'success',
+    theme: 'cyan',
     icon: 'archive',
     label: 'En Bandeja'
   }],

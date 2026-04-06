@@ -365,8 +365,8 @@ export class ReportesComponent implements OnInit, OnDestroy, AfterViewInit {
   // ===================================================================
   // FILTROS
   // ===================================================================
-
   aplicarFiltrosPermanencia(): void {
+    this.paginaActual = 1;
     let data = [...this.permanencia];
     if (this.soloActivos) data = data.filter(p => p.estaActivo);
     if (this.filtroPermanencia.trim()) {
@@ -383,6 +383,7 @@ export class ReportesComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   aplicarFiltrosSalidas(): void {
+    this.paginaActual = 1;
     let data = [...this.salidas];
     if (this.filtroSalidas.trim()) {
       const q = this.filtroSalidas.toLowerCase();
@@ -397,6 +398,7 @@ export class ReportesComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   aplicarFiltrosActas(): void {
+    this.paginaActual = 1;
     let data = [...this.actas];
     if (this.filtroActas.trim()) {
       const q = this.filtroActas.toLowerCase();
@@ -412,6 +414,7 @@ export class ReportesComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   aplicarFiltrosServicios(): void {
+    this.paginaActual = 1;
     let data = [...this.servicios];
     if (this.filtroServicios.trim()) {
       const q = this.filtroServicios.toLowerCase();
@@ -442,11 +445,11 @@ export class ReportesComponent implements OnInit, OnDestroy, AfterViewInit {
   // ===================================================================
   // PAGINACIÓN
   // ===================================================================
-
   private actualizarPaginacion(): void {
     const datos = this.obtenerDatosTabActual();
     this.totalPaginas = Math.max(1, Math.ceil(datos.length / this.itemsPorPagina));
-    if (this.paginaActual > this.totalPaginas) this.paginaActual = 1;
+    this.paginaActual = Math.min(this.paginaActual, this.totalPaginas);
+    if (this.paginaActual < 1) this.paginaActual = 1;
     const inicio = (this.paginaActual - 1) * this.itemsPorPagina;
     const fin = inicio + this.itemsPorPagina;
     switch (this.tabActivo) {
@@ -495,7 +498,7 @@ export class ReportesComponent implements OnInit, OnDestroy, AfterViewInit {
   onFiltroBackendSalidas(): void { this.cargarSalidas(); }
   onFiltroBackendActas(): void { this.cargarActas(); }
 
-  /** Combobox servicios — dispara backend al seleccionar (no en cada tecla) */
+  /** Combobox servicios  */
   onServicioChange(): void { this.cargarServicios(); }
 
   onToggleSoloActivos(): void {
