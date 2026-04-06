@@ -569,7 +569,8 @@ namespace SisMortuorio.Data
                 entity.Property(e => e.Estado)
                     .HasConversion<int>()
                     .IsRequired()
-                    .HasDefaultValue(EstadoExpedienteLegal.EnRegistro);
+                    .HasDefaultValue(EstadoExpedienteLegal.EnRegistro)
+                    .HasSentinel(EstadoExpedienteLegal.EnRegistro);
 
                 // Valores por defecto
                 entity.Property(e => e.ValidadoAdmision)
@@ -629,7 +630,8 @@ namespace SisMortuorio.Data
                 entity.Property(a => a.TipoSalida)
                     .HasConversion<int>()
                     .IsRequired()
-                    .HasDefaultValue(TipoSalida.Familiar);
+                    .HasDefaultValue(TipoSalida.Familiar)
+                    .HasSentinel(TipoSalida.Familiar);
 
                 // Tipo de documento del fallecido (siempre requerido)
                 entity.Property(a => a.TipoDocumentoFallecido)
@@ -655,7 +657,8 @@ namespace SisMortuorio.Data
                 entity.Property(a => a.EstadoActa)
                     .HasConversion<int>()
                     .IsRequired()
-                    .HasDefaultValue(EstadoActaRetiro.Borrador);
+                    .HasDefaultValue(EstadoActaRetiro.Borrador)
+                    .HasSentinel(EstadoActaRetiro.Borrador);
                 // ═══════════════════════════════════════════════════════════
                 // VALORES POR DEFECTO
                 // ═══════════════════════════════════════════════════════════
@@ -813,7 +816,8 @@ namespace SisMortuorio.Data
                 entity.Property(d => d.Estado)
                     .HasConversion<int>()
                     .IsRequired()
-                    .HasDefaultValue(EstadoDocumentoExpediente.PendienteVerificacion);
+                    .HasDefaultValue(EstadoDocumentoExpediente.PendienteVerificacion)
+                    .HasSentinel(EstadoDocumentoExpediente.PendienteVerificacion);
 
                 // Strings
                 entity.Property(d => d.RutaArchivo).HasMaxLength(500).IsRequired();

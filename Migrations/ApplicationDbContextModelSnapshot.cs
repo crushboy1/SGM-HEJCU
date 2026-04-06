@@ -190,7 +190,6 @@ namespace SisMortuorio.Migrations
                         .HasColumnType("nvarchar(200)");
 
                     b.Property<int>("EstadoActa")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasDefaultValue(1);
 
@@ -355,7 +354,6 @@ namespace SisMortuorio.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("TipoSalida")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasDefaultValue(1);
 
@@ -924,7 +922,6 @@ namespace SisMortuorio.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("DocumentoExpedienteID"));
 
                     b.Property<int>("Estado")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasDefaultValue(1);
 
@@ -988,7 +985,7 @@ namespace SisMortuorio.Migrations
 
                     b.ToTable("DocumentosExpediente", (string)null);
                 });
-
+            
             modelBuilder.Entity("SisMortuorio.Data.Entities.DocumentoLegal", b =>
                 {
                     b.Property<int>("DocumentoID")
@@ -1291,7 +1288,6 @@ namespace SisMortuorio.Migrations
                         .HasColumnType("nvarchar(200)");
 
                     b.Property<int>("Estado")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasDefaultValue(1);
 
@@ -1483,9 +1479,6 @@ namespace SisMortuorio.Migrations
                     b.Property<int>("ExpedienteID")
                         .HasColumnType("int");
 
-                    b.Property<int?>("ExpedienteID1")
-                        .HasColumnType("int");
-
                     b.Property<int?>("ExpedienteLegalID")
                         .HasColumnType("int");
 
@@ -1533,10 +1526,6 @@ namespace SisMortuorio.Migrations
                     b.HasIndex("BandejaLiberadaID");
 
                     b.HasIndex("ExpedienteID");
-
-                    b.HasIndex("ExpedienteID1")
-                        .IsUnique()
-                        .HasFilter("[ExpedienteID1] IS NOT NULL");
 
                     b.HasIndex("ExpedienteLegalID");
 
@@ -2264,14 +2253,10 @@ namespace SisMortuorio.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("SisMortuorio.Data.Entities.Expediente", "Expediente")
-                        .WithMany()
-                        .HasForeignKey("ExpedienteID")
+                        .WithOne("SalidaMortuorio")
+                        .HasForeignKey("SisMortuorio.Data.Entities.SalidaMortuorio", "ExpedienteID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("SisMortuorio.Data.Entities.Expediente", null)
-                        .WithOne("SalidaMortuorio")
-                        .HasForeignKey("SisMortuorio.Data.Entities.SalidaMortuorio", "ExpedienteID1");
 
                     b.HasOne("SisMortuorio.Data.Entities.ExpedienteLegal", "ExpedienteLegal")
                         .WithMany()
