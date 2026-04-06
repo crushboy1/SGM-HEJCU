@@ -61,7 +61,6 @@ export class MisTareasComponent implements OnInit, OnDestroy {
   cargarDatos() {
     this.isLoading = true;
 
-    // Reutilizamos BandejaUniversalService que ya filtra por rol 'Ambulancia'
     this.bandejaService.getItems()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
@@ -79,7 +78,6 @@ export class MisTareasComponent implements OnInit, OnDestroy {
   }
 
   private calcularKPIs() {
-    // Filtramos localmente para los contadores
     this.kpiPendientes = this.tareas.filter(t =>
       t.estado === 'PendienteDeRecojo' || t.estado === 'EnPiso'
     ).length;
@@ -111,11 +109,9 @@ export class MisTareasComponent implements OnInit, OnDestroy {
   // ===================================================================
 
   private suscribirseANotificaciones() {
-    // Escuchar nuevas solicitudes o cambios de estado
     this.notificacionService.onNotificacionGenerica
       .pipe(takeUntil(this.destroy$))
       .subscribe(notif => {
-        // Si es relevante para ambulancia, recargar
         if (notif.titulo.includes('Nuevo Fallecido') || notif.titulo.includes('Traslado')) {
           this.cargarDatos();
           this.mostrarAlertaNuevaTarea(notif.mensaje);
@@ -130,15 +126,11 @@ export class MisTareasComponent implements OnInit, OnDestroy {
       showConfirmButton: false,
       timer: 5000,
       timerProgressBar: true,
-      background: '#F3E8FF', // Morado suave
+      background: '#F3E8FF',
       color: '#6B21A8',
       iconColor: '#9333EA'
     });
-    Toast.fire({
-      icon: 'info',
-      title: 'Nueva Solicitud',
-      text: mensaje
-    });
+    Toast.fire({ icon: 'info', title: 'Nueva Solicitud', text: mensaje });
   }
 
   // ===================================================================
@@ -150,11 +142,11 @@ export class MisTareasComponent implements OnInit, OnDestroy {
    */
   escanearQR() {
     Swal.fire({
-      title: ' Escanear QR',
+      title: 'Escanear QR',
       html: `
         <div class="text-center mb-4">
           <div class="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-2">
-             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-500"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-500"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/></svg>
           </div>
           <p class="text-sm text-gray-500">Simulación: Ingrese el código del expediente o QR del brazalete</p>
         </div>
@@ -163,7 +155,7 @@ export class MisTareasComponent implements OnInit, OnDestroy {
       inputPlaceholder: 'Ej: SGM-2025-00001',
       showCancelButton: true,
       confirmButtonText: 'Simular Escaneo',
-      confirmButtonColor: '#7E22CE', // Morado Ambulancia
+      confirmButtonColor: '#7E22CE',
       cancelButtonText: 'Cancelar',
       preConfirm: (codigo) => {
         if (!codigo) {
@@ -195,12 +187,11 @@ export class MisTareasComponent implements OnInit, OnDestroy {
     }).subscribe({
       next: (res: any) => {
         Swal.fire({
-          title: '¡Custodia Aceptada!',
+          title: 'Custodia Aceptada',
           html: `Has recibido el cuerpo de:<br><strong>${res.nombreCompleto}</strong>`,
           icon: 'success',
           showConfirmButton: true
         });
-        // Cambiar automáticamente a la pestaña de "En Custodia" para ver el item
         this.activeTab = 'custodia';
         this.cargarDatos();
       },
@@ -216,11 +207,17 @@ export class MisTareasComponent implements OnInit, OnDestroy {
     });
   }
 
-  /**
-   * Navegar al mapa para la entrega final en mortuorio
-   */
   irAAsignarBandeja(tarea: BandejaItem) {
-    // Usar directamente el expedienteID de la BD
+    if (tarea.estado !== 'PendienteAsignacionBandeja') {
+      Swal.fire({
+        icon: 'info',
+        title: 'Aún en tránsito',
+        text: 'El expediente debe ser verificado por el Vigilante Mortuorio antes de asignar bandeja.',
+        confirmButtonColor: '#0891B2'
+      });
+      return;
+    }
+
     const expedienteId = tarea.expedienteID;
 
     if (!expedienteId) {
@@ -230,17 +227,18 @@ export class MisTareasComponent implements OnInit, OnDestroy {
         text: 'No se pudo identificar el expediente. Faltan datos.',
         confirmButtonColor: '#0891B2'
       });
-      console.error('❌ BandejaItem sin expedienteID:', tarea);
+      console.error('BandejaItem sin expedienteID:', tarea);
       return;
     }
 
-    console.log(' Navegando a mapa mortuorio con expedienteID:', expedienteId);
-    console.log(' Código expediente:', tarea.codigoExpediente);
-
-    // Navegar con el expedienteId correcto
     this.router.navigate(['/mapa-mortuorio'], {
       queryParams: { expedienteId: expedienteId }
     });
+  }
+
+  /** Retorna true si la tarea puede asignar bandeja */
+  puedeAsignarBandeja(tarea: BandejaItem): boolean {
+    return tarea.estado === 'PendienteAsignacionBandeja';
   }
 
   // ===================================================================
@@ -248,8 +246,13 @@ export class MisTareasComponent implements OnInit, OnDestroy {
   // ===================================================================
 
   formatearTiempo(horas: number | undefined): string {
-    if (!horas) return 'Reciente';
-    if (horas < 1) return '< 1h';
-    return `${Math.round(horas)}h`;
+    if (!horas || horas < 0) return 'Reciente';
+    const totalMin = Math.round(horas * 60);
+    const d = Math.floor(totalMin / 1440);
+    const h = Math.floor((totalMin % 1440) / 60);
+    const m = totalMin % 60;
+    if (d > 0) return `${d}d ${h}h ${m}m`;
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m}m`;
   }
 }

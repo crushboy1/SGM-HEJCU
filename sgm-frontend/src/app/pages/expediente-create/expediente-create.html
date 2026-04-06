@@ -149,7 +149,7 @@
                      formControlName="numeroDocumento"
                      [appSoloNumeros]="esDni"
                      [attr.inputmode]="esDni ? 'numeric' : null"
-                     maxlength="12"
+                     [maxLength]="esDni ? 8 : 12"
                      placeholder="Ej: 12345678"
                      class="form-input"
                      [class.form-input-error]="isInvalidField('numeroDocumento')">

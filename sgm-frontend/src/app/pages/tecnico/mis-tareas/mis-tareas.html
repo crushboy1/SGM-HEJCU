@@ -1,7 +1,7 @@
 <div class="min-h-screen bg-hospital-bg">
 
   <!-- ===================================================================
-       HEADER MODERNO (Optimizado para Tablet)
+       HEADER
        =================================================================== -->
   <div class="bg-gradient-to-r from-hospital-cyan to-cyan-700 border-b border-cyan-800 px-6 py-5 sticky top-0 z-10 shadow-lg">
     <div class="max-w-6xl mx-auto flex items-center justify-between">
@@ -21,31 +21,28 @@
               class="p-3 text-white hover:bg-white/20 rounded-lg transition-all hover:scale-110
                      disabled:opacity-50 disabled:cursor-not-allowed"
               title="Actualizar tareas">
-        <app-icon name="refresh-cw" [size]="24" [className]="isLoading ? 'animate-spin' : ''"></app-icon>
+        <app-icon name="refresh-cw" [size]="24" [class.animate-spin]="isLoading"></app-icon>
       </button>
     </div>
   </div>
 
   <!-- ===================================================================
-       CONTENIDO PRINCIPAL (Grid para Tablet)
+       CONTENIDO PRINCIPAL
        =================================================================== -->
   <div class="max-w-6xl mx-auto p-6 space-y-6">
 
     <!-- ===================================================================
-         KPIs TABS (Más grandes para tablet)
+         KPIs TABS
          =================================================================== -->
     <div class="grid grid-cols-2 gap-6">
 
       <!-- Tab: Pendientes -->
       <button (click)="cambiarTab('pendientes')"
-              [class.bg-white]="activeTab === 'pendientes'"
-              [class.border-hospital-cyan]="activeTab === 'pendientes'"
-              [class.shadow-lg]="activeTab === 'pendientes'"
-              [class.bg-gray-50]="activeTab !== 'pendientes'"
-              [class.border-gray-200]="activeTab !== 'pendientes'"
+              [ngClass]="activeTab === 'pendientes'
+                ? 'bg-white border-hospital-cyan shadow-lg'
+                : 'bg-gray-50 border-gray-200'"
               class="relative p-6 rounded-2xl shadow-md border-2 transition-all hover:shadow-xl text-left">
 
-        <!-- Badge Notificación -->
         <div *ngIf="kpiPendientes > 0 && activeTab !== 'pendientes'"
              class="absolute -top-3 -right-3 bg-red-500 text-white text-sm font-bold w-10 h-10
                     rounded-full flex items-center justify-center animate-pulse shadow-lg border-4 border-white">
@@ -54,38 +51,32 @@
 
         <div class="flex items-center justify-between mb-3">
           <div class="p-4 rounded-xl"
-               [class.bg-cyan-100]="activeTab === 'pendientes'"
-               [class.text-hospital-cyan]="activeTab === 'pendientes'"
-               [class.bg-gray-100]="activeTab !== 'pendientes'"
-               [class.text-gray-500]="activeTab !== 'pendientes'">
+               [ngClass]="activeTab === 'pendientes'
+                 ? 'bg-cyan-100 text-hospital-cyan'
+                 : 'bg-gray-100 text-gray-500'">
             <app-icon name="bell" [size]="32"></app-icon>
           </div>
           <div class="text-right">
             <p class="text-5xl font-bold"
-               [class.text-hospital-cyan]="activeTab === 'pendientes'"
-               [class.text-gray-600]="activeTab !== 'pendientes'">
+               [ngClass]="activeTab === 'pendientes' ? 'text-hospital-cyan' : 'text-gray-600'">
               {{ kpiPendientes }}
             </p>
           </div>
         </div>
 
         <p class="text-sm font-bold uppercase tracking-wide"
-           [class.text-hospital-cyan]="activeTab === 'pendientes'"
-           [class.text-gray-600]="activeTab !== 'pendientes'">
+           [ngClass]="activeTab === 'pendientes' ? 'text-hospital-cyan' : 'text-gray-600'">
           Pendientes
         </p>
       </button>
 
       <!-- Tab: En Tránsito -->
       <button (click)="cambiarTab('custodia')"
-              [class.bg-white]="activeTab === 'custodia'"
-              [class.border-green-500]="activeTab === 'custodia'"
-              [class.shadow-lg]="activeTab === 'custodia'"
-              [class.bg-gray-50]="activeTab !== 'custodia'"
-              [class.border-gray-200]="activeTab !== 'custodia'"
+              [ngClass]="activeTab === 'custodia'
+                ? 'bg-white border-green-500 shadow-lg'
+                : 'bg-gray-50 border-gray-200'"
               class="relative p-6 rounded-2xl shadow-md border-2 transition-all hover:shadow-xl text-left">
 
-        <!-- Badge Notificación -->
         <div *ngIf="kpiEnCustodia > 0 && activeTab !== 'custodia'"
              class="absolute -top-3 -right-3 bg-green-500 text-white text-sm font-bold w-10 h-10
                     rounded-full flex items-center justify-center shadow-lg border-4 border-white">
@@ -94,24 +85,21 @@
 
         <div class="flex items-center justify-between mb-3">
           <div class="p-4 rounded-xl"
-               [class.bg-green-100]="activeTab === 'custodia'"
-               [class.text-green-600]="activeTab === 'custodia'"
-               [class.bg-gray-100]="activeTab !== 'custodia'"
-               [class.text-gray-500]="activeTab !== 'custodia'">
+               [ngClass]="activeTab === 'custodia'
+                 ? 'bg-green-100 text-green-600'
+                 : 'bg-gray-100 text-gray-500'">
             <app-icon name="user" [size]="32"></app-icon>
           </div>
           <div class="text-right">
             <p class="text-5xl font-bold"
-               [class.text-green-600]="activeTab === 'custodia'"
-               [class.text-gray-600]="activeTab !== 'custodia'">
+               [ngClass]="activeTab === 'custodia' ? 'text-green-600' : 'text-gray-600'">
               {{ kpiEnCustodia }}
             </p>
           </div>
         </div>
 
         <p class="text-sm font-bold uppercase tracking-wide"
-           [class.text-green-600]="activeTab === 'custodia'"
-           [class.text-gray-600]="activeTab !== 'custodia'">
+           [ngClass]="activeTab === 'custodia' ? 'text-green-600' : 'text-gray-600'">
           En Tránsito
         </p>
       </button>
@@ -119,7 +107,7 @@
     </div>
 
     <!-- ===================================================================
-         LISTA DE TAREAS (Grid 2 columnas para Tablet)
+         LISTA DE TAREAS
          =================================================================== -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
@@ -159,32 +147,27 @@
         </div>
       </div>
 
-      <!-- Cards de Tareas (Grid 2 columnas) -->
+      <!-- Cards de Tareas -->
       <div *ngFor="let tarea of tareasFiltradas"
            class="bg-white rounded-2xl shadow-md border-2 hover:shadow-xl transition-all overflow-hidden"
-           [class.border-hospital-cyan]="activeTab === 'pendientes'"
-           [class.border-green-500]="activeTab === 'custodia'">
+           [ngClass]="activeTab === 'pendientes' ? 'border-hospital-cyan' : 'border-green-500'">
 
         <!-- Header de la Card -->
         <div class="px-6 py-4 flex items-center justify-between"
-             [class.bg-gradient-to-r]="true"
-             [class.from-cyan-50]="activeTab === 'pendientes'"
-             [class.to-cyan-100]="activeTab === 'pendientes'"
-             [class.from-green-50]="activeTab === 'custodia'"
-             [class.to-green-100]="activeTab === 'custodia'">
+             [ngClass]="activeTab === 'pendientes'
+               ? 'bg-gradient-to-r from-cyan-50 to-cyan-100'
+               : 'bg-gradient-to-r from-green-50 to-green-100'">
 
           <div class="flex items-center gap-3">
             <span class="px-4 py-1.5 rounded-full text-sm font-bold text-white"
-                  [class.bg-hospital-cyan]="activeTab === 'pendientes'"
-                  [class.bg-green-600]="activeTab === 'custodia'">
+                  [ngClass]="activeTab === 'pendientes' ? 'bg-hospital-cyan' : 'bg-green-600'">
               {{ tarea.codigoExpediente }}
             </span>
             <span class="text-sm font-medium text-gray-600">SOLICITUD</span>
           </div>
 
           <div class="flex items-center gap-2 text-sm font-medium"
-               [class.text-hospital-cyan]="activeTab === 'pendientes'"
-               [class.text-green-600]="activeTab === 'custodia'">
+               [ngClass]="activeTab === 'pendientes' ? 'text-hospital-cyan' : 'text-green-600'">
             <app-icon name="clock" [size]="16"></app-icon>
             <span>{{ formatearTiempo(tarea.tiempoTranscurrido) }}</span>
           </div>
@@ -196,10 +179,9 @@
           <!-- Paciente -->
           <div class="flex items-start gap-4 mb-5">
             <div class="p-4 rounded-xl flex-shrink-0"
-                 [class.bg-cyan-100]="activeTab === 'pendientes'"
-                 [class.text-hospital-cyan]="activeTab === 'pendientes'"
-                 [class.bg-green-100]="activeTab === 'custodia'"
-                 [class.text-green-600]="activeTab === 'custodia'">
+                 [ngClass]="activeTab === 'pendientes'
+                   ? 'bg-cyan-100 text-hospital-cyan'
+                   : 'bg-green-100 text-green-600'">
               <app-icon name="user" [size]="32"></app-icon>
             </div>
             <div class="flex-1">
@@ -225,7 +207,7 @@
             </div>
           </div>
 
-          <!-- Botón de Acción (Más grande para tablet) -->
+          <!-- Botón Tab Pendientes -->
           <button *ngIf="activeTab === 'pendientes'"
                   (click)="escanearQR()"
                   class="w-full py-4 bg-hospital-cyan text-white rounded-xl font-bold text-base
@@ -235,14 +217,28 @@
             <span>ESCANEAR Y RECOGER</span>
           </button>
 
-          <button *ngIf="activeTab === 'custodia'"
-                  (click)="irAAsignarBandeja(tarea)"
-                  class="w-full py-4 bg-green-600 text-white rounded-xl font-bold text-base
-               hover:bg-green-700 transition-colors flex items-center justify-center gap-3
-               shadow-md hover:shadow-lg">
-            <app-icon name="map-pin" [size]="20"></app-icon>
-            <span>ASIGNAR BANDEJA</span>
-          </button>
+          <div *ngIf="activeTab === 'custodia'" class="space-y-2">
+
+            <button (click)="irAAsignarBandeja(tarea)"
+                    [disabled]="!puedeAsignarBandeja(tarea)"
+                    [ngClass]="puedeAsignarBandeja(tarea)
+                      ? 'bg-green-600 hover:bg-green-700 text-white shadow-md hover:shadow-lg cursor-pointer active:scale-95'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
+                    class="w-full py-4 rounded-xl font-bold text-base transition-all
+                           flex items-center justify-center gap-3">
+              <app-icon name="map-pin" [size]="20"></app-icon>
+              <span>ASIGNAR BANDEJA</span>
+            </button>
+
+            <!-- Indicador de estado cuando aún está en tránsito -->
+            <p *ngIf="!puedeAsignarBandeja(tarea)"
+               class="text-xs text-center text-gray-400 flex items-center justify-center gap-1">
+              <app-icon name="clock" [size]="12"></app-icon>
+              Esperando verificación del Vigilante Mortuorio
+            </p>
+
+          </div>
+
         </div>
 
       </div>
@@ -252,7 +248,7 @@
   </div>
 
   <!-- ===================================================================
-       FAB (Botón Flotante - Solo si hay tareas pendientes)
+       FAB 
        =================================================================== -->
   <button *ngIf="activeTab === 'pendientes' && tareasFiltradas.length > 0"
           (click)="escanearQR()"
