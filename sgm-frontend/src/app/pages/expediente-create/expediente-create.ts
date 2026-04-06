@@ -157,9 +157,6 @@ export class ExpedienteCreateComponent implements OnInit, OnDestroy {
   get pertenencias(): FormArray {
     return this.expedienteForm.get('pertenencias') as FormArray;
   }
-  get esDni(): boolean {
-    return Number(this.rv.tipoDocumento) === TipoDocumentoIdentidad.DNI;
-  }
   // ===================================================================
   // LIFECYCLE
   // ===================================================================
@@ -167,7 +164,7 @@ export class ExpedienteCreateComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.buildForm();
     this.suscribirCambiosCondicionales();
-
+    this.actualizarValidadoresDocumento();
     const hc = this.route.snapshot.queryParamMap.get('hc');
 
     if (hc) {
@@ -305,12 +302,19 @@ export class ExpedienteCreateComponent implements OnInit, OnDestroy {
    * CE / Pasaporte → alfanumérico, máx 12 caracteres
    * SinDocumento/NN → sin validación de formato
    */
+  esDni = true;
   private actualizarValidadoresDocumento(): void {
     const tipo = Number(this.expedienteForm.get('tipoDocumento')?.value);
     const ctrl = this.expedienteForm.get('numeroDocumento');
     if (!ctrl) return;
 
+    // Actualizar variable reactiva — 3 bindings en template
+    this.esDni = tipo === TipoDocumentoIdentidad.DNI;
+
     ctrl.clearValidators();
+    ctrl.setValue('', { emitEvent: false });
+    ctrl.markAsPristine();
+    ctrl.markAsUntouched();
 
     if (tipo === TipoDocumentoIdentidad.DNI) {
       ctrl.enable();
@@ -322,7 +326,6 @@ export class ExpedienteCreateComponent implements OnInit, OnDestroy {
       ctrl.enable();
       ctrl.setValidators([Validators.required, Validators.maxLength(12)]);
     } else {
-      // SinDocumento / NN — bloquear y limpiar
       ctrl.disable({ emitEvent: false });
       ctrl.reset(null, { emitEvent: false });
     }
@@ -359,6 +362,7 @@ export class ExpedienteCreateComponent implements OnInit, OnDestroy {
         nombres: '',
         fechaNacimiento: ''
       }, { emitEvent: false });
+      this.esDni = true
 
       if (this.modoManual) {
         camposAfectados.forEach(c => {

@@ -404,14 +404,15 @@
                   <label class="form-label">
                     N° Documento <span class="text-red-500">*</span>
                   </label>
-                  <!-- [attr.inputmode] condicional — varía según tipo de documento -->
-                  <input formControlName="dniFamiliar"
+                  <input type="text"
+                         formControlName="dniFamiliar"
                          [appSoloNumeros]="esDniFamiliar"
                          [attr.inputmode]="esDniFamiliar ? 'numeric' : null"
+                         [maxLength]="esDniFamiliar ? 8 : 20"
                          [placeholder]="placeholderDocFamiliar"
-                         maxlength="20"
                          class="form-input font-mono"
-                         [class.form-input-error]="isInvalidField('dniFamiliar')">
+                         [class.form-input-error]="isInvalidField('dniFamiliar')"
+                         autocomplete="off">
                   <p *ngIf="isInvalidField('dniFamiliar')" class="form-error-msg">
                     <app-icon name="circle-x" [size]="14"></app-icon>
                     {{ getErrorMessage('dniFamiliar') }}
@@ -526,14 +527,15 @@
                   <label class="form-label">
                     N° Documento <span class="text-red-500">*</span>
                   </label>
-                  <!-- [attr.inputmode] condicional — varía según tipo de documento -->
-                  <input formControlName="documentoAutoridad"
+                  <input type="text"
+                         formControlName="documentoAutoridad"
                          [appSoloNumeros]="esDniAutoridad"
                          [attr.inputmode]="esDniAutoridad ? 'numeric' : null"
+                         [maxLength]="esDniAutoridad ? 8 : 20"
                          [placeholder]="placeholderDocAutoridad"
-                         maxlength="20"
                          class="form-input font-mono"
-                         [class.form-input-error]="isInvalidField('documentoAutoridad')">
+                         [class.form-input-error]="isInvalidField('documentoAutoridad')"
+                         autocomplete="off">
                   <p *ngIf="isInvalidField('documentoAutoridad')" class="form-error-msg">
                     <app-icon name="circle-x" [size]="14"></app-icon>
                     {{ getErrorMessage('documentoAutoridad') }}

@@ -1,28 +1,21 @@
-import { Directive, HostListener, Input } from '@angular/core';
+import { Directive, HostListener, Input, ElementRef, OnChanges } from '@angular/core';
 
 /**
  * Directiva para campos numéricos — bloquea teclas no numéricas.
  * Uso simple (siempre activa):   <input appSoloNumeros>
- * Uso condicional (booleano):    <input [appSoloNumeros]="esDni('tipoDoc')">
+ * Uso condicional (booleano):    <input [appSoloNumeros]="esDni">
  *
  * Permite: 0-9, Backspace, Delete, Tab, flechas, Home/End, Ctrl/Cmd (copiar/pegar).
+ * Cubre: keydown, paste, drag&drop, autocompletado, mobile keyboards.
+ * Fix: detecta cambio OFF→ON y limpia el input automáticamente.
  */
 @Directive({
   selector: '[appSoloNumeros]',
   standalone: true
 })
-export class SoloNumerosDirective {
+export class SoloNumerosDirective implements OnChanges {
 
-  /**
-   * Controla si la directiva está activa.
-   * - Sin binding: el atributo solo se evalúa como presente → activa (string vacío → truthy check en setter)
-   * - Con binding booleano [appSoloNumeros]="true/false" → respeta el valor
-   */
-  @Input() set appSoloNumeros(valor: boolean | string | '') {
-    // Si no se pasa valor (atributo solo) Angular pasa string vacío ''
-    // Si se pasa booleano, respeta el valor
-    this.activa = valor === '' || valor === true;
-  }
+  @Input() appSoloNumeros: boolean | string | '' = '';
 
   private activa = true;
 
@@ -32,19 +25,52 @@ export class SoloNumerosDirective {
     'Home', 'End', 'Enter'
   ];
 
+  constructor(private el: ElementRef<HTMLInputElement>) { }
+
+  ngOnChanges(): void {
+    this.activa = this.appSoloNumeros === '' || this.appSoloNumeros === true;
+    if (this.activa) {
+      setTimeout(() => this.limpiarInput());
+    }
+  }
+
+  @HostListener('blur')
+  onBlur(): void {
+    if (!this.activa) return;
+    this.limpiarInput();
+  }
+
   @HostListener('keydown', ['$event'])
   onKeyDown(event: KeyboardEvent): void {
     if (!this.activa) return;
-
-    // Permite Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X (copiar/pegar)
     if (event.ctrlKey || event.metaKey) return;
-
-    // Permite teclas de navegación y borrado
     if (this.allowedKeys.includes(event.key)) return;
-
-    // Bloquea si no es dígito 0-9
     if (!/^\d$/.test(event.key)) {
       event.preventDefault();
+    }
+  }
+
+  @HostListener('input')
+  onInput(): void {
+    if (!this.activa) return;
+    const input = this.el.nativeElement;
+    const maxlength = input.maxLength > 0 ? input.maxLength : undefined;
+    let limpio = input.value.replace(/\D/g, '');
+    if (maxlength) limpio = limpio.slice(0, maxlength);
+    if (input.value !== limpio) {
+      input.value = limpio;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  }
+
+  private limpiarInput(): void {
+    const input = this.el.nativeElement;
+    const maxlength = input.maxLength > 0 ? input.maxLength : undefined;
+    let limpio = input.value.replace(/\D/g, '');
+    if (maxlength) limpio = limpio.slice(0, maxlength);
+    if (input.value !== limpio) {
+      input.value = limpio;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
     }
   }
 }

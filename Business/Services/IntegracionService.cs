@@ -110,10 +110,16 @@ namespace SisMortuorio.Business.Services
             dto.CausaViolentaODudosa = HcsCausaViolenta.Contains(hc);
 
             // ── PASO 3: Advertencias adicionales ──────────────────────────
-            var horas = (DateTime.Now - episodio.FechaHoraFallecimiento).TotalHours;
-            if (horas > 48)
+            var ts = DateTime.Now - episodio.FechaHoraFallecimiento;
+            if (ts.TotalHours > 48)
+            {
+                var dias = (int)ts.TotalDays;
+                var h = ts.Hours;
+                var mins = ts.Minutes;
+                var tiempoLegible = dias > 0 ? $"{dias}d {h}h {mins}m" : $"{h}h {mins}m";
                 dto.Advertencias.Add(
-                    $"El fallecimiento ocurrió hace {(int)horas} horas. Verificar si ya fue procesado.");
+                    $"El fallecimiento ocurrió hace {tiempoLegible}. Verificar si ya fue procesado.");
+            }
 
             if (string.IsNullOrEmpty(episodio.MedicoCMP) && string.IsNullOrEmpty(episodio.MedicoRNE))
                 dto.Advertencias.Add("No se encontró CMP ni RNE del médico certificante.");
@@ -128,7 +134,7 @@ namespace SisMortuorio.Business.Services
             _logger.LogInformation(
                 "Consulta integrada completada. HC: {HC}, CausaViolenta: {CV}, Advertencias: {N}",
                 hc, dto.CausaViolentaODudosa, dto.Advertencias.Count);
-            
+
             return dto;
         }
 

@@ -155,15 +155,6 @@ export class FormularioActaRetiroComponent implements OnInit, OnDestroy {
       : 'Acta de Retiro — Autoridad Legal';
   }
 
-  // ── Getters de tipo documento ─────────────────────────────────────
-
-  get esDniFamiliar(): boolean {
-    return this.form.get('tipoDocumentoFamiliar')?.value === 1;
-  }
-  get esDniAutoridad(): boolean {
-    return this.form.get('tipoDocumentoAutoridad')?.value === 1;
-  }
-
   // ── Getters de placeholder ────────────────────────────────────────
 
   get placeholderDocFamiliar(): string {
@@ -373,6 +364,9 @@ export class FormularioActaRetiroComponent implements OnInit, OnDestroy {
       ]);
     }
   }
+  // 1. INICIAN EN TRUE (Porque DNI es la opción por defecto al cargar)
+  esDniFamiliar = true;
+  esDniAutoridad = true;
 
   private setupDocumentValidation(
     tipoCtrlName: string,
@@ -380,14 +374,33 @@ export class FormularioActaRetiroComponent implements OnInit, OnDestroy {
   ): void {
     this.form.get(tipoCtrlName)?.valueChanges
       .pipe(takeUntil(this.destroy$))
-      .subscribe((tipo: number) => {
+      .subscribe((tipo: any) => {
+
+        const tipoNum = Number(tipo);
+
+        if (tipoCtrlName === 'tipoDocumentoFamiliar') {
+          this.esDniFamiliar = tipoNum === 1;
+        } else {
+          this.esDniAutoridad = tipoNum === 1;
+        }
+
         const docCtrl = this.form.get(docCtrlName);
         if (!docCtrl) return;
-        docCtrl.setValidators(
-          tipo === 1
-            ? [Validators.required, Validators.pattern(/^\d{8}$/)]
-            : [Validators.required]
-        );
+
+        const validators = [Validators.required];
+
+        if (tipoNum === 1) {
+          validators.push(
+            Validators.pattern(/^\d{8}$/),
+            Validators.minLength(8),
+            Validators.maxLength(8)
+          );
+        }
+
+        docCtrl.setValidators(validators);
+        docCtrl.setValue('');
+        docCtrl.markAsPristine();
+        docCtrl.markAsUntouched();
         docCtrl.updateValueAndValidity();
       });
   }

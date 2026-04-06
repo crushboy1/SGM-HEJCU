@@ -26,13 +26,15 @@ export class VerificacionIngresoComponent {
   codigoQRInput = '';
   datosExpediente: any = null;
 
-  // ── Única confirmación manual del vigilante ──────────────────────
-  brazaletePresente = false;
-
   // ── PASO 1: Buscar por QR ────────────────────────────────────────
   buscarQR() {
     if (!this.codigoQRInput.trim()) {
-      Swal.fire({ icon: 'warning', title: 'Campo requerido', text: 'Ingrese o escanee un código QR.', confirmButtonColor: '#0891b2' });
+      Swal.fire({
+        icon: 'warning',
+        title: 'Campo requerido',
+        text: 'Ingrese o escanee un código QR.',
+        confirmButtonColor: '#0891b2'
+      });
       return;
     }
 
@@ -40,7 +42,6 @@ export class VerificacionIngresoComponent {
     this.verificacionService.consultarPorQR(this.codigoQRInput.trim()).subscribe({
       next: (data) => {
         this.datosExpediente = data;
-        this.brazaletePresente = false;
         this.paso = 'validar';
         this.isLoading = false;
       },
@@ -56,46 +57,13 @@ export class VerificacionIngresoComponent {
     });
   }
 
-  // ── PASO 2: Confirmar ingreso (happy path) ───────────────────────
+  // ── PASO 2: Confirmar ingreso ────────────────────────────────────
   confirmarIngreso() {
-    if (!this.brazaletePresente) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Confirmación requerida',
-        text: 'Debe confirmar que el brazalete físico está presente y coincide con el cuerpo.',
-        confirmButtonColor: '#0891b2'
-      });
-      return;
-    }
-    this.enviarVerificacion(true, undefined);
-  }
-
-  // ── PASO 2: Rechazar ingreso (sad path) ──────────────────────────
-  rechazarIngreso() {
-    Swal.fire({
-      title: 'Rechazar Ingreso',
-      html: '<p class="text-sm text-gray-600 mb-2">Describa el problema encontrado con el brazalete o el cuerpo.</p>',
-      input: 'textarea',
-      inputPlaceholder: 'Ej: Brazalete roto, cuerpo no coincide con la descripción...',
-      inputAttributes: { maxlength: '1000' },
-      showCancelButton: true,
-      cancelButtonText: 'Cancelar',
-      confirmButtonText: 'Rechazar y Notificar',
-      confirmButtonColor: '#DC2626',
-      cancelButtonColor: '#6B7280',
-      inputValidator: (value) => {
-        if (!value?.trim()) return 'Debe indicar el motivo del rechazo.';
-        return null;
-      }
-    }).then((result) => {
-      if (result.isConfirmed && result.value) {
-        this.enviarVerificacion(false, result.value);
-      }
-    });
+    this.enviarVerificacion();
   }
 
   // ── Envío al backend ─────────────────────────────────────────────
-  private enviarVerificacion(aprobada: boolean, observaciones: string | undefined) {
+  private enviarVerificacion() {
     this.isLoading = true;
 
     const request: VerificacionRequest = {
@@ -105,8 +73,8 @@ export class VerificacionIngresoComponent {
       numeroDocumentoBrazalete: this.datosExpediente.numeroDocumento ?? '',
       nombreCompletoBrazalete: this.datosExpediente.nombreCompleto,
       servicioBrazalete: this.datosExpediente.servicioFallecimiento,
-      brazaletePresente: aprobada,
-      observaciones: observaciones ?? (aprobada ? 'Brazalete físico confirmado por el Vigilante.' : undefined)
+      brazaletePresente: true,
+      observaciones: 'Ingreso verificado por Vigilante Mortuorio.'
     };
 
     this.verificacionService.registrarIngreso(request).subscribe({
@@ -122,15 +90,6 @@ export class VerificacionIngresoComponent {
             confirmButtonColor: '#0891b2',
             confirmButtonText: 'Entendido'
           }).then(() => this.router.navigate(['/dashboard']));
-        } else {
-          Swal.fire({
-            icon: 'warning',
-            title: 'Ingreso Rechazado',
-            html: `<p class="text-gray-600">Se notificó a Enfermería para corregir el brazalete.</p>
-                   <p class="text-xs text-gray-500 mt-2">Solicitud N° ${res.solicitudCorreccionID ?? '–'}</p>`,
-            confirmButtonColor: '#D97706',
-            confirmButtonText: 'Entendido'
-          }).then(() => this.router.navigate(['/dashboard']));
         }
       },
       error: (err) => {
@@ -144,9 +103,9 @@ export class VerificacionIngresoComponent {
 
   // ── Resolución de mensajes de error del backend ──────────────────
   /** Mapea el mensaje de error del backend a un mensaje amigable para el vigilante */
-  private resolverMensajeError(backendMsg: string): { title: string; text: string; icon: 'error' | 'warning' | 'info' } {
-
-    // Expediente ya ingresado — estado no permite verificar nuevamente
+  private resolverMensajeError(backendMsg: string): {
+    title: string; text: string; icon: 'error' | 'warning' | 'info'
+  } {
     if (backendMsg.includes('PendienteAsignacionBandeja'))
       return {
         icon: 'info',
@@ -179,10 +138,9 @@ export class VerificacionIngresoComponent {
       return {
         icon: 'warning',
         title: 'Verificación rechazada previamente',
-        text: 'Este expediente tiene una verificación rechazada. Espere la corrección de Enfermería antes de reintentar.'
+        text: 'Este expediente tiene una verificación rechazada. Contacte a Enfermería.'
       };
 
-    // Sin custodia previa de ambulancia
     if (backendMsg.includes('custodia') || backendMsg.includes('Ambulancia'))
       return {
         icon: 'warning',
@@ -190,7 +148,6 @@ export class VerificacionIngresoComponent {
         text: 'El expediente no registra entrega por parte del Técnico de Ambulancia. Verifique el estado del traslado.'
       };
 
-    // QR no encontrado (no debería llegar aquí, pero por seguridad)
     if (backendMsg.includes('QR') || backendMsg.includes('código'))
       return {
         icon: 'error',
@@ -198,7 +155,6 @@ export class VerificacionIngresoComponent {
         text: 'El código escaneado no corresponde a ningún expediente activo.'
       };
 
-    // Fallback genérico
     return {
       icon: 'error',
       title: 'Error al procesar',
@@ -210,7 +166,6 @@ export class VerificacionIngresoComponent {
   cancelar() {
     this.paso = 'escanear';
     this.datosExpediente = null;
-    this.brazaletePresente = false;
     this.codigoQRInput = '';
   }
 

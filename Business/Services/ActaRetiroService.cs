@@ -429,9 +429,11 @@ public class ActaRetiroService(
                 throw new InvalidOperationException(
                     "Los nombres del familiar son obligatorios.");
 
-            if (string.IsNullOrWhiteSpace(dto.FamiliarNumeroDocumento))
+            if (dto.FamiliarTipoDocumento == TipoDocumentoIdentidad.DNI &&
+                !System.Text.RegularExpressions.Regex.IsMatch(
+                    dto.FamiliarNumeroDocumento ?? string.Empty, @"^\d{8}$"))
                 throw new InvalidOperationException(
-                    "El documento del familiar es obligatorio.");
+                    "El DNI del familiar debe tener exactamente 8 dígitos numéricos.");
 
             if (string.IsNullOrWhiteSpace(dto.FamiliarParentesco))
                 throw new InvalidOperationException(
@@ -455,9 +457,11 @@ public class ActaRetiroService(
                 throw new InvalidOperationException(
                     "Los nombres de la autoridad son obligatorios.");
 
-            if (string.IsNullOrWhiteSpace(dto.AutoridadNumeroDocumento))
+            if (dto.AutoridadTipoDocumento == TipoDocumentoIdentidad.DNI &&
+                !System.Text.RegularExpressions.Regex.IsMatch(
+                    dto.AutoridadNumeroDocumento ?? string.Empty, @"^\d{8}$"))
                 throw new InvalidOperationException(
-                    "El documento de la autoridad es obligatorio.");
+                    "El DNI de la autoridad debe tener exactamente 8 dígitos numéricos.");
 
             if (string.IsNullOrWhiteSpace(dto.AutoridadInstitucion))
                 throw new InvalidOperationException(
