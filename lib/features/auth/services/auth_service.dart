@@ -20,16 +20,17 @@ class AuthService {
     if (response.statusCode == 200) {
       final json = jsonDecode(response.body) as Map<String, dynamic>;
       final token = json['token'] as String;
-      final userMap = json['user'] as Map<String, dynamic>? ?? json;
-      final usuario = UsuarioModel.fromJson(userMap, token);
+      final usuario = UsuarioModel.fromJson(json, token);
       _usuarioActual = usuario;
       await _guardarSesion(usuario);
       return usuario;
+      
     } else if (response.statusCode == 401) {
       throw Exception('Credenciales incorrectas');
     } else {
       throw Exception('Error del servidor (${response.statusCode})');
     }
+    
   }
 
   static Future<void> logout() async {

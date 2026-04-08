@@ -5,6 +5,10 @@ import 'core/constants/routes.dart';
 import 'core/navigation/navigation_helper.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/auth/services/auth_service.dart';
+import 'features/ambulancia/screens/ambulancia_home_screen.dart';
+import 'features/ambulancia/screens/qr_scan_screen.dart';
+import 'features/ambulancia/screens/mapa_mortuorio_screen.dart';
+import 'features/vigilante/screens/vigilante_home_screen.dart';
 import 'shared/theme/app_theme.dart';
 
 void main() async {
@@ -24,9 +28,10 @@ class SgmApp extends StatelessWidget {
       home: const SplashScreen(),
       routes: {
         Routes.login: (_) => const LoginScreen(),
-        // Se agregan cuando creemos las pantallas:
-        // Routes.ambulancia: (_) => const AmbulanciaHomeScreen(),
-        // Routes.vigilante: (_) => const VigilanteHomeScreen(),
+        Routes.ambulancia: (_) => const AmbulanciaHomeScreen(),
+        Routes.qrScan: (_) => const QrScanScreen(),
+        Routes.mapaBandejas: (_) => const MapaMortuorioScreen(),
+        Routes.vigilante: (_) => const VigilanteHomeScreen(),
       },
     );
   }

@@ -1,8 +1,8 @@
 class ApiConstants {
   static const bool isProd = false;
 
-  static const String _devBaseUrl = 'http://10.0.2.2:7153';
-  static const String _prodBaseUrl = 'https://tu-api-produccion.com';
+  static const String _devBaseUrl = 'http://10.0.2.2:5041';
+  static const String _prodBaseUrl = 'ip:puerto';
 
   static String get baseUrl => isProd ? _prodBaseUrl : _devBaseUrl;
 
@@ -15,6 +15,9 @@ class ApiConstants {
   /// AUTH
   static const String login = '/api/Auth/login';
 
+  /// EXPEDIENTES
+  static const String pendientesRecojo = '/api/Expedientes/pendientes-recojo';
+
   /// QR
   static const String consultarQR = '/api/QR/consultar';
 
@@ -24,7 +27,7 @@ class ApiConstants {
   /// BANDEJAS
   static const String bandejasDisponibles = '/api/Bandejas/disponibles';
   static const String bandejasAsignar = '/api/Bandejas/asignar';
-
+  static const String bandejasDashboard = '/api/Bandejas/dashboard';
   /// VERIFICACION
   static const String verificacionIngreso = '/api/verificacion/ingreso';
 

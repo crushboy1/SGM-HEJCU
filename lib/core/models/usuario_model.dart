@@ -21,17 +21,14 @@ class UsuarioModel {
   });
 
   factory UsuarioModel.fromJson(Map<String, dynamic> json, String token) {
-    if (json['id'] == null) {
-      throw Exception('Usuario sin ID recibido del servidor');
-    }
-    return UsuarioModel(
-      id: json['id'] as int,
-      nombre: (json['nombreCompleto'] ?? json['nombre'] ?? '') as String,
-      username: json['username'] as String? ?? '',
-      rol: _mapRol(json['rol'] as String?),
-      token: token,
-    );
-  }
+  return UsuarioModel(
+    id: json['id'] as int? ?? 0,
+    nombre: json['nombreCompleto'] as String? ?? '',
+    username: json['username'] as String? ?? '',
+    rol: _mapRol(json['rol'] as String?),
+    token: token,
+  );
+}
 
   static UserRole _mapRol(String? rol) {
   switch (rol) {
@@ -47,6 +44,7 @@ class UsuarioModel {
     default:
       return UserRole.desconocido;
   }
+  
 }
 
   Map<String, dynamic> toStorageJson() => {
