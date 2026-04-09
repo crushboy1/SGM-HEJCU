@@ -53,13 +53,12 @@ namespace SisMortuorio.Data.Entities
         /// <summary>
         /// ID del usuario que asignó el cuerpo a la bandeja (Técnico de Ambulancia)
         /// </summary>
-        [Required]
-        public int UsuarioAsignadorID { get; set; }
+        public int? UsuarioAsignadorID { get; set; }
 
         /// <summary>
         /// Navegación al usuario asignador
         /// </summary>
-        public Usuario UsuarioAsignador { get; set; } = null!;
+        public Usuario? UsuarioAsignador { get; set; }
 
         /// <summary>
         /// ID del usuario que liberó/retiró el cuerpo de la bandeja (Vigilante)

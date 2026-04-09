@@ -19,5 +19,12 @@ namespace SisMortuorio.Business.Services
         /// Obtiene la última custodia (quién tiene el cuerpo actualmente)
         /// </summary>
         Task<CustodiaActualDTO?> GetUltimaCustodiaAsync(int expedienteId);
+
+        /// <summary>
+        /// Consulta expediente por código QR antes de aceptar custodia.
+        /// Solo acepta PendienteDeRecojo. Exclusivo para Ambulancia.
+        /// No modifica estado — solo lectura para confirmación del técnico.
+        /// </summary>
+        Task<ExpedienteDTO> ConsultarPrevioACustodiaAsync(string codigoQR);
     }
 }

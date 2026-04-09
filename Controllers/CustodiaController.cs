@@ -151,5 +151,31 @@ namespace SisMortuorio.Controllers
                 return StatusCode(500, new { message = "Error interno del servidor" });
             }
         }
+        /// <summary>
+        /// Consulta expediente por código QR para previsualización antes de aceptar custodia.
+        /// Solo acepta PendienteDeRecojo. Exclusivo Ambulancia — separado de ConsultarPorQR (Vigilante).
+        /// </summary>
+        [HttpGet("consultar-previo/{codigoQR}")]
+        [Authorize(Roles = "Ambulancia,Administrador")]
+        [ProducesResponseType(typeof(ExpedienteDTO), 200)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> ConsultarPrevioACustodia(string codigoQR)
+        {
+            try
+            {
+                var resultado = await _custodiaService.ConsultarPrevioACustodiaAsync(codigoQR);
+                return Ok(resultado);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Consulta previa bloqueada. QR: {CodigoQR}", codigoQR);
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en consulta previa. QR: {CodigoQR}", codigoQR);
+                return StatusCode(500, new { message = "Error interno del servidor" });
+            }
+        }
     }
 }

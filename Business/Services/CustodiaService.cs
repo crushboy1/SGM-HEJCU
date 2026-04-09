@@ -19,6 +19,7 @@ namespace SisMortuorio.Business.Services
     public class CustodiaService : ICustodiaService
     {
         private readonly IExpedienteRepository _expedienteRepository;
+        private readonly IExpedienteMapperService _mapper;
         private readonly ICustodiaRepository _custodiaRepository;
         private readonly IUsuarioRepository _usuarioRepository;
         private readonly IStateMachineService _stateMachineService;
@@ -30,6 +31,7 @@ namespace SisMortuorio.Business.Services
         /// </summary>
         public CustodiaService(
              IExpedienteRepository expedienteRepository,
+             IExpedienteMapperService mapper,
              ICustodiaRepository custodiaRepository,
              IUsuarioRepository usuarioRepository,
              IStateMachineService stateMachineService,
@@ -37,6 +39,7 @@ namespace SisMortuorio.Business.Services
              IHubContext<SgmHub, ISgmClient> hubContext) // ⭐ 2. Recibir en constructor
         {
             _expedienteRepository = expedienteRepository;
+            _mapper = mapper;
             _custodiaRepository = custodiaRepository;
             _usuarioRepository = usuarioRepository;
             _stateMachineService = stateMachineService;
@@ -295,5 +298,43 @@ namespace SisMortuorio.Business.Services
                 EstadoActual = expediente.EstadoActual.ToString()
             };
         }
+        /// <inheritdoc/>
+        public async Task<ExpedienteDTO> ConsultarPrevioACustodiaAsync(string codigoQR)
+        {
+            var expediente = await _expedienteRepository.GetByCodigoQRAsync(codigoQR);
+
+            if (expediente == null)
+                throw new InvalidOperationException(
+                    $"No se encontró expediente con código QR: {codigoQR}");
+
+            if (expediente.EstadoActual != EstadoExpediente.PendienteDeRecojo)
+            {
+                var mensaje = expediente.EstadoActual switch
+                {
+                    EstadoExpediente.EnPiso =>
+                        "El expediente aún no tiene QR generado por Enfermería.",
+                    EstadoExpediente.EnTrasladoMortuorio =>
+                        "Este expediente ya está en traslado. La custodia ya fue aceptada.",
+                    EstadoExpediente.PendienteAsignacionBandeja =>
+                        "Este expediente ya ingresó al mortuorio.",
+                    EstadoExpediente.EnBandeja =>
+                        "Este expediente ya tiene bandeja asignada.",
+                    EstadoExpediente.PendienteRetiro =>
+                        "Este expediente ya está autorizado para retiro.",
+                    EstadoExpediente.Retirado =>
+                        "Este expediente ya fue retirado del mortuorio.",
+                    _ =>
+                        $"Estado '{expediente.EstadoActual}' no permite aceptar custodia."
+                };
+                throw new InvalidOperationException(mensaje);
+            }
+
+            _logger.LogInformation(
+                "Consulta previa a custodia — Expediente {CodigoExpediente}, Estado: {Estado}",
+                expediente.CodigoExpediente, expediente.EstadoActual);
+
+            return _mapper.MapToExpedienteDTO(expediente)!;
+        }
     }
+
 }

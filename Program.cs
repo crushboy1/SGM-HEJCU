@@ -265,7 +265,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowAngular",
         policy =>
         {
-            // ⭐ IMPORTANTE: SignalR requiere AllowCredentials para WebSockets
+            // SignalR requiere AllowCredentials para WebSockets
             policy.WithOrigins(
                     "http://localhost:4200",  // Angular dev server
                     "https://localhost:4200"  // Angular dev server HTTPS
@@ -326,7 +326,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseStaticFiles();
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 // Usar política CORS específica para Angular en producción
 // En desarrollo usa "AllowAll" por simplicidad

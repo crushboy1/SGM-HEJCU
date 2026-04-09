@@ -144,8 +144,23 @@ namespace SisMortuorio.Business.Services
 
             if (ocupacion != null)
             {
+                // Cerrar el registro de asignacion con FechaHoraSalida
                 ocupacion.RegistrarSalida(usuarioLiberaId, "Salida registrada por Vigilante");
                 await _ocupacionRepo.UpdateAsync(ocupacion);
+
+                // Crear nuevo registro de Liberacion para auditoría completa
+                var historialLiberacion = new BandejaHistorial
+                {
+                    BandejaID = bandeja.BandejaID,
+                    ExpedienteID = expedienteId,
+                    UsuarioAsignadorID = null,
+                    UsuarioLiberaID = usuarioLiberaId,
+                    Accion = AccionBandeja.Liberacion,
+                    Observaciones = "Salida registrada por Vigilante",
+                    FechaHoraIngreso = ocupacion.FechaHoraIngreso,
+                    FechaHoraSalida = DateTime.Now
+                };
+                await _ocupacionRepo.CreateAsync(historialLiberacion);
             }
 
             await RegistrarAuditoriaAsync("LiberarBandeja", usuarioLiberaId, expedienteId,
