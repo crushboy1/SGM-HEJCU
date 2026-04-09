@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/routes.dart';
 import '../../../features/auth/services/auth_service.dart';
 import '../../../shared/theme/app_theme.dart';
+import 'qr_scan_screen.dart';
 import '../models/expediente_pendiente_model.dart';
 import '../services/expediente_service.dart';
 
@@ -137,7 +138,7 @@ class _AmbulanciaHomeScreenState extends State<AmbulanciaHomeScreen> {
                               ),
                             ),
                             Text(
-                              'Tec. Ambulancia • ${usuario?.nombre ?? ''}',
+                              '${usuario?.rolLabel ?? ''} • ${usuario?.nombre ?? ''}',
                               style: TextStyle(
                                 color: Colors.white.withValues(alpha: 0.8),
                                 fontSize: 12,
@@ -253,8 +254,13 @@ class _AmbulanciaHomeScreenState extends State<AmbulanciaHomeScreen> {
   }
 
   void _irAEscanearQR() {
-    Navigator.pushNamed(context, Routes.qrScan).then((_) => _cargarDatos());
-  }
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => const QrScanScreen(mostrarInputManual: true),
+    ),
+  ).then((_) => _cargarDatos());
+}
 
   void _irAMapaBandejas(ExpedientePendienteModel tarea) {
     if (!tarea.puedeAsignarBandeja) {

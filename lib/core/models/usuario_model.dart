@@ -1,9 +1,4 @@
-enum UserRole {
-  ambulancia,
-  vigilante,
-  supervisor,
-  desconocido,
-}
+enum UserRole { ambulancia, vigilante, supervisor, desconocido }
 
 class UsuarioModel {
   final int id;
@@ -21,31 +16,43 @@ class UsuarioModel {
   });
 
   factory UsuarioModel.fromJson(Map<String, dynamic> json, String token) {
-  return UsuarioModel(
-    id: json['id'] as int? ?? 0,
-    nombre: json['nombreCompleto'] as String? ?? '',
-    username: json['username'] as String? ?? '',
-    rol: _mapRol(json['rol'] as String?),
-    token: token,
-  );
-}
+    return UsuarioModel(
+      id: json['id'] as int? ?? 0,
+      nombre: json['nombreCompleto'] as String? ?? '',
+      username: json['username'] as String? ?? '',
+      rol: _mapRol(json['rol'] as String?),
+      token: token,
+    );
+  }
 
   static UserRole _mapRol(String? rol) {
-  switch (rol) {
-    case 'Ambulancia':
-    case 'ambulancia':
-      return UserRole.ambulancia;
-    case 'VigilanciaMortuorio':
-    case 'vigilante':
-      return UserRole.vigilante;
-    case 'VigilanteSupervisor':
-    case 'supervisor':
-      return UserRole.supervisor;
-    default:
-      return UserRole.desconocido;
+    switch (rol) {
+      case 'Ambulancia':
+      case 'ambulancia':
+        return UserRole.ambulancia;
+      case 'VigilanciaMortuorio':
+      case 'vigilante':
+        return UserRole.vigilante;
+      case 'VigilanteSupervisor':
+      case 'supervisor':
+        return UserRole.supervisor;
+      default:
+        return UserRole.desconocido;
+    }
   }
-  
-}
+
+  String get rolLabel {
+    switch (rol) {
+      case UserRole.ambulancia:
+        return 'Tec. Ambulancia';
+      case UserRole.vigilante:
+        return 'Vigilante Mortuorio';
+      case UserRole.supervisor:
+        return 'Vigilante Supervisor';
+      default:
+        return 'Usuario';
+    }
+  }
 
   Map<String, dynamic> toStorageJson() => {
     'id': id,
