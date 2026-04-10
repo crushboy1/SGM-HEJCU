@@ -13,7 +13,7 @@ class QrScanScreen extends StatefulWidget {
   /// Si es false, oculta el botón de ingreso manual.
   /// Ambulancia: true (default). Vigilante: false.
   final bool mostrarInputManual;
-
+  
   const QrScanScreen({
     super.key,
     required this.mostrarInputManual,
@@ -30,6 +30,7 @@ class _QrScanScreenState extends State<QrScanScreen>
   bool _procesando = false;
   bool _escaneado = false;
   String? _ultimoCodigo;
+  bool get _puedeIngresoManual => AuthService.usuarioActual?.rol == UserRole.ambulancia;
 
   // Estados válidos para aceptar custodia
   static const _estadosValidos = {'PendienteDeRecojo', 'EnPiso'};
@@ -483,8 +484,7 @@ class _QrScanScreenState extends State<QrScanScreen>
                     ),
 
                   // Solo Ambulancia ve el ingreso manual
-                  if (widget.mostrarInputManual &&
-                      AuthService.usuarioActual?.rol == UserRole.ambulancia) ...[
+                  if (widget.mostrarInputManual && _puedeIngresoManual) ...[
                     const SizedBox(height: 16),
                     TextButton.icon(
                       onPressed: _mostrarInputManual,

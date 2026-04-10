@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/routes.dart';
+import '../../../core/models/usuario_model.dart';
 import '../../../features/auth/services/auth_service.dart';
 import '../../../shared/theme/app_theme.dart';
 import 'qr_scan_screen.dart';
@@ -84,6 +85,13 @@ class _AmbulanciaHomeScreenState extends State<AmbulanciaHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Guard de rol
+    final rol = AuthService.usuarioActual?.rol;
+    if (rol != UserRole.ambulancia) {
+      return const Scaffold(
+        body: Center(child: Text('Acceso no autorizado')),
+      );
+    }
     final isTablet = MediaQuery.of(context).size.width >= 600;
     final usuario = AuthService.usuarioActual;
 

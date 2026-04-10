@@ -3,11 +3,15 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/models/usuario_model.dart';
 import '../../ambulancia/screens/qr_scan_screen.dart';
 import '../../../shared/theme/app_theme.dart';
-import '../models/verificacion_model.dart';
+import '../../auth/services/auth_service.dart';
 import '../services/verificacion_error_mapper.dart';
 import '../services/verificacion_service.dart';
+import '../models/verificacion_model.dart';
+
+
 
 class VerificacionScreen extends StatefulWidget {
   const VerificacionScreen({super.key});
@@ -276,6 +280,13 @@ class _VerificacionScreenState extends State<VerificacionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Guard de rol
+    final rol = AuthService.usuarioActual?.rol;
+    if (rol != UserRole.vigilante && rol != UserRole.supervisor) {
+      return const Scaffold(
+        body: Center(child: Text('Acceso no autorizado')),
+      );
+    }
     return Scaffold(
       backgroundColor: AppTheme.bgGray,
       body: Column(
