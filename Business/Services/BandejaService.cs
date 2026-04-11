@@ -33,11 +33,6 @@ namespace SisMortuorio.Business.Services
         private readonly ILogger<BandejaService> _logger = logger;
         private readonly ApplicationDbContext _context = context;
 
-        // ─── Sin cambios: GetOcupacionDashboardAsync, GetByIdAsync,
-        //                  GetDisponiblesAsync, AsignarBandejaAsync,
-        //                  LiberarBandejaAsync, GetEstadisticasAsync,
-        //                  LiberarManualmenteAsync ────────────────────
-
         public async Task<List<BandejaDTO>> GetOcupacionDashboardAsync()
         {
             var bandejas = await _bandejaRepo.GetAllAsync();
@@ -143,10 +138,7 @@ namespace SisMortuorio.Business.Services
             }
 
             if (ocupacion != null)
-            {
-                // Cerrar el registro de asignacion con FechaHoraSalida
-                ocupacion.RegistrarSalida(usuarioLiberaId, "Salida registrada por Vigilante");
-                await _ocupacionRepo.UpdateAsync(ocupacion);
+            {     
 
                 // Crear nuevo registro de Liberacion para auditoría completa
                 var historialLiberacion = new BandejaHistorial
