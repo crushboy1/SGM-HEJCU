@@ -4,7 +4,7 @@ import '../../../features/auth/services/auth_service.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../models/expediente_vigilante_model.dart';
 import '../services/expediente_vigilante_service.dart';
-import '../../../core/models/usuario_model.dart';
+import 'mapa_mortuorio_vigilante_screen.dart';
 class VigilanteHomeScreen extends StatefulWidget {
   const VigilanteHomeScreen({super.key});
 
@@ -27,7 +27,7 @@ class _VigilanteHomeScreenState extends State<VigilanteHomeScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() {
       if (_tabController.index == 1 && _todos.isEmpty) {
         _cargarExpedientes();
@@ -165,6 +165,11 @@ class _VigilanteHomeScreenState extends State<VigilanteHomeScreen>
                           ),
                         ),
                         IconButton(
+                          icon: const Icon(Icons.notifications_outlined,
+                              color: Colors.white),
+                          onPressed: () {}, // Etapa 5: SignalR
+                        ),
+                        IconButton(
                           icon: const Icon(Icons.logout_rounded,
                               color: Colors.white),
                           onPressed: _logout,
@@ -219,6 +224,10 @@ class _VigilanteHomeScreenState extends State<VigilanteHomeScreen>
                         ),
                         text: 'Salidas',
                       ),
+                      const Tab(
+                        icon: Icon(Icons.grid_view_rounded, size: 20),
+                        text: 'Mapa',
+                      ),
                     ],
                   ),
                 ],
@@ -233,6 +242,7 @@ class _VigilanteHomeScreenState extends State<VigilanteHomeScreen>
               children: [
                 _buildTabVerificar(),
                 _buildTabSalidas(),
+                const MapaMortuorioVigilanteScreen(),
               ],
             ),
           ),

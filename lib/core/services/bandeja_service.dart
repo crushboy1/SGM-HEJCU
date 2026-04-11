@@ -46,18 +46,18 @@ class BandejaDisponibleModel {
 }
 
 class BandejaService {
-  static Future<List<BandejaDisponibleModel>> getDisponibles() async {
-    final response = await ApiClient.get(ApiConstants.bandejasDisponibles);
-    if (response.statusCode == 200) {
-      final list = jsonDecode(response.body) as List<dynamic>;
-      return list
-          .map((e) => BandejaDisponibleModel.fromJson(
-              e as Map<String, dynamic>))
-          .toList();
-    }
-    throw Exception(
-        'Error al obtener bandejas (${response.statusCode})');
+  static Future<List<BandejaDisponibleModel>> getDashboard() async {
+  final response = await ApiClient.get(ApiConstants.bandejasDashboard);
+  if (response.statusCode == 200) {
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list
+        .map((e) => BandejaDisponibleModel.fromJsonCompleto(
+            e as Map<String, dynamic>))
+        .toList();
   }
+  throw Exception(
+      'Error al obtener bandejas (${response.statusCode})');
+}
 
   static Future<void> asignarBandeja({
     required int expedienteID,
