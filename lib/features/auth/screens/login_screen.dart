@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/navigation/navigation_service.dart';
 import '../../../core/navigation/navigation_helper.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../shared/theme/app_theme.dart';
@@ -19,6 +20,12 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   String? _errorMsg;
+
+  @override
+  void initState() {
+    super.initState();
+    NavigationService.reset();
+  }
 
   @override
   void dispose() {

@@ -8,7 +8,7 @@ import '../../../shared/theme/app_theme.dart';
 import '../../../features/auth/services/auth_service.dart';
 import '../../../core/models/usuario_model.dart';
 import '../services/custodia_service.dart';
-
+import '../../../core/utils/app_logger.dart';
 class QrScanScreen extends StatefulWidget {
   /// Si es false, oculta el botón de ingreso manual.
   /// Ambulancia: true (default). Vigilante: false.
@@ -84,15 +84,23 @@ class _QrScanScreenState extends State<QrScanScreen>
         'Error al consultar el expediente (${response.statusCode})');
   }
 
-  // ── Mapeo de errores amigable ────────────────────────────────────
+  // ── Mapeo de errores  ────────────────────────────────────
   String _mapError(dynamic e) {
     final msg = e.toString().replaceFirst('Exception: ', '');
+    // No exponer nada que contenga URLs o IPs
+    if (msg.contains('://') || msg.contains('10.0.') || 
+        msg.contains('192.168.') || msg.contains('port=')) {
+      return 'Error de conexion. Verifique su red.';
+    }
     if (msg.toLowerCase().contains('socket') ||
-        msg.toLowerCase().contains('connection')) {
-      return 'Sin conexion. Verifique su red.';
+        msg.toLowerCase().contains('connection refused')) {
+      return 'Error de conexion. Verifique su red.';
+    }
+    if (msg.toLowerCase().contains('tiempo de espera')) {
+      return 'Tiempo de espera agotado. Intente nuevamente.';
     }
     return msg;
-  }
+}
 
   // ── Deteccion QR ─────────────────────────────────────────────────
   Future<void> _onQRDetectado(String codigoQR) async {
@@ -103,6 +111,7 @@ class _QrScanScreenState extends State<QrScanScreen>
       _procesando = true;
       _escaneado = true;
     });
+    AppLogger.qr('Detectado: $codigoQR');
     await _scannerCtrl.stop();
     HapticFeedback.mediumImpact();
 
@@ -217,10 +226,7 @@ class _QrScanScreenState extends State<QrScanScreen>
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {
-                Navigator.of(ctx).pop();
-                Navigator.of(context).pop(true);
-              },
+              onPressed: () => Navigator.of(context).pop(true),
               child: const Text('CONTINUAR'),
             ),
           ),
@@ -446,17 +452,35 @@ class _QrScanScreenState extends State<QrScanScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (_procesando)
-                    const Column(
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        CircularProgressIndicator(
-                            color: Colors.white),
-                        SizedBox(height: 12),
-                        Text('Procesando...',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold)),
+                        const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          _escaneado ? 'QR detectado...' : 'Procesando...',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13),
+                        ),
                       ],
-                    )
+                    ),
+                  )
                   else
                     Container(
                       padding: const EdgeInsets.symmetric(

@@ -87,8 +87,11 @@ class _VerificacionScreenState extends State<VerificacionScreen> {
         });
       } else {
         final error = jsonDecode(response.body);
-        final msg = error['message'] as String? ??
+        var msg = error['message'] as String? ??
             'No se pudo consultar el expediente (${response.statusCode})';
+        if (msg.contains('://') || msg.contains('port=') || msg.contains('address=')){
+          msg = 'Error al consultar expediente. Intente nuevamente.';
+        }    
         _mostrarError(msg);
       }
     } catch (e) {

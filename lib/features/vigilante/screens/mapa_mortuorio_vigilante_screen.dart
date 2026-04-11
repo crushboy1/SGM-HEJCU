@@ -97,6 +97,11 @@ class _MapaMortuorioVigilanteScreenState
               onPressed: _cargarBandejas,
               icon: const Icon(Icons.refresh_rounded),
               label: const Text('Reintentar'),
+              style: ElevatedButton.styleFrom(
+                minimumSize: Size.zero,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 24, vertical: 12),
+              ),
             ),
           ],
         ),

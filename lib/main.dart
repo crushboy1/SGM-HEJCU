@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'core/navigation/navigation_service.dart';
 import 'core/models/usuario_model.dart';
 import 'core/constants/app_constants.dart';
 import 'core/constants/routes.dart';
@@ -24,6 +25,7 @@ class SgmApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: AppConstants.appName,
+      navigatorKey: NavigationService.navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,
       home: const SplashScreen(),
